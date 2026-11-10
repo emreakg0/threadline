@@ -1,92 +1,38 @@
-# Productivity App Starter
+# Focus City
 
-A minimal full-stack development scaffold. No application features, authentication,
-database connection, or external API integrations are implemented.
+A private task workspace where real tasks become a miniature 3D city and projects become neighborhoods.
 
-## Stack
+Start each development session by reading [AGENTS.md](AGENTS.md), [PROJECT_STATUS.md](PROJECT_STATUS.md) and [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md). Configuration and OAuth setup are in [FOCUS_CITY_SETUP.md](FOCUS_CITY_SETUP.md). Never commit local environment files.
 
-- React + TypeScript + Vite
-- Tailwind CSS 4 (Vite plugin)
-- Node.js + Express 5 + TypeScript
-- pnpm workspaces
+## Architecture
 
-## Requirements
+- `artifacts/productivity-app`: React, TypeScript, Vite and Tailwind dashboard; lazy React Three Fiber / Three.js city in `src/city`.
+- `artifacts/api-server`: Express API; Google OAuth, hashed PostgreSQL sessions, ownership-scoped projects and task CRUD.
+- `lib/db`: PostgreSQL pool, additive migrations and isolated browser QA harness. Persistent slots keep buildings stable across edits and refreshes.
+- `lib/api-spec`, `lib/api-client-react`, `lib/api-zod`: starter health contracts; task/auth contract generation remains unfinished.
+- `artifacts/mockup-sandbox`: template tooling.
 
-- Node.js 24
-- pnpm 10
+## Local development
 
-## Install
+Use Node.js 24 and pnpm 10. Install with `pnpm install --frozen-lockfile`. Configure DATABASE_URL, APP_ORIGIN, GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET privately as described in the setup guide. Apply migrations with `node lib/db/scripts/migrate.mjs`.
 
-```sh
-pnpm install --frozen-lockfile
-```
-
-Commit `pnpm-lock.yaml` along with the source so installs remain reproducible.
-No secrets or database configuration are required.
-
-## Develop in Replit
-
-Run the **Productivity App** and **API Server** workflows. Replit supplies each
-service's `PORT` and routes the homepage at `/` and the backend at `/api`.
-Vite provides frontend hot reload; `tsx watch` restarts Express on backend edits.
-
-## Develop outside Replit
-
-Start the services in separate terminals:
+Run the services in separate terminals:
 
 ```sh
-# Frontend: http://localhost:5173
+pnpm --filter @workspace/api-server dev
 pnpm --filter @workspace/productivity-app dev
 ```
 
-```sh
-# Backend: http://localhost:8080/api/healthz
-pnpm --filter @workspace/api-server dev
-```
+Frontend defaults to http://localhost:5173 and proxies `/api` to port 8080. Existing Replit workflows use their assigned frontend port. Google callback registration must match APP_ORIGIN exactly. No anonymous demo data replaces authentication.
 
-The ports default to 5173 and 8080 respectively and can be overridden with `PORT`.
-The frontend's `BASE_PATH` defaults to `/`.
-There are no frontend API calls yet. In Replit, future API calls can use
-same-origin `/api/...` URLs; outside Replit, configure your own reverse proxy or
-Vite development proxy when adding those calls.
-
-## Structure
-
-```text
-artifacts/
-  productivity-app/     # React frontend
-    src/App.tsx         # Placeholder homepage; start editing here
-    src/index.css       # Tailwind entry point
-    src/main.tsx        # React entry point
-    vite.config.ts      # Vite + Tailwind development configuration
-  api-server/           # Express backend
-    src/app.ts          # Express middleware and router
-    src/index.ts        # Server entry point
-    src/routes/         # Only the starter health endpoint
-lib/                    # Template-provided optional shared libraries
-scripts/                # Workspace utility scripts
-```
-
-The pre-existing `lib/db` package is unused; the app does not connect to a
-database. `lib/api-spec` and related generated packages describe the existing
-health endpoint. `artifacts/mockup-sandbox` is template tooling, not application
-code, and is not needed to run this starter.
-
-## Checks and builds
+## Verification
 
 ```sh
 pnpm typecheck
+pnpm --filter @workspace/productivity-app test
+pnpm --filter @workspace/api-server test
 pnpm --filter @workspace/productivity-app build
 pnpm --filter @workspace/api-server build
 ```
 
-Frontend output is `artifacts/productivity-app/dist/public`. Backend output is
-`artifacts/api-server/dist`; run it with
-`pnpm --filter @workspace/api-server start`.
-
-## GitHub
-
-This is a standard pnpm repository with no GitHub integration required.
-Dependencies, build output, logs, and local `.env` files are ignored by Git.
-Do not commit secrets. Replit's service metadata is retained so the project also
-runs in Replit.
+API tests require a migrated database and clean up only their own fixtures. See the setup guide and status file for browser camera checks and remaining acceptance work. Build output goes to `artifacts/productivity-app/dist/public` and `artifacts/api-server/dist`.
