@@ -16,7 +16,7 @@ Private source backup: [emreakg0/focus-city](https://github.com/emreakg0/focus-c
 
 ## Local development
 
-Use Node.js 24 and pnpm 10. Install with `pnpm install --frozen-lockfile`. Configure DATABASE_URL, APP_ORIGIN, GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET privately as described in the setup guide. Apply migrations with `node lib/db/scripts/migrate.mjs`.
+Use Node.js 24 and the pinned pnpm 10.26.1 (see packageManager in package.json). Install with `pnpm install --frozen-lockfile`; npm/yarn installation is unsupported. Dependency admission waits seven days, blocks exotic transitive sources and rejects trust downgrades. See [SECURITY_AUDIT.md](SECURITY_AUDIT.md) for controls, verified behavior and urgent-patch exceptions. Configure DATABASE_URL, APP_ORIGIN, GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET privately as described in the setup guide. Apply migrations with `node lib/db/scripts/migrate.mjs`.
 
 Run the services in separate terminals:
 
@@ -31,6 +31,7 @@ Frontend defaults to http://localhost:5173 and proxies `/api` to port 8080. Exis
 
 ```sh
 pnpm typecheck
+pnpm test:supply-chain
 pnpm --filter @workspace/productivity-app test
 pnpm --filter @workspace/api-server test
 pnpm --filter @workspace/productivity-app build
