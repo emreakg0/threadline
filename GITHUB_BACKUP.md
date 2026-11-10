@@ -25,6 +25,8 @@ cd focus-city
 git status
 ```
 
+If Git HTTPS authentication is not configured on the new machine, run `gh auth setup-git` after signing in. This workspace uses a repository-local GitHub helper calling `gh auth git-credential`; no token is stored in the remote URL.
+
 Read the three project memory files before continuing. Follow README.md and FOCUS_CITY_SETUP.md to install with the pinned pnpm lockfile, privately restore runtime configuration and apply additive migrations to the intended database. Do not print credentials or put them in the repository.
 
 This repository contains frontend/backend source, database schema migrations, tests, dependency manifests/lockfile and development documentation. It intentionally excludes node_modules, builds, local environments, OAuth credentials, tokens, database dumps and user data. Live PostgreSQL backup/restore needs a separately authorized private backup destination and retention policy; Git does not back up the live database or secret configuration.
