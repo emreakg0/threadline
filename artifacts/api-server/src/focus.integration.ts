@@ -20,6 +20,11 @@ const realFetch=globalThis.fetch;
 let oauthState:string|undefined;
 try {
  let response=await fetch(base+'/auth/me');assert.equal(response.status,200);assert.match(response.headers.get('content-type')! ,/application\/json/);assert.deepEqual(await response.json(),{user:null,configured:true});
+ assert.equal(response.headers.get('cache-control'),'no-store');
+ assert.equal(response.headers.get('x-content-type-options'),'nosniff');
+ assert.equal(response.headers.get('referrer-policy'),'no-referrer');
+ assert.equal(response.headers.get('x-frame-options'),'DENY');
+ assert.equal(response.headers.get('x-powered-by'),null);
  assert.equal((await fetch(base+'/tasks')).status,401);
  response=await fetch(base+'/auth/google',{redirect:'manual'});assert.equal(response.status,302);const url=new URL(response.headers.get('location')!);assert.equal(url.searchParams.get('redirect_uri'),'http://localhost:5173/api/auth/google/callback');oauthState=url.searchParams.get('state')!;
  response=await fetch(base+'/auth/google/callback?state=invalid');assert.equal(response.status,400);assert.ok((await response.json() as {error:string}).error);
@@ -36,6 +41,10 @@ try {
  response=await fetch(base+'/tasks',{headers:headers(1)});assert.deepEqual(await response.json(),[]);
  response=await fetch(base+'/tasks',{method:'POST',headers:headers(1),body:JSON.stringify({title:'Unauthorized project',project_id:projects[0]})});assert.equal(response.status,404);
  const patch={title:'Edited task',description:'Saved',status:'done',priority:'high',due_date:'2027-01-12',version:task.version};
+ response=await fetch(base+'/tasks/'+task.id,{method:'PATCH',headers:headers(1),body:JSON.stringify(patch)});assert.equal(response.status,409);
+ for(const requestHeaders of [{...headers(),origin:'https://untrusted.example'},{cookie:`focus_session=${tokens[0]}`,'Content-Type':'application/json'}]) {
+  response=await fetch(base+'/tasks/'+task.id,{method:'PATCH',headers:requestHeaders,body:JSON.stringify(patch)});assert.equal(response.status,403);
+ }
  response=await fetch(base+'/tasks/'+task.id,{method:'PATCH',headers:headers(),body:JSON.stringify(patch)});assert.equal(response.status,200);
  response=await fetch(base+'/tasks',{headers:headers()});const saved=(await response.json() as {status:string;title:string;description:string;priority:string;due_date:string;city_slot:number}[])[0];
  assert.equal(saved.status,'done');assert.equal(saved.title,'Edited task');assert.equal(saved.description,'Saved');assert.equal(saved.priority,'high');assert.equal(saved.due_date,'2027-01-12');assert.equal(saved.city_slot,task.city_slot);

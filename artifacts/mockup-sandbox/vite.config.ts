@@ -4,6 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import { mockupPreviewPlugin } from "./mockupPreviewPlugin";
+import { developmentHosts, developmentFileDeny } from '../../scripts/vite-security';
 
 const rawPort = process.env.PORT;
 
@@ -58,14 +59,16 @@ export default defineConfig({
   server: {
     port,
     host: "0.0.0.0",
-    allowedHosts: true,
+    allowedHosts: developmentHosts(),
     fs: {
       strict: true,
+      allow: [import.meta.dirname, path.resolve(import.meta.dirname, '../../node_modules')],
+      deny: developmentFileDeny,
     },
   },
   preview: {
     port,
     host: "0.0.0.0",
-    allowedHosts: true,
+    allowedHosts: developmentHosts(),
   },
 });

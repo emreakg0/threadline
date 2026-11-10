@@ -39,6 +39,8 @@ Known debt: health-only generated contracts; dense procedural code; large lazy 3
 
 ## Active phase and next task
 
+2026-11-10 exposure review completed: repository is private with only its owner listed, no hooks/Pages; no credential matches found in tracked history or generated frontend assets. Patched dependency audit reports zero known vulnerabilities. Explicit Vite hosts, restricted file serving, API no-cache/security headers and fail-closed write-origin checks are implemented and regression-tested. See SECURITY_REVIEW.md for scope, tests and remaining production hardening; this does not certify the application free of all vulnerabilities. No deployment or GitHub access-setting changes.
+
 Current visual milestone is verified. Camera framing now includes the floating platform underside, outer rim, empty-city lamps and tallest rooftop accents. Lighting is less washed out; parked cars now use both intended colors. The prior overhaul was substantially implemented before recovery; this session verified it and repaired these remaining details.
 
 Exact next implementation task: add project rename with ownership-scoped PATCH /api/projects/:id, validated names, sidebar editing and two-account integration coverage. Project deletion and task moves should follow with explicit data-preservation semantics. Before claiming final visual performance acceptance, profile a representative physical mobile device/laptop and test live Google consent with the registered account.

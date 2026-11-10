@@ -41,7 +41,7 @@ router.get("/auth/google/callback",async(req,res)=>{
  res.setHeader("Set-Cookie",[cookie("focus_session",session,604800),cookie("focus_oauth","",0)]);res.redirect("/");
 });
 router.use(async(req,res,next)=>{
- if(req.method!=="GET" && req.headers.origin!==origin){res.status(403).json({error:"Invalid request origin"});return;}
+ if(req.method!=="GET" && (!origin || req.headers.origin!==origin)){res.status(403).json({error:"Invalid request origin"});return;}
  const token=cookies(req.headers.cookie).focus_session;
  if(!token){res.status(401).json({error:"Sign in required"});return;}
  const result=await pool.query("SELECT user_id FROM focus_sessions WHERE token_hash=$1 AND expires_at>now()",[hash(token)]);

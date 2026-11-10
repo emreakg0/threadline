@@ -1,6 +1,8 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import { developmentHosts, developmentFileDeny } from '../../scripts/vite-security';
+import { resolve } from 'node:path';
 
 const port = Number(process.env.PORT ?? 5173);
 
@@ -29,7 +31,8 @@ export default defineConfig({
         });
       },
     } },
-    allowedHosts: true,
+    allowedHosts: developmentHosts(),
+    fs: { strict: true, allow: [import.meta.dirname, resolve(import.meta.dirname, '../../node_modules')], deny: developmentFileDeny },
   },
   preview: {
     proxy: { "/api": {
@@ -45,6 +48,6 @@ export default defineConfig({
     } },
     host: "0.0.0.0",
     port,
-    allowedHosts: true,
+    allowedHosts: developmentHosts(),
   },
 });

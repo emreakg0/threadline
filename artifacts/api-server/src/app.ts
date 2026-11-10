@@ -5,6 +5,14 @@ import focus from "./routes/focus";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
+app.disable('x-powered-by');
+app.use('/api', (_req, res, next) => {
+ res.setHeader('Cache-Control', 'no-store');
+ res.setHeader('X-Content-Type-Options', 'nosniff');
+ res.setHeader('Referrer-Policy', 'no-referrer');
+ res.setHeader('X-Frame-Options', 'DENY');
+ next();
+});
 
 app.use(
   pinoHttp({
