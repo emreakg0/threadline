@@ -2,6 +2,12 @@
 
 Last inspection: 2026-11-10 (UTC). Recovery and visual verification completed for the current visual milestone.
 
+## Version control and backup
+
+GitHub destination: https://github.com/emreakg0/focus-city (private, owner emreakg0), connected as origin; existing gitsafe-backup retained. Existing history and recovery checkpoint 1a3834e are preserved. Source includes actual frontend/backend, SQL migrations, tests and memory documentation. Initial GitHub push verification is recorded in the development log after completion.
+
+Future completed, verified milestones must update memory, pass applicable checks and credential review, receive meaningful commits and push automatically to the private origin. Never force-push, delete the repository, change visibility or deploy without explicit permission. GITHUB_BACKUP.md documents recovery and verification. scripts/secret-audit.py scans all reachable history and tracked files; the initial audit found zero credential matches in 163 historical blobs. .gitignore additionally excludes OAuth downloads, token files, local GitHub/AWS/SSH configuration and data exports. Live database contents and runtime secrets are not backed up by Git.
+
 ## Overview and architecture
 
 Private productivity workspace: Google sign-in, persisted projects/tasks and a miniature city derived from real tasks. React/TypeScript/Vite/Tailwind frontend lives in artifacts/productivity-app; Express backend in artifacts/api-server. PostgreSQL uses pg with namespaced SQL migrations in lib/db/migrations. OAuth state/session tokens are hashed in the database; browser cookies are HttpOnly, SameSite=Lax and Secure with HTTPS origin. API queries scope ownership to authenticated users; edits use optimistic versions.

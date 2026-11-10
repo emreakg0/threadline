@@ -23,6 +23,42 @@ node_modules
 !.env.example
 *.log
 
+# Local credentials, OAuth downloads, tokens and machine configuration
+/.config/
+/.aws/
+/.ssh/
+.envrc
+.envrc.*
+.git-credentials
+.netrc
+.npmrc.local
+client_secret*.json
+client-secret*.json
+credentials.json
+credentials.*.json
+*credentials*.json
+*oauth*.json
+token.json
+token.*.json
+tokens.json
+*-token.json
+service-account*.json
+service_account*.json
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Local user data, database exports and backups (keep SQL migrations tracked)
+/backups/
+/data/
+*.dump
+*.backup
+*.sqlite
+*.sqlite3
+*.db
+*.sql.gz
+
 # IDEs and editors
 /.idea
 .project

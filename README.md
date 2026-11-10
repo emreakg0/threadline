@@ -4,6 +4,8 @@ A private task workspace where real tasks become a miniature 3D city and project
 
 Start each development session by reading [AGENTS.md](AGENTS.md), [PROJECT_STATUS.md](PROJECT_STATUS.md) and [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md). Configuration and OAuth setup are in [FOCUS_CITY_SETUP.md](FOCUS_CITY_SETUP.md). Never commit local environment files.
 
+Private source backup: [emreakg0/focus-city](https://github.com/emreakg0/focus-city). See [GITHUB_BACKUP.md](GITHUB_BACKUP.md) for milestone pushes, credential checks and recovery; database contents and runtime secrets are excluded.
+
 ## Architecture
 
 - `artifacts/productivity-app`: React, TypeScript, Vite and Tailwind dashboard; lazy React Three Fiber / Three.js city in `src/city`.
