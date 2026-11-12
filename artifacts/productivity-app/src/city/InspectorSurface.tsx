@@ -1,3 +1,4 @@
+import { advanceSpring } from "../spring";
 import { useEffect, useRef, type ReactNode } from "react";
 
 /** Retains the selected task during dismissal and reverses from the live spring value. */
@@ -20,17 +21,18 @@ export function InspectorSurface({
     const target = open ? 0 : 1;
     function tick(now: number) {
       const s = spring.current,
-        dt = Math.min((now - previous) / 1000, 1 / 60);
+        dt = Math.max((now - previous) / 1000, 0);
       previous = now;
       if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
         s.x = target;
         s.v = 0;
       } else {
-        s.v += (420 * (target - s.x) - 41 * s.v) * dt;
-        s.x += s.v * dt;
+        const next = advanceSpring(s.x, s.v, target, dt);
+        s.x = next.position;
+        s.v = next.velocity;
       }
       node.style.opacity = String(1 - s.x);
-      node.style.transform = `translateX(${s.x * 24}px)`;
+      node.style.setProperty("--inspector-offset", String(s.x));
       if (Math.abs(target - s.x) < 0.001 && Math.abs(s.v) < 0.01) {
         if (!open) node.hidden = true;
       } else frame = requestAnimationFrame(tick);

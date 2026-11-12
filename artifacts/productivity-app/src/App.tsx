@@ -2,6 +2,7 @@ import { api } from "./api";
 import { useEffect, useState, useMemo, type FormEvent } from "react";
 import type { Project, Task } from "./types";
 import CityView from "./city/CityView";
+import { ViewSwitch } from "./ViewSwitch";
 import { TaskSheet } from "./TaskSheet";
 export default function App() {
   const [composerOpen, setComposerOpen] = useState(false),
@@ -93,7 +94,10 @@ export default function App() {
         !e.metaKey &&
         !e.ctrlKey &&
         !["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) &&
-        auth?.user
+        auth?.user &&
+        !target.isContentEditable &&
+        !e.altKey &&
+        !e.repeat
       ) {
         e.preventDefault();
         setEditing(null);
@@ -124,7 +128,7 @@ export default function App() {
   );
   return (
     <div className="shell">
-      <aside>
+      <aside aria-label="Workspace navigation">
         <a className="brand" href="/">
           ◈{" "}
           <span>
@@ -133,6 +137,7 @@ export default function App() {
         </a>
         <div className="side-label">YOUR WORKSPACE</div>
         <button
+          aria-current={!project ? "page" : undefined}
           className={!project ? "active" : ""}
           onClick={() => setProject("")}
         >
@@ -141,6 +146,7 @@ export default function App() {
         {projects.map((p) => (
           <button
             key={p.id}
+            aria-current={project === p.id ? "page" : undefined}
             className={project === p.id ? "active" : ""}
             onClick={() => setProject(p.id)}
           >
@@ -279,30 +285,46 @@ export default function App() {
                 </div>
               ))}
             </div>
+            <ViewSwitch view={view} onChange={setView}>
+              {tasks.filter((t) => t.status === "done").length} of{" "}
+              {tasks.length} tasks complete
+            </ViewSwitch>
             <div
-              className="view-switch"
-              role="group"
-              aria-label="Workspace view"
+              className="tools workspace-filters"
+              role="search"
+              aria-label="Filter workspace tasks"
             >
-              <button
-                aria-pressed={view === "city"}
-                onClick={() => setView("city")}
+              <input
+                aria-label="Search tasks"
+                placeholder="Search your tasks…"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+              <select
+                aria-label="Filter status"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
               >
-                ◈ City View
-              </button>
-              <button
-                aria-pressed={view === "list"}
-                onClick={() => setView("list")}
-              >
-                ☷ List View
-              </button>
-              <span>
-                {tasks.filter((t) => t.status === "done").length} of{" "}
-                {tasks.length} tasks complete
-              </span>
+                <option value="all">All statuses</option>
+                <option value="todo">To do</option>
+                <option value="in_progress">In progress</option>
+                <option value="done">Done</option>
+              </select>
+              {(query || filter !== "all") && (
+                <button
+                  className="clear-filters"
+                  onClick={() => {
+                    setQuery("");
+                    setFilter("all");
+                  }}
+                >
+                  Clear filters
+                </button>
+              )}
             </div>
             {view === "city" && (
               <CityView
+                filtered={Boolean(query || filter !== "all")}
                 projects={cityProjects}
                 tasks={visible}
                 selected={visible.find((t) => t.id === editing?.id) ?? null}
@@ -328,30 +350,34 @@ export default function App() {
               <section className="panel">
                 <div className="panel-title">
                   <h2>Tasks</h2>
-                  <span>{visible.length} TASKS</span>
-                </div>
-                <div className="tools">
-                  <input
-                    aria-label="Search tasks"
-                    placeholder="Search your tasks…"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                  />
-                  <select
-                    aria-label="Filter status"
-                    value={filter}
-                    onChange={(e) => setFilter(e.target.value)}
-                  >
-                    <option value="all">All statuses</option>
-                    <option value="todo">To do</option>
-                    <option value="in_progress">In progress</option>
-                    <option value="done">Done</option>
-                  </select>
+                  <span>
+                    {visible.length} of{" "}
+                    {
+                      tasks.filter((t) => !project || t.project_id === project)
+                        .length
+                    }{" "}
+                    tasks
+                  </span>
                 </div>
                 {visible.length === 0 ? (
                   <div className="empty">
                     ◇<h3>Room for your next idea.</h3>
-                    <p>Create a task, or adjust your filters.</p>
+                    <p>
+                      {query || filter !== "all"
+                        ? "No tasks match these filters."
+                        : "Create a task to give your next step a place."}
+                    </p>
+                    {(query || filter !== "all") && (
+                      <button
+                        className="clear-filters"
+                        onClick={() => {
+                          setQuery("");
+                          setFilter("all");
+                        }}
+                      >
+                        Clear filters
+                      </button>
+                    )}
                   </div>
                 ) : (
                   visible.map((t) => (

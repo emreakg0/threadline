@@ -36,6 +36,7 @@ function supportsWebGL() {
   }
 }
 export default function CityView({
+  filtered,
   projects,
   tasks,
   selected,
@@ -45,6 +46,7 @@ export default function CityView({
   onEdit,
   busy,
 }: {
+  filtered: boolean;
   projects: Project[];
   tasks: Task[];
   selected: Task | null;
@@ -63,6 +65,13 @@ export default function CityView({
       ? focusedProjectId
       : (projects[0]?.id ?? ""));
   const focusedTasks = tasks.filter((t) => t.project_id === activeProjectId);
+  const selectedIndex = focusedTasks.findIndex(
+    (task) => task.id === selected?.id,
+  );
+  function inspectAdjacent(direction: number) {
+    const next = focusedTasks[selectedIndex + direction];
+    if (next) onSelect(next);
+  }
   const [available, setAvailable] = useState(supportsWebGL),
     [reset, setReset] = useState(0),
     [pulse, setPulse] = useState<Task | null>(null);
@@ -81,6 +90,15 @@ export default function CityView({
     previous.current = new Map(tasks.map((t) => [t.id, t.status]));
     if (completed && !reduced) setPulse(completed);
   }, [tasks, reduced]);
+  useEffect(() => {
+    if (!selected) return;
+    function escape(event: KeyboardEvent) {
+      if (event.key === "Escape" && !document.querySelector("dialog[open]"))
+        onSelect(null);
+    }
+    window.addEventListener("keydown", escape);
+    return () => window.removeEventListener("keydown", escape);
+  }, [selected, onSelect]);
   const fallback = (
     <div className="city-fallback">
       <span>◇</span>
@@ -156,9 +174,19 @@ export default function CityView({
         )}
         {available && focusedTasks.length === 0 && (
           <div className="city-empty">
-            <span>YOUR CITY IS A BLANK CANVAS</span>
-            <h3>Great things start small.</h3>
-            <p>Create your first task to raise your first building.</p>
+            <span>
+              {filtered ? "FILTERED VIEW" : "YOUR CITY IS A BLANK CANVAS"}
+            </span>
+            <h3>
+              {filtered
+                ? "No matching buildings."
+                : "Great things start small."}
+            </h3>
+            <p>
+              {filtered
+                ? "Adjust your search or status to see more saved tasks."
+                : "Create your first task to raise your first building."}
+            </p>
           </div>
         )}
         <div className="city-compass" aria-hidden="true">
@@ -178,7 +206,19 @@ export default function CityView({
       <InspectorSurface open={!!selected}>
         {selected && (
           <>
-            <div>
+            <div className="inspector-content">
+              <div className="inspector-heading">
+                <span>Task details</span>
+                <button
+                  aria-label="Close task inspector"
+                  onClick={() => onSelect(null)}
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="inspector-context">
+                {projects.find((p) => p.id === selected.project_id)?.name}
+              </div>
               <span>
                 {selected.status.replace("_", " ")} · {selected.priority}{" "}
                 priority
@@ -189,8 +229,30 @@ export default function CityView({
                 {selected.due_date
                   ? "Deadline: " + selected.due_date.slice(0, 10)
                   : "No deadline"}{" "}
-                · {projects.find((p) => p.id === selected.project_id)?.name}
               </small>
+              <div
+                className="inspector-navigation"
+                role="group"
+                aria-label="Browse neighborhood tasks"
+              >
+                <button
+                  aria-label="Inspect previous task"
+                  disabled={selectedIndex <= 0}
+                  onClick={() => inspectAdjacent(-1)}
+                >
+                  ←
+                </button>
+                <span>
+                  {selectedIndex + 1} of {focusedTasks.length} tasks
+                </span>
+                <button
+                  aria-label="Inspect next task"
+                  disabled={selectedIndex >= focusedTasks.length - 1}
+                  onClick={() => inspectAdjacent(1)}
+                >
+                  →
+                </button>
+              </div>
             </div>
             <div className="inspector-actions">
               <button
@@ -213,12 +275,6 @@ export default function CityView({
                 }}
               >
                 Edit details ↗
-              </button>
-              <button
-                aria-label="Close task inspector"
-                onClick={() => onSelect(null)}
-              >
-                Close
               </button>
             </div>
           </>

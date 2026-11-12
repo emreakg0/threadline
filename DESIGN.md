@@ -21,3 +21,11 @@ Reduced motion snaps the spring and disables city travel/pulses; feedback remain
 ## Verification boundaries
 
 Automated browser fixtures use real isolated database records and software WebGL. They establish rendering, selection, editing and responsive layout, not physical GPU performance or live Google consent. Those remain manual acceptance items. Project rename/delete and task moves are existing product gaps, outside this visual milestone.
+
+## Continued interface refinement — 2026-11-12
+
+Search and status controls sit above both City and List View so their scope is clear. Filtered empty cities explain the active filters; Clear filters restores the view without changing data. The City/List selection surface uses independent position and width springs, preserving velocity on reversal and adapting to text/viewport resizing. Reduced motion snaps the surface.
+
+Task inspection separates neighborhood context, state, title, notes and deadline. Previous/next controls browse the visible tasks in the active neighborhood with explicit boundaries and a position count; selection continues to drive the existing camera. Close stays in the panel header, Escape dismisses inspection outside the editor, and the inspector enters/exits vertically on mobile and horizontally on desktop. Editor text fields use 1rem text and retain their close control in a sticky header. Mobile neighborhood navigation forms a horizontally scrollable rail rather than consuming rows above the workspace.
+
+Editor, inspector and selection controls share exact critically damped spring integration. Their pace follows elapsed time even on delayed frames; changing a target preserves position and velocity. Automated tests compare frame rates, reversal and long-frame stability.

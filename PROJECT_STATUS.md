@@ -1,6 +1,6 @@
 # Focus City project status
 
-Last inspection: 2026-11-11 (UTC). City-centered interface milestone and browser verification completed; see the latest section below.
+Last inspection: 2026-11-12 (UTC). Continued Apple-design interface refinement; see the latest section below.
 
 ## Version control and backup
 
@@ -62,3 +62,13 @@ Verification: workspace typecheck PASS; frontend layout/camera/scenery tests PAS
 Browser writes initially failed correctly against the hosted-origin API. Verification used a separate API at port 28081 with APP_ORIGIN=http://127.0.0.1:21646 and an ephemeral loopback proxy forwarding frontend assets from 21644. CITY_TEST_ORIGIN now configures the browser harness; production origin checks were not changed. All records created by the harness are isolated and cleaned in finally. DESIGN.md records the visual/interaction system. No deployment/publication performed.
 
 Exact next unfinished design acceptance task: profile touch/keyboard interaction and rendering on a physical iPad/phone and laptop, including software keyboard resizing and GPU frame times. Existing product backlog remains project rename with ownership-scoped PATCH /api/projects/:id and integration tests, followed by explicitly specified project deletion/task moves. These existing missing operations were not simulated or added in this visual milestone.
+
+## 2026-11-12 — Navigation, inspection and spring refinement
+
+Continued the existing React interface after reading the full apple-design skill, project records and actual source/diff. Shared search/status controls now precede City and List View; filtered empty cities explain the filters and expose a clear action. Neighborhood navigation has aligned counts, current-location semantics and a compact horizontal mobile rail. Task inspection has stronger type hierarchy, neighborhood context, a consistent header close control, previous/next task browsing with boundaries/counts and Escape dismissal outside the editor. Mobile inspection uses symmetric vertical motion. Editor fields use 1rem text, its header stays available while scrolling, and the root type size follows the browser preference.
+
+A shared exact critically damped spring now drives editor, inspector and view-selection motion. It preserves current position/velocity on retargeting and advances by elapsed time rather than a capped frame step, preventing slow settlement on low-frame-rate rendering. City/List selection uses independent position/width springs, observes control resizing and honors reduced motion. Reduced transparency and increased contrast cover the revised inspector/header materials. No dependency, API, authentication, schema or 3D scene changes. Pre-existing untracked skill files were preserved separately.
+
+Verification: workspace typecheck PASS; frontend city/camera/scenery and new spring tests PASS; frontend/API production builds PASS; isolated two-account API integration PASS. Chromium 0/1/5/20-task desktop/mobile scenarios PASS, including inspector browsing, shared filters/reset, rapid view reversal, 20px-root editor overflow, touch spring-back, persistence/save feedback and reduced-motion dismissal. Desktop/mobile city screenshots for all four counts plus inspector/editor screenshots were visually inspected. Existing lazy-scene advisory remains 988.28 kB / 265.33 kB gzip. Software WebGL cannot establish physical GPU performance; live Google consent remains unverified. No deployment/publication.
+
+Exact next unfinished design acceptance task: verify the horizontal navigation rail, inspector browsing, editor keyboard resizing and motion on a physical phone/tablet and laptop, including GPU frame times. Product backlog remains ownership-scoped project rename API/UI with integration coverage, then explicitly specified project deletion/task moves.

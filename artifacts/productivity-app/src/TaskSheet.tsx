@@ -1,3 +1,4 @@
+import { advanceSpring } from "./spring";
 import { useEffect, useRef, type ReactNode } from "react";
 
 /** A velocity-preserving spring, shared by gesture release and programmatic dismissal. */
@@ -36,14 +37,15 @@ export function TaskSheet({
       let last = performance.now();
       function tick(now: number) {
         const s = physics.current,
-          dt = Math.min((now - last) / 1000, 1 / 60);
+          dt = Math.max((now - last) / 1000, 0);
         last = now;
         if (media.matches) {
           s.position = s.target;
           s.velocity = 0;
         } else {
-          s.velocity += (420 * (s.target - s.position) - 41 * s.velocity) * dt;
-          s.position += s.velocity * dt;
+          const next = advanceSpring(s.position, s.velocity, s.target, dt);
+          s.position = next.position;
+          s.velocity = next.velocity;
         }
         node.style.setProperty("--sheet-offset", String(s.position));
         if (
