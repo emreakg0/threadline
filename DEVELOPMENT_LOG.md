@@ -144,3 +144,7 @@ Git 133c0f1 created the initial repository; 3f10439 initialized the productivity
 - Scoped correctness/security review: parameterized SQL and ownership checks verified;
   no raw HTML rendering, content logging or secret use introduced. No blocking findings.
   Stop after this milestone for review; Phase 2B is not authorized automatically.
+- Before commit, noticed concurrently added unstaged Codex efficiency rules in AGENTS.md;
+  preserved them separately and staged only this session's RESULT reporting line.
+  Secret audit and private-origin check passed; reviewed staged files exclude the
+  existing components.json, runtime secrets, screenshots and live database records.

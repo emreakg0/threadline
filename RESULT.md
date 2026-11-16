@@ -96,3 +96,13 @@ This milestone does not add AI blocks, processing runs, replay, graph or nested 
 Phase 2A is complete. Stop for your review. Phase 2B requires separate authorization.
 The next task is reviewing persistent capture and its Gemini contract, not starting
 inference automatically. Source milestone: `Add persistent Threadline document capture`.
+
+## Source backup and preserved edits
+
+The verified milestone is committed and pushed to the existing private origin under
+`Add persistent Threadline document capture`. Staged files were reviewed, the secret
+audit passed with zero findings, and repository privacy was verified before push.
+The existing gitsafe-backup remote remains unchanged. Concurrent unstaged efficiency
+instructions added to AGENTS.md were preserved and excluded from this milestone;
+only the RESULT.md reporting instruction was staged. No secret files or live data
+were included in the source backup.
