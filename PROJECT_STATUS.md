@@ -97,3 +97,39 @@ repository rename, deployment or publication. Phase 1 stops for review. Exact ne
 unfinished task AFTER approval: owner-scoped document/source APIs and persistent
 capture; AI provider configuration requires separate authorization. Future API dev
 startup runs the registered migration automatically; review before launching it.
+
+## 2026-11-16 — Threadline Phase 2A: persistent document capture
+
+Phase 1 approved; Phase 2A implemented only. Capture is accessible from the existing
+Focus City sidebar and /#capture. Existing root City/List view, task/project features,
+Google authentication, sessions and security controls remain. The existing 0003
+additive migration was applied to the configured database; no new migration/schema
+alteration was needed. API startup now requires the 0003 migration marker.
+
+Authenticated owner-scoped APIs create/list/get/edit/archive/restore documents and
+read immutable source revisions. Transactions and row locks protect expected-version
+updates; conflicting saves return 409. Exact source text is retained; changed text
+appends a revision. Stable client capture IDs make identical create retries safe.
+Client response validation, manual/Ctrl/Cmd+Enter save, library/history, failure/draft
+preservation, saved-version comparison and scoped dark/lavender UI are implemented.
+
+Verification: workspace typecheck, frontend tests, frontend/API production builds,
+existing API integration plus new isolated document integration PASS. New tests cover
+restart persistence, ownership, invalid input including Unicode/body size, concurrent
+conflicts, immutable sources, idempotency, archive/restore and injected revision-write
+rollback. Foundation tests, frontend security tests and pnpm audit PASS (no known
+vulnerabilities). Existing large lazy city chunk advisory remains.
+
+Real Chromium capture browser suite PASS: desktop/mobile, lost-response retry without
+duplicate, reload, original/history, real conflict preserving local draft, archive/
+restore, reduced motion, no horizontal overflow and Focus City round trip. City
+browser harness PASS for 0/1/5/20 fixtures, desktop/mobile; screenshots for all counts
+and capture desktop/mobile inspected. All fixtures cleaned. Software WebGL does not
+verify physical GPU performance; live Google consent remains unverified.
+
+GEMINI_INTEGRATION.md records the selected future provider, structured/evidence
+contract, limits, recovery and strict $0 gate. No key accessed/modified, Gemini calls,
+AI dependencies/installs, billing changes, rename or deployment. Future integration
+requires separately verifying actual free-tier project/model eligibility and approval.
+RESULT.md is the shareable report; AGENTS.md now preserves that reporting requirement.
+Exact next unfinished task: review Phase 2A. Do not begin Phase 2B until authorized.

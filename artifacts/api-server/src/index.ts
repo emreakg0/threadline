@@ -14,7 +14,7 @@ for (const name of ['APP_ORIGIN', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'D
  logger.info({ variable: name, present: Boolean(process.env[name]) }, 'Configuration presence');
 }
 try {
- await pool.query('SELECT 1 FROM focus_migrations WHERE name=$1', ['0002_city_slots']).then(result => { if (!result.rowCount) throw new Error('Migration not applied'); });
+ await pool.query('SELECT 1 FROM focus_migrations WHERE name=$1', ['0003_threadline_foundation']).then(result => { if (!result.rowCount) throw new Error('Migration not applied'); });
 } catch {
  logger.fatal('Database readiness failed. Check DATABASE_URL and run node lib/db/scripts/migrate.mjs before starting the API.');
  await pool.end();

@@ -1,3 +1,4 @@
+import { CaptureWorkspace } from "./CaptureWorkspace";
 import { api } from "./api";
 import { useEffect, useState, useMemo, type FormEvent } from "react";
 import type { Project, Task } from "./types";
@@ -5,6 +6,7 @@ import CityView from "./city/CityView";
 import { ViewSwitch } from "./ViewSwitch";
 import { TaskSheet } from "./TaskSheet";
 export default function App() {
+  const [workspace, setWorkspace] = useState<"focus" | "capture">(location.hash === "#capture" ? "capture" : "focus");
   const [composerOpen, setComposerOpen] = useState(false),
     [notice, setNotice] = useState("");
   const [view, setView] = useState<"city" | "list">("city");
@@ -94,6 +96,7 @@ export default function App() {
         !e.metaKey &&
         !e.ctrlKey &&
         !["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) &&
+        workspace === "focus" &&
         auth?.user &&
         !target.isContentEditable &&
         !e.altKey &&
@@ -106,7 +109,7 @@ export default function App() {
     }
     window.addEventListener("keydown", shortcut);
     return () => window.removeEventListener("keydown", shortcut);
-  }, [auth, composerOpen]);
+  }, [auth, composerOpen, workspace]);
   useEffect(() => {
     if (!notice) return;
     const timer = setTimeout(() => setNotice(""), 3000);
@@ -126,6 +129,7 @@ export default function App() {
     () => (project ? projects.filter((p) => p.id === project) : projects),
     [projects, project],
   );
+  if (auth?.user && workspace === "capture") return <CaptureWorkspace name={auth.user.name} onExit={() => { setWorkspace("focus"); history.replaceState(null,"",location.pathname+location.search); }} />;
   return (
     <div className="shell">
       <aside aria-label="Workspace navigation">
@@ -135,6 +139,7 @@ export default function App() {
             FOCUS CITY<small>YOUR PERSONAL WORKSPACE</small>
           </span>
         </a>
+        {auth?.user && <button className="threadline-entry" onClick={() => {setWorkspace("capture");history.replaceState(null,"","#capture");}}>⌁ Threadline Capture ↗</button>}
         <div className="side-label">YOUR WORKSPACE</div>
         <button
           aria-current={!project ? "page" : undefined}

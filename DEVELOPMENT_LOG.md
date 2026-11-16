@@ -102,3 +102,45 @@ Git 133c0f1 created the initial repository; 3f10439 initialized the productivity
   harness unnecessary for this milestone. No live OAuth or physical GPU claims.
 - Updated status and RESULT.md as requested. Shared schema not migrated; no installs,
   paid calls, credentials, deployment or rename. Stop for review before Phase 2.
+
+## 2026-11-16 — Threadline Phase 2A: persistent document capture
+
+- Preserved the pre-existing untracked frontend components.json and all city code.
+  Reused Express session/origin middleware, pg transactions, same-origin request helper,
+  React/native controls and existing Chromium/CDP tooling; no dependencies installed.
+- New routes/documents.ts supplies owner-scoped create/list/get/patch/archive/restore
+  and paginated revision metadata/exact revision reads. Explicit validation rejects
+  invalid fields/types, UUIDs, NUL, malformed Unicode and excessive lengths. Extended
+  app.ts to return 413 for the existing body-size limit, and index.ts readiness to 0003.
+  Applied existing additive 0003 with the established runner; no existing records
+  updated and no new migration needed. New document/source writes are transactional.
+- New documents-api.ts validates frontend response boundaries. New useCapture.ts,
+  CaptureWorkspace.tsx, CaptureEditor.tsx and scoped capture.css separate state,
+  library/navigation and editor/history because existing task forms do not cover
+  document revision/conflict behavior. App.tsx adds capture navigation without removing
+  City/List. api.ts adds an HTTP-status-bearing error for safe 409 comparison handling.
+- New documents.integration.ts runs in a random isolated schema and is included in
+  the API test script. PASS: invalid bodies/Unicode/413, auth/origin/no-store, two-owner
+  isolation, persistent restart reads, duplicate prevention, concurrent 200/409,
+  exact original source, no revision on unchanged text, archive/restore and injected
+  revision-write failure rollback. Source UPDATE rejected by existing immutable trigger.
+- New lib/db/scripts/capture-browser.mjs is necessary because existing city harness
+  has no reusable exported CDP runner. It uses isolated DB/schema and a loopback API/
+  frontend proxy; PASS for desktop/mobile capture, uncertain successful write then
+  failed response/retry (one document), reload, history, real conflict/local draft,
+  archive/restore, reduced motion, no overflow/exceptions and City/Capture round trip.
+  Corrected harness reload timing and disabled-button waits rather than adding sleeps.
+  Desktop/mobile captures inspected. Split initial component into focused modules;
+  final typecheck/build passed after correcting extraction/type errors during development.
+- Required typecheck, frontend tests, frontend/API builds, API integration, foundation,
+  frontend security and dependency audit PASS. City browser 0/1/5/20 scenarios PASS and
+  all desktop/mobile images inspected. Existing 988.28kB city chunk warning persists;
+  software WebGL/live local tests do not prove physical GPU performance or Google consent.
+- Documented APIs in THREADLINE_ARCHITECTURE.md and visual behavior in DESIGN.md.
+  GEMINI_INTEGRATION.md documents future Gemini JSON/evidence/runtime validation,
+  rate limits/recovery, server-only secret and strict $0/free-only gate. No credentials
+  read/modified, provider requests, billing settings, installs, deploy or repository rename.
+  Updated RESULT.md and status; AGENTS.md persists the requested RESULT.md reporting.
+- Scoped correctness/security review: parameterized SQL and ownership checks verified;
+  no raw HTML rendering, content logging or secret use introduced. No blocking findings.
+  Stop after this milestone for review; Phase 2B is not authorized automatically.

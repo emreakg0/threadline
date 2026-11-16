@@ -20,7 +20,7 @@ Work autonomously on ordinary technical decisions. Preserve Google authenticatio
 
 Run applicable checks: pnpm typecheck; pnpm --filter @workspace/productivity-app test; frontend/API builds. Run API integration tests when a configured database is available; they use isolated fixtures. For city changes run the browser harness with CITY_TEST_COUNT=0,1,5,20 and inspect desktop/mobile screenshots; software rendering does not verify physical GPU performance. See status/setup for launch details.
 
-After each meaningful milestone, update PROJECT_STATUS.md with evidence, limitations and the exact next unfinished task; append changes, reasons, affected files and test outcomes to DEVELOPMENT_LOG.md. Keep these instructions accurate. Create a meaningful commit for completed, verified milestones, explicitly reviewing the staged diff and excluding secrets. Push completed milestones automatically to the private GitHub origin, currently https://github.com/emreakg0/focus-city, as authorized by the user. Do not attribute pre-existing work to the current session.
+After each meaningful milestone, write the shareable completion report, checks, limitations and next task to RESULT.md. Update PROJECT_STATUS.md with evidence, limitations and the exact next unfinished task; append changes, reasons, affected files and test outcomes to DEVELOPMENT_LOG.md. Keep these instructions accurate. Create a meaningful commit for completed, verified milestones, explicitly reviewing the staged diff and excluding secrets. Push completed milestones automatically to the private GitHub origin, currently https://github.com/emreakg0/focus-city, as authorized by the user. Do not attribute pre-existing work to the current session.
 
 Before each push, run `python3 scripts/secret-audit.py`, review newly staged files for sensitive data, and verify `gh repo view emreakg0/focus-city --json isPrivate` still reports private. The audit checks history and tracked files without printing secret values; heuristics do not replace review. Never force-push, delete a repository or make it public without explicit permission. If a push is rejected, fetch and inspect the remote changes, preserve both histories and resolve normally; report blockers without overwriting work. Preserve the existing gitsafe-backup remote. See GITHUB_BACKUP.md for recovery and milestone commands. GitHub stores source history, not live PostgreSQL data or runtime secrets; do not upload either as a backup.
 
@@ -70,3 +70,21 @@ replace required context reads, validation, security checks or continuity update
 - Stop after the requested change passes relevant checks and required continuity
   and milestone steps are complete.
 - Do not perform unrelated cleanup.
+
+## Codex efficiency rules
+
+- Use the $token-discipline skill for development tasks
+  when available.
+- Use $reuse-before-create before adding new components
+  or functionality.
+- Use $debugger when investigating unexpected behavior.
+- Use $code-review for substantial code changes.
+
+General guidelines:
+- Inspect relevant files before editing.
+- Avoid unnecessary repository-wide searches.
+- Reuse existing implementations where possible.
+- Run focused tests before full test suites.
+- Avoid unnecessary subagents and repeated tool calls.
+- Keep final summaries concise.
+- Never sacrifice correctness or security to save tokens.

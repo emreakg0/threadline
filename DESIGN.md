@@ -29,3 +29,20 @@ Search and status controls sit above both City and List View so their scope is c
 Task inspection separates neighborhood context, state, title, notes and deadline. Previous/next controls browse the visible tasks in the active neighborhood with explicit boundaries and a position count; selection continues to drive the existing camera. Close stays in the panel header, Escape dismisses inspection outside the editor, and the inspector enters/exits vertically on mobile and horizontally on desktop. Editor text fields use 1rem text and retain their close control in a sticky header. Mobile neighborhood navigation forms a horizontally scrollable rail rather than consuming rows above the workspace.
 
 Editor, inspector and selection controls share exact critically damped spring integration. Their pace follows elapsed time even on delayed frames; changing a target preserves position and velocity. Automated tests compare frame rates, reversal and long-frame stability.
+
+## Threadline capture — Phase 2A, 2026-11-16
+
+The additive Capture workspace follows THREADLINE_ARCHITECTURE.md's graphite/lavender
+tokens, solid document surfaces, compact library and source-first hierarchy. Scoped
+capture.css leaves Focus City's existing styling intact. No installed shadcn/Geist/
+Lucide/Motion primitives are assumed; existing React, system fonts and native controls
+supply the interface. New capture/editor/state modules are separate because the old
+task forms do not represent immutable document revisions or concurrency comparison.
+
+Manual save has truthful saved/unsaved/failure feedback. Conflicts retain the draft
+and reveal the saved version; source history never mutates the editor. Controls use
+44px minimum targets, explicit labels, visible focus and 160ms interaction transitions;
+reduced motion removes transitions. Mobile uses a stacked navigation/library/editor,
+with bounded library scrolling and no horizontal overflow. No decorative graph or
+fake processing state. Desktop/mobile screenshots inspected in this milestone; no
+physical-device keyboard/GPU claim. Gemini processing remains absent.

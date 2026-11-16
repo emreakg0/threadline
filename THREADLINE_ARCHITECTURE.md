@@ -109,3 +109,53 @@ supply endpoints, workers, extraction, search, editor, graph, replay UI or a red
 shell. Next milestone, after review: owner-scoped source/document API and capture
 persistence, followed by real processing/event recording when separately configured.
 No installs, paid AI, repository rename or deployment without separate authorization.
+
+## Phase 2A — persistent capture (2026-11-16)
+
+Implemented without AI. Capture is available through the existing sidebar's
+Threadline Capture action and /#capture; Focus City remains the default root view.
+The existing session/write-origin middleware mounts the documents router. All reads
+and writes scope user_id; inaccessible UUIDs return 404. No public document routes.
+
+API contracts (all responses no-store; all writes require the configured Origin):
+
+| Method/path | Request | Result |
+| --- | --- | --- |
+| POST /api/documents | {id: client UUID, title, source_text} | 201 document with source revision 1; identical retry returns 200; ID collision/different payload 409 |
+| GET /api/documents | archived=true/false (default false), offset (default 0) | {documents, next_offset}; up to 50 summaries ordered updated_at descending, ID tie-break |
+| GET /api/documents/:id | — | document with latest source |
+| PATCH /api/documents/:id | {version, title?, source_text?, archived?} | updated document/latest source; missing owner document 404; stale version 409 |
+| GET /api/documents/:id/revisions | offset (default 0) | {revisions, next_offset}; 50 metadata rows, newest first |
+| GET /api/documents/:id/revisions/:revision | — | exact immutable source revision |
+
+Validation rejects unknown write fields, wrong types, invalid UUIDs, empty titles or
+sources, NUL and malformed Unicode. Titles trim to 1–300 UTF-16 code units; source is
+preserved exactly and limited to 20,000 UTF-16 code units. Existing 100KB HTTP body
+limit stays active; oversized encoded bodies return 413. The schema's broader source
+limit is unchanged. Offset is bounded at 100,000; pagination is not a cross-request
+snapshot, so concurrent list updates may shift page boundaries.
+
+PATCH locks the owned document row, checks expected version, and updates metadata
+and appends any changed source within one transaction. No source update/delete API.
+Title-only, archive, restore or identical-source saves do not create a source revision.
+Version increments on each accepted PATCH. Archived sources remain retrievable and
+restorable; the UI requires saving drafts before archive and disables editing until
+restored. No hard deletion, AI block editing or collection UI in this milestone.
+
+The client validates document/revision/list responses. Manual save and Ctrl/Cmd+Enter
+are supported. Failed/uncertain saves retain drafts; stable capture IDs avoid duplicate
+creation. Conflicts show the current server version beside the retained local draft;
+replacement requires an explicit choice. Navigation/reload warns about unsaved work.
+Drafts are in memory, not localStorage: closing after accepting discard loses edits.
+
+0003 was applied to the configured application database using the existing runner;
+no additional migration was needed. New API and browser tests independently run in
+random isolated schemas and clean only their own schemas. Existing city browser tests
+use isolated legacy fixtures. Tests never call Gemini. GEMINI_INTEGRATION.md defines
+the separately authorized Phase 2B contract and strict $0/free-tier gate.
+
+New code is separated by responsibility: documents.ts owns the authenticated API;
+documents-api.ts owns client response validation/types; useCapture.ts owns capture
+state and mutations; CaptureWorkspace.tsx owns navigation/library; CaptureEditor.tsx
+owns editor/history surfaces; capture.css scopes tokens/styles to preserve the city.
+The new browser harness uses existing Chromium/CDP without adding dependencies.

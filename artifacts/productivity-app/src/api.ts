@@ -1,3 +1,6 @@
+export class ApiError extends Error {
+ constructor(message: string, public status: number) { super(message); }
+}
 export async function api(path: string, method = 'GET', body?: unknown) {
  const url = '/api' + path;
  let response: Response;
@@ -7,7 +10,7 @@ export async function api(path: string, method = 'GET', body?: unknown) {
  const text = await response.text();
  let data: any;
  try { data = text.trim() ? JSON.parse(text) : null; } catch { throw new Error(`${method} ${url} returned HTTP ${response.status} with a non-JSON response. Check API routing and server logs.`); }
- if (!response.ok) throw new Error(`${method} ${url}: ${data?.error || `HTTP ${response.status}. Check the API Server workflow and retry.`}`);
+ if (!response.ok) throw new ApiError(`${method} ${url}: ${data?.error || `HTTP ${response.status}. Check the API Server workflow and retry.`}`, response.status);
  if (data === null) throw new Error(`${method} ${url} returned an empty response. Check API routing and server logs.`);
  return data;
 }
