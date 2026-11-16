@@ -102,7 +102,9 @@ inference automatically. Source milestone: `Add persistent Threadline document c
 The verified milestone is committed and pushed to the existing private origin under
 `Add persistent Threadline document capture`. Staged files were reviewed, the secret
 audit passed with zero findings, and repository privacy was verified before push.
-The existing gitsafe-backup remote remains unchanged. Concurrent unstaged efficiency
-instructions added to AGENTS.md were preserved and excluded from this milestone;
-only the RESULT.md reporting instruction was staged. No secret files or live data
-were included in the source backup.
+The existing gitsafe-backup remote remains unchanged. While finalizing, a concurrent Replit Agent commit (0ee3284) captured the implementation
+and also committed the pre-existing components.json and newly supplied AGENTS.md
+efficiency rules. This session did not edit that configuration or author those rules.
+The commit was preserved without rewriting history; both files were reviewed before
+push. The follow-up commit 2b87774 records completion-report additions. No secret files
+or live data were included in the source backup.
