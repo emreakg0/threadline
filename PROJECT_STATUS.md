@@ -133,3 +133,28 @@ AI dependencies/installs, billing changes, rename or deployment. Future integrat
 requires separately verifying actual free-tier project/model eligibility and approval.
 RESULT.md is the shareable report; AGENTS.md now preserves that reporting requirement.
 Exact next unfinished task: review Phase 2A. Do not begin Phase 2B until authorized.
+
+## Phase 2B — Gemini extraction foundation, live DISABLED
+
+Implemented pinned-source extraction route, modular server adapter, strict independent
+JSON/evidence validator, atomic needs_review block/evidence writes and minimal real
+run/step/event persistence. Capture has Organize with AI and read-only results; live
+calls are hard disabled before secret access. No mock result is shown as Gemini.
+Selected gemini-2.5-flash-lite standard text generateContent based on official public
+pricing; owner project billing/free-feature eligibility and first-call permission are
+NOT confirmed. No provider request, key read/change, dependency install, deployment,
+repository rename, task mutation or city removal occurred.
+
+Verification: focused mock/database tests PASS for JSON/kind/unknown-key rejection,
+exact evidence/emoji offsets, deadline uncertainty, source ownership, idempotency,
+needs_review, failure/quota/model/auth/timeout handling, transient retry and failed
+block-save rollback. Existing API/document tests, typecheck, frontend tests/build,
+API build, security tests and audit PASS. Capture browser regression PASS including
+explicit LIVE_DISABLED action, existing editing/history/conflict/archive/navigation.
+No live free-tier inference or HTTP provider behavior verified; no physical GPU/live
+OAuth verification. Existing city chunk advisory remains. No city-specific change.
+
+Next unfinished task: review Phase 2B and separately confirm project Free Tier without
+paid billing, exact selected model/features and authorize a first non-sensitive test
+call. Do not begin Phase 2C leases/recovery or Phase 3 replay automatically. Full
+limitations and source contracts are in GEMINI_INTEGRATION.md and RESULT.md.

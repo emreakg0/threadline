@@ -88,3 +88,48 @@ A failed storage write cannot promise a durable failure event until storage reco
 Reconcile uncertain work through run IDs/idempotency and leases. UI replay consumes
 only recorded events. Integration acceptance includes mocked failure tests and a
 separately authorized real free-tier run; Phase 2A does neither provider operation.
+
+## Implemented Phase 2B (live DISABLED / UNVERIFIED)
+
+Selected exact model: gemini-2.5-flash-lite, standard text-only generateContent:
+POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent.
+Official pricing inspected 2026-11-16 lists standard text input/output free of charge:
+https://aistudio.google.com/docs/pricing#gemini-2.5-flash-lite . Batch/cache/grounding
+are not used. Endpoint reference: https://aistudio.google.com/api-reference/generate-content .
+Structured output and project-wide quota references remain linked above. Public
+pricing eligibility is not project verification. Owner has NOT confirmed project
+Free Tier/no paid billing, exact features or first test call. No provider requests
+occurred. LIVE_AUTHORIZED=false in the server adapter blocks before secret access;
+no environment switch or browser input bypasses it. Reverify model availability,
+pricing and actual project quotas before a separately approved code-gate change.
+
+Implemented schema supersedes the illustrative earlier proposal: exact keys
+schema_version:1 and blocks (0–24). Blocks have kind, content, uncertainty_reason
+(null or text), evidence (1–8 exact quote/start/end spans). No deadline date field
+or top-level open_questions; questions use question blocks. Content must equal one
+of its evidence quotes: extractive summaries only, no unverifiable paraphrases.
+Every deadline requires an uncertainty reason; no relative date resolution. Stored
+spans count Unicode code points via Array.from(source), not UTF-16 indices. Model
+classification and source truth still need human review; quote matching is not a
+semantic fact checker. All persisted output is needs_review; no task creation.
+
+Native server fetch, pinned endpoint/model, no SDK/dependency added, 12s timeout,
+4096 output tokens. At most one jittered retry (500–1000ms) on 5xx transient status;
+429/auth/model/safety/validation failures do not retry. One database advisory session
+lock bounds concurrent work across API processes. Durable app quotas reserve two
+attempts/run: 10 runs/project and 3/user per UTC day. These are conservative app
+ceilings, NOT confirmed Google quotas; per-project external use is outside this app's
+accounting. A recorded 429 pauses this app for 24h. Active project limits must still
+be verified before enablement. No paid fallback or automatic upgrade.
+
+POST /api/extractions accepts saved source_revision_id and idempotency_key behind
+existing session/origin checks. GET /api/extractions/:id returns owned run/results.
+Requests execute synchronously; retries with the same key retrieve recorded state.
+Minimal truthful extract_validate steps/events include retry and failure metadata;
+blocks/evidence/completion commit atomically. Mock adapters are injected only by
+server tests, recorded as provider=mock. Production never substitutes mock output.
+
+Phase 2C gaps: robust leases, restart recovery, complete stage lifecycle and history
+navigation. A process kill can leave a running record; do not replay/recover it as a
+success. A continuing DB outage may prevent recording failure. No replay diagram.
+Provider HTTP response handling and real free-tier inference remain unverified.

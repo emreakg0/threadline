@@ -1,3 +1,4 @@
+import { ExtractionPanel } from "./ExtractionPanel";
 import { documents } from "./documents-api";
 import type { useCapture } from "./useCapture";
 export function CaptureEditor({
@@ -239,6 +240,7 @@ export function CaptureEditor({
           )}
         </section>
       )}
+      {saved && <ExtractionPanel key={saved.source.id} sourceId={saved.source.id} disabled={busy || dirty || !!saved.archived_at} />}
       <div className="tl-bottom-note">
         <span aria-hidden="true">⌁</span>
         <span>From scattered thoughts to something worth keeping.</span>

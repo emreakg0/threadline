@@ -159,3 +159,19 @@ documents-api.ts owns client response validation/types; useCapture.ts owns captu
 state and mutations; CaptureWorkspace.tsx owns navigation/library; CaptureEditor.tsx
 owns editor/history surfaces; capture.css scopes tokens/styles to preserve the city.
 The new browser harness uses existing Chromium/CDP without adding dependencies.
+
+## Phase 2B — extraction boundary
+
+Adds server extraction/validation.ts, gemini.ts, service.ts and routes/extractions.ts;
+no schema migration or existing data transformation. Reuses the Phase 1 run/step/
+event/block/evidence tables. Exact pinned revision ownership is checked before work;
+source edits do not affect an existing run. Document/source/task writes are absent
+from extraction. Atomically stores validated needs_review blocks/evidence and terminal
+success. Failures use safe codes, never provider error text or source logs.
+
+Capture adds ExtractionPanel with explicit action, Free Tier data-use notice, truthful
+disabled/error feedback and read-only result blocks. Dirty/archived documents cannot
+start extraction. No rebrand, graph, editor overhaul, replay or background worker.
+Mock test provenance is explicit; default live adapter is hard disabled before key
+access. See GEMINI_INTEGRATION.md for exact model, stricter extractive schema, quotas,
+owner approval gate and known synchronous-execution/recovery limitations.

@@ -24,7 +24,7 @@ type TestJson = {
   source_text: string;
   id: string;
   version: number;
-  source: { source_text: string; revision: number };
+  source: { id: string; source_text: string; revision: number };
   archived_at: string | null;
   documents: { id: string }[];
   revisions: unknown[];
@@ -246,6 +246,25 @@ try {
   });
   assert.equal(response.status, 200);
   assert.equal((await response.json()).archived_at, null);
+  const extractionBody = {
+    source_revision_id: initial.source.id,
+    idempotency_key: randomUUID(),
+  };
+  assert.equal(
+    (await request("/extractions", "POST", extractionBody, 1)).status,
+    404,
+  );
+  const extractionResponse = await request(
+    "/extractions",
+    "POST",
+    extractionBody,
+  );
+  assert.equal(extractionResponse.status, 200);
+  const recorded = await extractionResponse.json();
+  assert.equal(
+    (await request("/extractions/" + recorded.id, "GET", undefined, 1)).status,
+    404,
+  );
   // A fresh HTTP server reads persisted data, not process-local document state.
   await new Promise<void>((resolve, reject) =>
     server!.close((e) => (e ? reject(e) : resolve())),

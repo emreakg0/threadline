@@ -152,3 +152,32 @@ Git 133c0f1 created the initial repository; 3f10439 initialized the productivity
   untracked components.json and user-added AGENTS efficiency rules during finalization.
   Preserved that commit; reviewed those additional files and corrected RESULT.md
   provenance. Our follow-up 2b87774 contains reporting additions. No history rewrite.
+
+## Phase 2B — structured extraction with closed live gate
+
+- Read current committed instructions, contracts/status/result, relevant log/schema,
+  document/capture code and Git state. Used backend/reuse/token-discipline and scoped
+  code/security review guidance. Preserved current functionality and Git history.
+- Added extraction/validation.ts (strict JSON, source evidence and code-point bounds),
+  gemini.ts (native fetch pinned model/schema with hard-disabled gate), service.ts
+  (owner-scoped pinned source, idempotency, DB concurrency/quota limits, truthful
+  attempt events and transactional output). Added authenticated routes/extractions.ts
+  behind existing Focus middleware. No migration or task/source editing.
+- Added ExtractionPanel.tsx and a minimal CaptureEditor insertion, preserving existing
+  styles/navigation. Read-only output, data-use notice, dirty/archive safeguards and
+  explicit disabled/error feedback. No simulated successful extraction or replay.
+- Added extraction.test.ts to API test command; extended documents integration for
+  route ownership and browser harness to click Organize and verify LIVE_DISABLED.
+  Mock tests verify validation/Unicode/deadline ambiguity, duplicate submit, two owners,
+  quota/auth/model/timeout failures, transient retry and rejected block-write rollback.
+  All fixtures isolated and cleaned. Corrected a test SQL quoting typo before rerun.
+- Typecheck, frontend tests/build, API build/tests, frontend security and pnpm audit
+  pass. Capture browser suite passes including disabled action and old workflows.
+  Existing large city chunk warning persists. No new city rendering changes.
+- Official Google pricing/structured-output/rate-limit/API docs reviewed; selected
+  standard text gemini-2.5-flash-lite generateContent, not batch/cache/tools. Public
+  pricing is not owner project verification. Live gate remains false; no credentials
+  read/modified or provider calls. No installs, billing, deployment or rename.
+- Updated architecture/Gemini contracts and completion files. Conservative extractive
+  validation is intentional; semantic categorization still needs review. Recovery after
+  process kill and full step lifecycle are Phase 2C, not claimed implemented here.
