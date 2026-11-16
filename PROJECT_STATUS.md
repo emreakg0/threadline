@@ -72,3 +72,28 @@ A shared exact critically damped spring now drives editor, inspector and view-se
 Verification: workspace typecheck PASS; frontend city/camera/scenery and new spring tests PASS; frontend/API production builds PASS; isolated two-account API integration PASS. Chromium 0/1/5/20-task desktop/mobile scenarios PASS, including inspector browsing, shared filters/reset, rapid view reversal, 20px-root editor overflow, touch spring-back, persistence/save feedback and reduced-motion dismissal. Desktop/mobile city screenshots for all four counts plus inspector/editor screenshots were visually inspected. Existing lazy-scene advisory remains 988.28 kB / 265.33 kB gzip. Software WebGL cannot establish physical GPU performance; live Google consent remains unverified. No deployment/publication.
 
 Exact next unfinished design acceptance task: verify the horizontal navigation rail, inspector browsing, editor keyboard resizing and motion on a physical phone/tablet and laptop, including GPU frame times. Product backlog remains ownership-scoped project rename API/UI with integration coverage, then explicitly specified project deletion/task moves.
+
+## 2026-11-16 — Threadline Phase 1 foundation
+
+Approved pivot baseline is THREADLINE_ARCHITECTURE.md. This supersedes the older
+project-rename next-task entries for current milestone ordering; that backlog remains.
+Implemented additive 0003 storage for documents/source revisions, blocks/evidence,
+collections/tags, relationships, runs/steps/events, and action/task links. Registered
+in the existing migration runner. Existing authentication, tasks/projects, security,
+city source and interface are unchanged. No dependencies added or installed.
+
+Verification: isolated populated-schema upgrade and rerun PASS; all legacy fixture
+rows unchanged; owner-consistent references, immutable source/events, idempotency,
+evidence bounds, duplicate event sequence and task conversion tests PASS. Workspace
+typecheck, frontend tests, frontend/API builds, API integration, frontend security
+regressions PASS; pnpm audit reports no known vulnerabilities. Existing city chunk
+advisory remains. Shared application schema was NOT migrated. No browser visual
+verification this milestone; no UI changed. Live Google consent remains unverified.
+Scoped schema/security review found no blocking issue; future API authorization,
+evidence substring validation and job state transitions are not implemented.
+
+RESULT.md contains the shareable completion report. No AI credentials/requests,
+repository rename, deployment or publication. Phase 1 stops for review. Exact next
+unfinished task AFTER approval: owner-scoped document/source APIs and persistent
+capture; AI provider configuration requires separate authorization. Future API dev
+startup runs the registered migration automatically; review before launching it.

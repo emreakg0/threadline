@@ -78,3 +78,27 @@ Git 133c0f1 created the initial repository; 3f10439 initialized the productivity
 - Extended lib/db/scripts/city-browser.mjs with inspector browsing/boundaries, shared filters/reset and filtered empty-state assertions, rapid view reversal/selection-surface settlement, mobile inspector screenshots and 20px-root editor overflow coverage. Initial fixed-delay indicator assertion was replaced with an actual settlement condition. Concurrent browser attempts also suspended background-tab animation; final acceptance runs are sequential. Fixtures are isolated and cleaned in finally; production origin protections were preserved using an ephemeral loopback API/proxy.
 - Verification: workspace typecheck PASS; city/camera/scenery and spring tests PASS; frontend and API builds PASS; isolated two-account API integration PASS. Existing scene chunk advisory remains 988.28 kB / 265.33 kB gzip. Final sequential Chromium 0/1/5/20 scenarios PASS: rendering, building selection, inspector browsing/boundaries, shared status filtering/reset, filtered empty text, rapid view reversal, mobile overflow/inspection, larger-text editor overflow, touch spring-back, persisted creation/save feedback, reduced motion and WebGL fallback; no browser exceptions. Inspected all four desktop/mobile city screenshots and inspector/editor screenshots. The combined command was terminated during its last scenario; reran 20 separately to completion and explicitly cleaned the interrupted fixture using IDs retained in that test page. No physical-device performance or live Google consent claims; no deploy/publish, schema changes or runtime secret changes.
 - Updated DESIGN.md and PROJECT_STATUS.md. Next unfinished design acceptance: physical phone/tablet/laptop navigation, inspector, software-keyboard and GPU checks. Existing project rename/delete/task-move backlog remains outside this milestone.
+
+## 2026-11-16 — Threadline Phase 1 only
+
+- User approved incremental architecture/storage foundation; preserved pre-existing
+  untracked artifacts/productivity-app/components.json without staging it.
+- Added THREADLINE_ARCHITECTURE.md documenting boundaries, contracts, design tokens,
+  integrity responsibilities, deferred AI decisions and non-destructive rollback.
+- Added 0003_threadline_foundation.sql and registered it in migrate.mjs. New tables
+  only; no existing table changes/backfill. Owner-consistent references, immutable
+  source/events, duplicate guards and task-link owner/action checks establish reusable
+  storage. Collections are initially flat; exact evidence validation, nested hierarchy,
+  content hashes and full-text indexing are explicitly deferred to consuming features.
+- Added scripts/threadline-foundation.test.mjs and db test:foundation script. Actual
+  migration runner tested twice against populated isolated legacy schema; all original
+  fixture rows preserved. Ownership, source/event immutability, run idempotency,
+  evidence bounds, event sequence uniqueness and duplicate conversion PASS. Replaced
+  initial concurrent single-client snapshot queries with sequential reads to remove
+  pg deprecation warning; final rerun PASS. Test schema removed by its own cleanup.
+- Typecheck, frontend tests, frontend/API builds, isolated API integration and frontend
+  security tests PASS; pnpm audit found no known vulnerabilities. Existing large lazy
+  city chunk advisory persists. Reviewed new SQL and diffs; no UI/city changes, browser
+  harness unnecessary for this milestone. No live OAuth or physical GPU claims.
+- Updated status and RESULT.md as requested. Shared schema not migrated; no installs,
+  paid calls, credentials, deployment or rename. Stop for review before Phase 2.
