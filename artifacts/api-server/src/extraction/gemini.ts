@@ -6,11 +6,11 @@ export const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models
 export const LIVE_AUTHORIZED = false;
 export interface Adapter {
   mode: "mock" | "gemini";
-  generate(source: string): Promise<string>;
+  generate(source: string, signal?: AbortSignal): Promise<string>;
 }
 export const gemini: Adapter = {
   mode: "gemini",
-  async generate(source) {
+  async generate(source, signal) {
     if (!LIVE_AUTHORIZED) throw new ExtractionError("LIVE_DISABLED", 503);
     const key = process.env.GEMINI_API_KEY;
     if (!key) throw new ExtractionError("NOT_CONFIGURED", 503);
@@ -19,7 +19,7 @@ export const gemini: Adapter = {
       response = await fetch(ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-goog-api-key": key },
-        signal: AbortSignal.timeout(12000),
+        signal: signal ?? AbortSignal.timeout(12000),
         redirect: "error",
         body: JSON.stringify({
           systemInstruction: {

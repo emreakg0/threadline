@@ -181,3 +181,51 @@ Git 133c0f1 created the initial repository; 3f10439 initialized the productivity
 - Updated architecture/Gemini contracts and completion files. Conservative extractive
   validation is intentional; semantic categorization still needs review. Recovery after
   process kill and full step lifecycle are Phase 2C, not claimed implemented here.
+
+## Phase 2C — durable queue, worker fencing and real event history
+
+- Read current full AGENTS, latest result/architecture/Gemini/status/log, actual
+  extraction/schema/API/tests and Git state. No concurrent edits present at inspection;
+  no user work discarded. Applied backend, reuse, token-discipline and scoped review
+  guidance. Existing schema fields sufficient; avoided a migration/backfill.
+- Replaced synchronous service.ts with transactional queued creation. Added lifecycle.ts
+  for short transactions, parent-row-locked event allocation, expiry reconciliation
+  and owned cancellation. Added claims.ts for bounded capacity/attempt/dispatch checks
+  and leased claiming, and worker.ts for abortable adapter waits, heartbeats, staged
+  execution, fenced atomic output and one durable known-transient retry. These files
+  separate new responsibilities absent from the synchronous implementation.
+- index.ts starts the worker after DB readiness. gemini.ts accepts an optional abort
+  signal but LIVE_AUTHORIZED=false is unchanged and checked before key access. No
+  external inference requests/credential inspection. lib/db exports its existing
+  PoolClient type: corrected the initial overload-inference typecheck failure without
+  adding packages or duplicating a database client abstraction.
+- Extended extraction routes for 202 creation, bounded owned history/steps/events,
+  since_sequence cursor and cancellation; kept session/origin middleware. Capture
+  polls persisted state, discovers latest revision run, refreshes/cancels without a
+  replay interface. Preserved Free Tier notice and truthful disabled-provider feedback.
+- Updated Phase 2B tests to drive injected mock workers; added durable.test.ts and a
+  child-process fixture because no prior crash/fencing fixture existed. Real SIGKILL
+  tested provider wait and blocked result persistence; tests also cover simultaneous
+  submits/claims/event writers, cancellation/lease loss, no auto-resend after recovery,
+  bounded transient retry/exhaustion, hung-adapter timeout, project quota pause and
+  rollback after first block/evidence insertion succeeds but second block fails.
+- Document integration verifies foreign run/event/step/cancel rejection and identical
+  event reads after HTTP server restart. Capture browser harness starts/stops its
+  isolated worker and passes async disabled action plus existing capture workflows.
+  Targeted tests then workspace typecheck, frontend tests/build, API build/integration,
+  foundation, security and pnpm audit passed. Existing city bundle advisory remains;
+  no fresh full city-count browser/physical GPU/live OAuth claims.
+- Review tightened dispatch-day quotas, cancelled in-flight capacity reservation,
+  DB-clock timings and bounded reconciliation. No DB transaction spans inference;
+  parent locks allocate ordered gap-free sequences and fencing rejects late writers.
+  Source/tasks unchanged; blocks remain needs_review. No dependencies/config controls,
+  paid APIs, deployment, rename or Phase 3. Updated contracts/status/RESULT report.
+- Final correctness review found the Phase 1 timing CHECK forced fake started_at for
+  a queued cancellation. Added 0004_threadline_terminal_times.sql, registered it and
+  updated readiness/foundation count: permits actual completion with unknown/unstarted
+  work only for terminal failed/cancelled/interrupted states, without changing records.
+  Removed synthetic starts; added queued-cancellation null-start assertion. Migration
+  validates expanded check before dropping old check under short timeouts. Retain the
+  permissive check on rollback rather than falsifying history to restore the old one.
+- Applied 0004 through the existing runner after isolated validation. Restarted the
+  local API development workflow after its readiness marker changed; no deployment.

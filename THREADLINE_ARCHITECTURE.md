@@ -175,3 +175,72 @@ start extraction. No rebrand, graph, editor overhaul, replay or background worke
 Mock test provenance is explicit; default live adapter is hard disabled before key
 access. See GEMINI_INTEGRATION.md for exact model, stricter extractive schema, quotas,
 owner approval gate and known synchronous-execution/recovery limitations.
+
+## Phase 2C — durable processing (supersedes synchronous Phase 2B)
+
+Existing queued status, lease_token, lease_expires_at, heartbeat_at, steps and
+append-only events cover the durable design. Migration 0004 only expands the timing
+constraint so unstarted cancelled/failed jobs have an actual completion timestamp
+without a fabricated started_at; existing data is untouched. POST /api/extractions now
+commits a pinned-source, owner-scoped queued run and its queued event before returning
+202. Stable owner/idempotency keys return the existing run; different-source reuse
+is 409. Existing capture sources, tasks and generated needs_review semantics remain.
+
+The API entrypoint starts one polling loop after database readiness. Creation and
+claim/capacity checks serialize with a short transaction advisory lock. claims.ts
+uses row locks/SKIP LOCKED and a 30s token lease; one active run across processes.
+worker.ts releases connections before adapter waits and heartbeats every 5s through
+short pool queries. It bounds provider wait at 12s (including misbehaving mocks),
+passes an abort signal and fences every result/state write by status/token/expiry.
+Transactions have 2s lock/5s statement timeouts. No open transaction spans inference.
+
+lifecycle.ts allocates event sequences under SELECT ... FOR UPDATE on the parent run
+and MAX(sequence)+1 within the state transaction. Failed transactions consume no
+sequence; event UPDATE remains forbidden by the existing trigger. Explicit observed
+clock_timestamp plus actual step start/end/durations record validate_source, extract,
+validate_output and persist. Steps link events to the right run/owner. Block/evidence,
+persist-step success and terminal completion commit together. Failure leaves no
+partial output; persist start remains a truthful prior observation.
+
+Startup and each worker poll reconcile up to 50 expired running leases. Running
+steps become interrupted; the run records interrupted and recovered events with
+OUTCOME_UNCERTAIN and an explicit decision NOT to resend. This avoids charging for
+an uncertain call. Recovery is idempotent and late workers cannot commit output.
+Known PROVIDER_TRANSIENT failures alone schedule one durable retry after 1s. Claim
+counts persisted extract attempts; never more than two. Timeout/auth/safety/invalid
+output/quota/storage errors are terminal. A storage outage may leave the lease to
+expire; reconciliation records uncertainty when the database is available again.
+No claim of exactly-once external HTTP execution or recovery of an unsaved response.
+
+App ceilings stay 10 queued runs/project and 3/user per UTC day, reserving two calls.
+Claim also limits actual dispatch-day attempts to 20/project and 6/user, preventing
+old queues from bypassing a new day's reservation budget. A recorded 429 pauses
+project dispatch/creation for 24h. These are conservative app caps, not Google's quota
+entitlements. Unknown model/schema/pipeline/prompt configurations fail closed.
+
+Owned cancellation supports queued/running runs; terminal cancellation is a no-op.
+It fences output immediately, records cancelled and closes running steps. A cancelled
+running run reserves its capacity until worker acknowledgement or lease expiry;
+abort cannot undo an external request. This prevents replacement jobs from bypassing
+in-flight capacity. No automatic retry of interrupted/cancelled/failed terminal runs.
+
+Read APIs (all authenticated/no-store):
+- GET /api/extractions?source_revision_id=<UUID>&offset=0: 50 newest owned runs,
+  next_offset; optional exact revision filter, offset at most 100000.
+- GET /api/extractions/:id: owned run and validated results/evidence.
+- GET /api/extractions/:id/steps?offset=0: 50 ordered step records, next_offset.
+- GET /api/extractions/:id/events?since_sequence=0: up to 100 ascending events,
+  next_sequence and has_more. Repeated reads/restarts do not invent events.
+- POST /api/extractions/:id/cancel: existing write-origin/auth ownership checks.
+
+Capture discovers the latest run for its immutable revision and polls real state
+(up to 60 reads, then explicit Refresh status). Unknown request outcome retains the
+same idempotency key. It offers cancellation and retains the free-service notice;
+queued/running does not imply Gemini was called. No Phase 3 playback UI is added.
+
+Rollback: stop new workers, revert application adoption while retaining queued/history
+storage; inspect pending jobs before using the older synchronous implementation.
+Retain the expanded timing constraint on rollback; old code remains compatible.
+Do not restore the stricter constraint by rewriting valid new history. A sleeping/stopped Replit instance cannot
+execute jobs; durable queue resumes/reconciles on the next API process start. No
+always-on-hosting, live OAuth, real-provider or production Replit claim is made.

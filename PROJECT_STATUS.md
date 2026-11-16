@@ -158,3 +158,36 @@ Next unfinished task: review Phase 2B and separately confirm project Free Tier w
 paid billing, exact selected model/features and authorize a first non-sensitive test
 call. Do not begin Phase 2C leases/recovery or Phase 3 replay automatically. Full
 limitations and source contracts are in GEMINI_INTEGRATION.md and RESULT.md.
+
+## Phase 2C — durable processing and recorded history
+
+Implemented queued 202 creation with pinned immutable source/idempotency, bounded
+DB-backed claims and token leases/heartbeats, fenced saves, truthful stage/events,
+atomic needs_review blocks/evidence/completion, and startup/periodic expiry recovery.
+Unknown provider outcomes become interrupted without automatic resend. One known
+transient retry only; creation and dispatch-day quotas and project 429 pause preserved.
+Owned cancellation and paginated history/steps/events are implemented. Capture polls
+persisted state, can refresh/cancel, and explicitly says Gemini remains disabled.
+Existing schema reused except additive compatibility migration 0004 (unstarted
+terminal timing). No install, paid service, billing/settings/secret
+change, repository rename, deployment, Phase 3 UI or city removal.
+
+Verification: targeted durable DB/mock suite PASS, including actual child SIGKILL in
+provider wait and blocked persistence, racing claims/enqueues/events, lease expiry,
+idempotent reconciliation, stale/cancelled result fencing, transient retry/exhaustion,
+12s hung-adapter timeout, project pause and rollback after a second block insert fails.
+Phase 2B validator/mock tests and existing auth/document/API regressions PASS; owned
+history/events survive HTTP server restart and foreign run/step/event reads fail.
+Workspace typecheck, frontend tests/build, API build, foundation/security tests/audit
+PASS. Capture desktop/mobile browser suite PASS, including async LIVE_DISABLED state
+and existing persistence/conflict/history/archive/City round trip. Screenshot inspected.
+No city-specific rendering changes; no physical GPU/live Google consent verification.
+Existing city chunk advisory remains. Full 0/1/5/20 browser counts were not rerun here;
+city mathematical/scenery/spring regression suite passed.
+
+Live Gemini remains DISABLED / UNVERIFIED; no provider requests or key access. Exact
+next unfinished task: owner review of Phase 2C. No Phase 3 or real inference until
+separately authorized. See RESULT.md for commands, source changes and limitations.
+
+0004 was applied after isolated upgrade/rerun checks; local API restarted for the
+new readiness marker. No source/task/history rewrite or deployment.

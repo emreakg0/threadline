@@ -133,3 +133,27 @@ Phase 2C gaps: robust leases, restart recovery, complete stage lifecycle and his
 navigation. A process kill can leave a running record; do not replay/recover it as a
 success. A continuing DB outage may prevent recording failure. No replay diagram.
 Provider HTTP response handling and real free-tier inference remain unverified.
+
+## Phase 2C — durable execution; live gate unchanged
+
+LIVE_AUTHORIZED remains false. No GEMINI_API_KEY access or inference requests during
+this milestone. Model/endpoint remain the Phase 2B selection; their present project
+eligibility and owner first-call approval remain unverified. Worker checks the closed
+gate before calling the adapter; queued requests end honestly with LIVE_DISABLED.
+Mock adapters are injected only in isolated test workers, with provider=mock recorded.
+
+Processing now queues before work, releases database connections during provider wait,
+uses 30s token leases/5s heartbeats/12s abortable provider waits, and commits output and
+success atomically. Only a known transient failure receives one scheduled retry; 429
+pauses project work for 24h. Source/schema/evidence checks and needs_review are unchanged.
+Quota checks cover both creation-day reservations and actual dispatch-day attempts.
+No infinite resend loop or paid fallback. Cancellation discards late output and
+cannot undo provider processing. Expired leases end interrupted with recovery events;
+uncertain remote outcomes are deliberately not retried automatically.
+
+Phase 2C adds bounded owned run/step/event read APIs, not a replay diagram. Recovery
+is proven with killed mock child processes during provider wait and a blocked write,
+plus concurrent claims/event allocation and stale-result rejection. No Gemini HTTP
+or billing test is claimed. A future authorized live test still requires manually
+confirmed genuinely Free Tier/no linked paid billing, exact eligible model/features
+and quotas, plus separate first-call authorization. Phase 3 remains unapproved.

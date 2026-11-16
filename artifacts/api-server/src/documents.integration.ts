@@ -21,6 +21,8 @@ const headers = (owner = 0) => ({
   "Content-Type": "application/json",
 });
 type TestJson = {
+  events: unknown[];
+  runs: { id: string }[];
   source_text: string;
   id: string;
   version: number;
@@ -259,11 +261,42 @@ try {
     "POST",
     extractionBody,
   );
-  assert.equal(extractionResponse.status, 200);
+  assert.equal(extractionResponse.status, 202);
   const recorded = await extractionResponse.json();
   assert.equal(
     (await request("/extractions/" + recorded.id, "GET", undefined, 1)).status,
     404,
+  );
+  for (const suffix of ["/events", "/steps"])
+    assert.equal(
+      (
+        await request(
+          "/extractions/" + recorded.id + suffix,
+          "GET",
+          undefined,
+          1,
+        )
+      ).status,
+      404,
+    );
+  assert.equal(
+    (await request("/extractions/" + recorded.id + "/cancel", "POST", {}, 1))
+      .status,
+    404,
+  );
+
+  const recordedEvents = await (
+    await request("/extractions/" + recorded.id + "/events")
+  ).json();
+  assert.equal(recordedEvents.events.length, 1);
+  assert.equal(
+    (await request("/extractions/" + recorded.id + "/events?since_sequence=-1"))
+      .status,
+    400,
+  );
+  assert.deepEqual(
+    (await (await request("/extractions", "GET", undefined, 1)).json()).runs,
+    [],
   );
   // A fresh HTTP server reads persisted data, not process-local document state.
   await new Promise<void>((resolve, reject) =>
@@ -274,6 +307,10 @@ try {
   const restarted = server.address();
   assert.ok(restarted && typeof restarted !== "string");
   base = `http://127.0.0.1:${restarted.port}/api`;
+  assert.deepEqual(
+    await (await request("/extractions/" + recorded.id + "/events")).json(),
+    recordedEvents,
+  );
   const persisted = await (await request(`/documents/${id}`)).json();
   assert.equal(persisted.version, 5);
   assert.equal(persisted.source.revision, 2);

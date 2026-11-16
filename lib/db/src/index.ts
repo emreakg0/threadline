@@ -14,3 +14,5 @@ export const pool = new Pool({ connectionTimeoutMillis: 5000, query_timeout: 100
 export const db = drizzle(pool, { schema });
 
 export * from "./schema";
+
+export type { PoolClient } from "pg";

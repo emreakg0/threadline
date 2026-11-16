@@ -32,7 +32,29 @@ await assert.rejects(
 const schema = "extraction_test_" + randomUUID().replaceAll("-", "");
 process.env.PGOPTIONS = `-c search_path=${schema}`;
 const { pool } = await import("@workspace/db");
-const { extract } = await import("./service");
+const { extract: enqueue } = await import("./service");
+const { processOne } = await import("./worker");
+async function extract(
+  user: string,
+  source: string,
+  key: string,
+  adapter: import("./gemini").Adapter,
+) {
+  const run = await enqueue(user, source, key, adapter.mode);
+  if (run.status === "queued") {
+    await processOne(adapter, run.id);
+    const r = (
+      await pool.query("SELECT * FROM threadline_runs WHERE id=$1", [run.id])
+    ).rows[0];
+    if (r.status === "queued") {
+      await new Promise((r) => setTimeout(r, 1100));
+      await processOne(adapter, run.id);
+    }
+  }
+  return (
+    await pool.query("SELECT * FROM threadline_runs WHERE id=$1", [run.id])
+  ).rows[0];
+}
 const user = "extraction-" + randomUUID(),
   foreign = "foreign-" + randomUUID(),
   doc = randomUUID(),
@@ -90,7 +112,8 @@ try {
   for (const code of [
     "PROVIDER_TIMEOUT",
     "MODEL_UNAVAILABLE",
-    "PROVIDER_AUTH", "PROVIDER_TRANSIENT",
+    "PROVIDER_AUTH",
+    "PROVIDER_TRANSIENT",
   ]) {
     const uid = "case-" + randomUUID();
     const d = randomUUID(),
