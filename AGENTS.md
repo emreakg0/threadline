@@ -29,3 +29,44 @@ For dependency or security changes, run `pnpm audit` and `pnpm --filter @workspa
 Install only with pinned pnpm 10.26.1 using `pnpm install --frozen-lockfile`; never delete competing lockfiles to hide installer drift. Supply-chain controls and exception procedure are in SECURITY_AUDIT.md. Preserve seven-day release age, blocked exotic subdependencies and no-downgrade trust checks; do not add settings from newer pnpm versions without verifying support. Run `pnpm test:supply-chain` after changing installer controls. Urgent patches may receive documented exact-version, temporary exceptions after advisory/publisher/artifact review; never disable protections globally or blanket-exempt a vendor scope.
 
 Never expose credentials, print secret values, commit secret files, delete user data, change security settings, incur paid charges, deploy or publish without explicit permission. Test cleanup may remove only fixtures created by that test. Do not discard existing edits. Persistent memory depends on keeping these files with the repository; it cannot guarantee recovery of files outside it.
+
+## Task scope and token-efficient execution
+
+These rules supplement the project-specific instructions above; they do not
+replace required context reads, validation, security checks or continuity updates.
+
+### Scope
+
+- Work only in files required for the requested task.
+
+### Search discipline
+
+- Before reading a file in full, locate relevant symbols or sections with `rg` or `git grep`.
+- Do not recursively inspect generated directories, vendor code, build output,
+  `node_modules`, coverage artifacts or unrelated packages.
+
+### Tool discipline
+
+- Prefer narrow commands and summarized output.
+- Do not print full logs when the failure is visible in a targeted tail or filter.
+
+### Implementation
+
+- Reuse existing project patterns before creating new abstractions.
+- Make the smallest change that satisfies the request.
+
+### Validation
+
+- Run the narrowest relevant test first.
+- Run larger applicable suites only after targeted validation succeeds.
+- This ordering does not waive the applicable checks required above.
+
+### Delegation
+
+- Do not spawn subagents unless independent parallel investigation is materially useful.
+
+### Completion
+
+- Stop after the requested change passes relevant checks and required continuity
+  and milestone steps are complete.
+- Do not perform unrelated cleanup.

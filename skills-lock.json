@@ -1,0 +1,149 @@
+{
+  "version": 1,
+  "skills": {
+    "ai-agent-docs": {
+      "source": "Ozzeron/prompt-pack",
+      "sourceType": "github",
+      "skillPath": "prompts/delivery/ai-agent-docs/SKILL.md",
+      "computedHash": "95744b13ba5d060c98a26dd813116c3b0cadc3831fcc2aba1eb88d9c8123d592"
+    },
+    "apple-design": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/apple-design/SKILL.md",
+      "computedHash": "0190417d092a0df447b000154e39733ea6d97efad6d3bec8a6ce3845aeb88914"
+    },
+    "backend-api": {
+      "source": "Ozzeron/prompt-pack",
+      "sourceType": "github",
+      "skillPath": "prompts/architecture/backend-api/SKILL.md",
+      "computedHash": "696a0d27e36b02debc9a8c0289d88f477d81b1db0cb83a238d1b61c7eea73c82"
+    },
+    "code-review": {
+      "source": "Ozzeron/prompt-pack",
+      "sourceType": "github",
+      "skillPath": "prompts/review/code-review/SKILL.md",
+      "computedHash": "de08f6e1baef26643a4f78c555b091c424ae7f3797736616eee29674ef3de848"
+    },
+    "database-migrations": {
+      "source": "Ozzeron/prompt-pack",
+      "sourceType": "github",
+      "skillPath": "prompts/architecture/database-migrations/SKILL.md",
+      "computedHash": "cce35b922aa88c206420ef909c90e0db65c0a548f0170990fb48807277198b75"
+    },
+    "database-review": {
+      "source": "Ozzeron/prompt-pack",
+      "sourceType": "github",
+      "skillPath": "prompts/review/database-review/SKILL.md",
+      "computedHash": "9ac50d741593fa6aeaa0980018cd2e484214c34c105237d70bc5ccf5edfa9ef6"
+    },
+    "database-schema": {
+      "source": "Ozzeron/prompt-pack",
+      "sourceType": "github",
+      "skillPath": "prompts/architecture/database-schema/SKILL.md",
+      "computedHash": "9e9e07af194d42ae52f3818fd7e09a6d94e5eb3dee73c0e0ca1ea56893b5b672"
+    },
+    "debugger": {
+      "source": "Ozzeron/prompt-pack",
+      "sourceType": "github",
+      "skillPath": "prompts/review/debugger/SKILL.md",
+      "computedHash": "d4eb0a38c3487b53de381a0b323cc4dfe9e8768ea8c252fe28e0ae75a20ee3de"
+    },
+    "doc-writer": {
+      "source": "Ozzeron/prompt-pack",
+      "sourceType": "github",
+      "skillPath": "prompts/delivery/doc-writer/SKILL.md",
+      "computedHash": "1083c0c9c59112883a2e12c5ea95645ac8c3ea6cf958ca6183aac933005f556d"
+    },
+    "docker": {
+      "source": "Ozzeron/prompt-pack",
+      "sourceType": "github",
+      "skillPath": "prompts/infra/docker/SKILL.md",
+      "computedHash": "531031c1ad4894297cf1b227d4a57f1aae9cac5ba9c33d191ba7fdbeab821271"
+    },
+    "duplication-audit": {
+      "source": "Ozzeron/prompt-pack",
+      "sourceType": "github",
+      "skillPath": "prompts/review/duplication-audit/SKILL.md",
+      "computedHash": "6a0dc82bb8e16210e1ee21b8b9570e38f0431477ce6c3e16df373afc571a195a"
+    },
+    "engineering-principles": {
+      "source": "Ozzeron/prompt-pack",
+      "sourceType": "github",
+      "skillPath": "prompts/meta/engineering-principles/SKILL.md",
+      "computedHash": "9233b6c3754b8ebaf9ca53a12aaf52ea1b782d3b7e7cd2c5ec22aeda946ddf00"
+    },
+    "frontend-audit": {
+      "source": "Ozzeron/prompt-pack",
+      "sourceType": "github",
+      "skillPath": "prompts/review/frontend-audit/SKILL.md",
+      "computedHash": "625fdfec0d7de5fff7a363628488380008728731da62e8e34826b5d0f5049239"
+    },
+    "frontend-feature": {
+      "source": "Ozzeron/prompt-pack",
+      "sourceType": "github",
+      "skillPath": "prompts/architecture/frontend-feature/SKILL.md",
+      "computedHash": "c41da288b620f95a6bfa0de755abe71cd86ce95192129bf8670bde58443b3fe6"
+    },
+    "handoff": {
+      "source": "Ozzeron/prompt-pack",
+      "sourceType": "github",
+      "skillPath": "prompts/delivery/handoff/SKILL.md",
+      "computedHash": "aa858b3eefa6d1e48a72c565a8cca522091cc94708e67fa6a91fbb57fe90c47e"
+    },
+    "postgres-supabase": {
+      "source": "Ozzeron/prompt-pack",
+      "sourceType": "github",
+      "skillPath": "prompts/architecture/postgres-supabase/SKILL.md",
+      "computedHash": "c26e55a70555878f66d86828bf4a5a91d8ec4ce17397b694caea41045a329ccd"
+    },
+    "refactor-planner": {
+      "source": "Ozzeron/prompt-pack",
+      "sourceType": "github",
+      "skillPath": "prompts/architecture/refactor-planner/SKILL.md",
+      "computedHash": "64a83f9aa835400e97a4af121dd1bfedbdf4cc3ba7d5fe2bb7bcd35e09984835"
+    },
+    "repo-audit": {
+      "source": "Ozzeron/prompt-pack",
+      "sourceType": "github",
+      "skillPath": "prompts/review/repo-audit/SKILL.md",
+      "computedHash": "ee0a1998d554a323eded6240d81a616eb80af37455cb2f23d3f7d0c16b0088f1"
+    },
+    "reuse-before-create": {
+      "source": "Ozzeron/prompt-pack",
+      "sourceType": "github",
+      "skillPath": "prompts/meta/reuse-before-create/SKILL.md",
+      "computedHash": "0bfd1f4c8dd7fb34245c7654461a0d7042bed82b68a20031a6fa1fc15cbf588b"
+    },
+    "security-review": {
+      "source": "Ozzeron/prompt-pack",
+      "sourceType": "github",
+      "skillPath": "prompts/review/security-review/SKILL.md",
+      "computedHash": "9833a7c3f23bdbc123ff60c2ed018efdd9c12414b195176dfae819cd26c0b14e"
+    },
+    "task-router": {
+      "source": "Ozzeron/prompt-pack",
+      "sourceType": "github",
+      "skillPath": "prompts/meta/task-router/SKILL.md",
+      "computedHash": "0be6f52af420876df4aac3196fe227c2b36175e8e8232f85254ec7039904b6ba"
+    },
+    "test-writer": {
+      "source": "Ozzeron/prompt-pack",
+      "sourceType": "github",
+      "skillPath": "prompts/delivery/test-writer/SKILL.md",
+      "computedHash": "55c2d1c5137da2aab6e8f99a41f257f47e4b46cd37e93d514df7c85370c088e5"
+    },
+    "token-discipline": {
+      "source": "Ozzeron/prompt-pack",
+      "sourceType": "github",
+      "skillPath": "prompts/meta/token-discipline/SKILL.md",
+      "computedHash": "d6476803a28284ec87492215a602130c7ba6f2549387c8ae59380673075bb39c"
+    },
+    "ui-designer": {
+      "source": "Ozzeron/prompt-pack",
+      "sourceType": "github",
+      "skillPath": "prompts/interface/ui-designer/SKILL.md",
+      "computedHash": "010c61a5a0dfb30d97292a3eab04ac03b00b290e0d28ff894e5c3f5a82f5f9e7"
+    }
+  }
+}
