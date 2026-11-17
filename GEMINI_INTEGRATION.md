@@ -157,3 +157,16 @@ plus concurrent claims/event allocation and stale-result rejection. No Gemini HT
 or billing test is claimed. A future authorized live test still requires manually
 confirmed genuinely Free Tier/no linked paid billing, exact eligible model/features
 and quotas, plus separate first-call authorization. Phase 3 remains unapproved.
+
+## Phase 3 — replay is not inference
+
+LIVE_AUTHORIZED=false remains untouched. How It Works only reads existing run,
+step and event APIs; playback, seek, rates and restart never create runs or request
+provider output. The inspector does not render raw source/blocks/credentials. Mock
+runs are plainly labeled MOCK ADAPTER — NOT GEMINI. A LIVE_DISABLED failure is shown
+as a failed trace with later stages not observed. Recovery decisions are not success.
+
+Successful/retried/interrupted/cancelled replay validation uses isolated non-sensitive
+fixtures and actual persisted records produced by existing mock worker/recovery
+services. No actual Gemini calls, key reads/changes, free-tier verification or billing
+changes. Any future first inference call still requires the separate owner gate.

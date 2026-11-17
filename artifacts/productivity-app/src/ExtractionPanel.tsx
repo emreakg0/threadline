@@ -111,6 +111,7 @@ export function ExtractionPanel({
   return (
     <section className="tl-history" aria-label="AI organization">
       <h2>Find the structure in your notes</h2>
+      <a href={runId?"#capture/run/"+runId:"#capture/runs"}>How It Works · inspect recorded execution ↗</a>
       <p>
         Gemini Free Tier may use inputs and outputs to improve Google products.
         Avoid sensitive notes. Live processing remains disabled; queued state

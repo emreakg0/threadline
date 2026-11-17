@@ -1,123 +1,109 @@
-# Threadline Phase 2C — durable processing and execution history
+# Threadline Phase 3 — How It Works and recorded replay
 
-Implemented Phase 2C only. Live Gemini remains **DISABLED / UNVERIFIED** with
-LIVE_AUTHORIZED=false. No inference request, GEMINI_API_KEY access/change, billing
-change, paid service, dependency install, repository rename, deployment or Phase 3.
+Implemented Phase 3 only. Open **How It Works** in Capture, or inspect the linked run
+from its extraction panel. Run links use `/#capture/run/<owned run UUID>`; history is
+`/#capture/runs`. Existing Capture drafts and Focus City remain available.
 
-## Behavior
+## Shipped
 
-POST /api/extractions now commits an owner-scoped queued run and event before 202.
-It pins a saved immutable revision and metadata; same-key submissions return the same
-run. The API worker claims under short database locks, then releases its connection
-before adapter waits. One active run across processes, 30s leases, 5s heartbeats,
-12s abortable provider wait and token/status/expiry fencing protect late writes.
+- Owned run history with older-page loading and linkable run selection.
+- Connected source/validate/extract/evidence/persist nodes with actual recorded state,
+  attempts and safe details. Legacy stage keys remain inspectable. Missing observations
+  show not observed. Recovery is distinct from success; LIVE_DISABLED stays failed.
+- Read-only event/step inspector with IDs, sequence, observed time, actual start/end,
+  wall duration, safe summaries, errors/recovery and explicit mock provenance. No raw
+  source, extracted blocks, arbitrary payload JSON or lease tokens rendered here.
+- Play/Pause, Restart, backward/forward, range seek and 0.5x/1x/2x playback. Deterministic
+  sequence order; intervals clamp to 0.3–1.8s at replay 1x. Actual observed span and step
+  wall times are separate. Playback never starts extraction or creates a run.
+- Keyboard controls, native touch controls, focus management, status announcements,
+  text state labels and reduced motion (manual steps/log/seek, no autoplay).
+- Complete paginated trace reads, safe deduplication, conflict/cursor checks, gap and
+  unknown-status warnings, loading/empty/access/error states. An unread/failed page
+  does not become partial successful playback. Active run refresh is bounded.
 
-Real validate_source/extract/validate_output/persist stages have timestamps, durations,
-attempts, safe outcomes and linked events. Every event writer locks the parent run
-and allocates the next sequence in the same transaction. Existing append-only trigger
-is retained. Validated blocks/evidence, persist success and run completion are atomic;
-all blocks stay needs_review. Sources/documents/tasks are not mutated by processing.
+## Files
 
-Startup and each poll reconcile up to 50 expired running jobs. They become interrupted
-with explicit recovery events; uncertain provider outcomes are NOT resent. Only known
-transient failures schedule one retry after 1s; at most two extract attempts. Old queue
-reservations cannot evade dispatch-day caps (20 project/6 user attempts per UTC day;
-10 project/3 user created runs/day). A 429 pauses the project for 24h. These are app
-ceilings, not proof of Google's project quotas.
+New frontend trace.ts validates/projects API records, replay.ts supplies deterministic
+state/timing, HowItWorks.tsx handles history/loading, ExecutionReplay.tsx renders nodes
+and controls, TraceInspector.tsx renders metadata, execution.css scopes the layout.
+These responsibilities did not exist in the capture/editor components. New replay.test.ts
+is part of the frontend test command. App/CaptureWorkspace/ExtractionPanel add limited
+navigation; Capture remains mounted while inspecting a run so unsaved text is preserved.
 
-Owned cancellation fences results immediately and holds in-flight capacity until
-acknowledgement/expiry. It cannot undo a remote request. Added bounded run history,
-step pages and ordered event cursor APIs; repeated reads/restarts do not invent events.
-Capture discovers the latest revision run and polls actual status, with refresh/cancel
-and the existing Free Tier data-use notice. No visual diagram or replay controls.
+The existing isolated capture browser harness now calls replay-browser-check.mjs,
+which creates real persisted mock traces through existing queue/worker/recovery/cancel
+services and checks read-only playback. API package test script uses node --import tsx
+only for the existing crash test to avoid CLI SIGTERM supervision; no new package.
+Architecture, Gemini contract, design, status and development log updated.
 
-## Changed files
+No backend API contract, worker lifecycle, schema, auth, city rendering, source/evidence
+rules, quota or Gemini gate was changed. No Phase 4/5, graph or broader redesign.
 
-- extraction/service.ts: replace synchronous work with durable queued creation.
-- New extraction/lifecycle.ts: short transactions, event sequencing, recovery/cancel.
-- New extraction/claims.ts: capacity, quota, configuration and token-lease checks.
-- New extraction/worker.ts: bounded runtime loop, stages, aborts and fenced persistence.
-  These responsibilities had no reusable durable implementation in Phase 2B.
-- extraction/gemini.ts: optional abort signal; closed authorization gate preserved.
-- API index.ts: start the worker after database readiness.
-- routes/extractions.ts: 202 contract and owned history/detail/steps/events/cancel.
-- lib/db/src/index.ts: export existing PoolClient type for transaction helpers.
-- ExtractionPanel.tsx: real pending/terminal state, bounded polling and cancellation.
-- New durable.test.ts/worker.fixture.ts: actual mock-worker crash tests. Existing
-  extraction/document/browser tests and API test command extended for the new contract.
-- THREADLINE_ARCHITECTURE.md, GEMINI_INTEGRATION.md, PROJECT_STATUS.md and
-  DEVELOPMENT_LOG.md updated. Existing tables reused; migration 0004 only relaxes the timing constraint for
-  unstarted terminal jobs. Runner, readiness and foundation test updated. No dependency
-  or supply-chain change.
+## Evidence and checks
 
-## Verification
+Passed:
 
-Passed focused durable tests with real PostgreSQL locks/transactions and mock adapters:
-concurrent duplicate/different-key submissions, competing claims, 20 simultaneous
-per-run event writers (contiguous unique sequences), actual child SIGKILL during a
-provider wait and while an INSERT was blocked, expired-lease startup reconciliation,
-duplicate recovery, stale/cancelled result rejection, bounded retry/exhaustion, real
-12s timeout of a hung mock, project quota pause and rollback of partial block/evidence
-writes when the second insert fails. No mock result is labeled a Gemini success.
-
-Passed Phase 2B strict JSON/kind/quote/Unicode/ambiguous-deadline validation and
-mock persistence/error tests. Existing auth/document/API tests pass, including foreign
-history/step/event access rejection and identical persisted event data after restart.
-
-Commands passing:
-- pnpm --filter @workspace/api-server exec tsx src/extraction/durable.test.ts
-- pnpm --filter @workspace/api-server test
-- pnpm typecheck
-- pnpm --filter @workspace/productivity-app test
+- Replay tests: serialization/reload identity, paginated out-of-order/deduplicated reads,
+  conflicting IDs/sequences, invalid cursors, missing events, foreign step references,
+  deterministic timing/seek/rate, retry, interruption/recovery and cancellation.
+- `pnpm --filter @workspace/productivity-app test`
+- `pnpm typecheck`
 - Frontend and API production builds
-- pnpm --filter @workspace/db test:foundation
-- pnpm --filter @workspace/productivity-app test:security
-- pnpm audit (no known vulnerabilities)
-- Capture browser harness with isolated DB/worker: desktop/mobile, queued-to-
-  LIVE_DISABLED outcome, existing save/retry/history/conflict/archive/City navigation.
+- `pnpm --filter @workspace/api-server test` — clean exit 0 after runner correction
+- `pnpm --filter @workspace/db test:foundation`
+- `pnpm --filter @workspace/productivity-app test:security`
+- `pnpm audit` — no known vulnerabilities
+- Isolated Chromium capture/replay browser harness: normal saved LIVE_DISABLED failure,
+  real mock success/retry/interruption/recovery/cancellation, history and all-event page
+  loading, full serialized trace equality after reload, controls/pause/seek/both steps/
+  rate change, keyboard, touch, reduced motion, API failure and owner A/B rejection.
 
-Initial typecheck failed on the overloaded pool.connect return type; fixed with the
-existing exported PoolClient type. A browser-harness edit anchor initially failed and
-was corrected. Final targeted checks pass. Existing lazy city chunk advisory remains.
-Capture mobile screenshot inspected. Full city-count browser tests were not repeated:
-no city-specific source changed; city/scenery/camera/spring tests and City navigation
-regressions pass. Physical GPU, live OAuth and published Replit behavior are unverified.
+Proof of persistence: displayed event IDs are compared with PostgreSQL IDs in sequence
+order. Browser serializes the complete validated run/steps/events and reloads the app;
+IDs, sequences, statuses and timings remain identical. A test-only small-page response
+wrapper forces pagination of those unaltered stored rows. Total run count before/after
+replay stays unchanged. Mock labels remain visible; no Gemini success is fabricated.
 
-## Limits and next step
+Desktop and mobile replay screenshots examined, including reduced motion and vertical
+mobile nodes/inspector. Ephemeral images:
+`/tmp/threadline-2a-replay-desktop.png`, `/tmp/threadline-2a-replay-mobile.png`.
+Reproduce: frontend on 21646 and Chromium CDP on 9222, then
+`pnpm --filter @workspace/api-server exec tsx ../../lib/db/scripts/capture-browser.mjs`.
+The harness owns a temporary schema and loopback server on 28126; fixtures are cleaned.
 
-No exactly-once HTTP guarantee: an aborted/killed request may have executed remotely.
-An uncertain expired run stops interrupted instead of risking another charge. A
-continuing database outage can delay recording recovery. A stopped/sleeping Replit
-instance cannot execute work; queue resumes on API startup. Explicitly creating a
-new key can request another run, subject to quotas; interrupted runs never auto-resend.
-Cancellation cannot refund/undo remote inference. No external free-tier verification
-or real provider response behavior is claimed. Existing extractive-only evidence rules
-remain: paraphrases are rejected, source truth/classification still needs human review.
+Initial issues: inherited mobile aside layout fixed; a reload assertion race corrected
+by waiting for a new document and full event count. A test-only response wrapper crashed
+before Express attached res.json; corrected and its verified orphan fixture schema
+removed. API command initially returned SIGTERM despite pass output; the same crash
+test passed with Node's tsx loader, and the minimal test-command change yields exit 0.
 
-Migration 0004 preserves existing rows and validates its expanded timing check before
-removing the older stricter check. It avoids inventing a started_at for a queued job
-that is cancelled or fails before work starts. Queued cancellation with null start
-and actual completion is tested. Migration 0004 was applied to the configured
-application database after isolated upgrade/rerun verification; no source/task/history
-rows were rewritten. The local API workflow was restarted after readiness moved to
-0004; this is local development, not deployment.
+## Limits and boundary
 
-Rollback: stop workers and revert application adoption while retaining queue/history
-and the expanded timing constraint. Review pending runs before using older synchronous
-code; do not falsify history to restore the old check. No destructive down migration.
+Existing lazy city bundle warning remains. City/camera/scenery/spring tests and City
+navigation pass; full 0/1/5/20 city browser scenarios were not repeated because city
+source did not change. Physical hardware, live Google consent, published Replit and
+real Gemini responses remain unverified. No paid/free inference or credential access;
+LIVE_AUTHORIZED=false is unchanged. No install, billing change, paid fallback, deployment,
+repository rename or visibility change. Successful mock traces exist only in isolated
+test schemas, never inserted into production as Gemini runs.
 
-Stop for owner review. Phase 3 and any first live test require separate authorization.
-Live testing still requires manually confirmed Free Tier/no paid billing, exact model/
-endpoint/features, current quotas and explicit first-call approval. Source milestone:
-`Add durable extraction queue and fenced execution history`; commit/push follows the
-repository's staged review, secret audit and private-origin checks.
+Playback uses known recorded observations, not hidden model reasoning or fabricated
+stages. Historical metadata can be incomplete; warnings and final stored step details
+remain separate from replay-at-cursor state. Trace reads cap at 2000 pages/collection;
+history remains manually paginated and is not a cross-request snapshot. Active reads
+refresh at most 30 times; use Refresh records after that. Exact evidence matching still
+does not establish semantic truth. No physical performance or screen-reader user study
+is claimed; native semantics/announcements and automated interaction are verified.
 
-Final scoped review checked authentication/ownership, SQL parameters, event locks,
-lease fencing, cancellation capacity and atomic saves. Timing/dispatch issues found
-in review were corrected and retested; no remaining blocking finding identified.
-Local smoke: /api/healthz 200 and unauthenticated /api/extractions 401 after restart.
+Next unfinished task: owner review of Phase 3, including the real LIVE_DISABLED trace.
+Any later phase or first inference call needs separate authorization; no automatic
+progression. The live call gate still requires manually confirmed project Free Tier/no
+paid billing, exact eligible model/features, current quotas and first-call approval.
 
-Verified milestone source is committed and pushed to the existing private origin
-under `Add durable extraction queue and fenced execution history`. Staged files were
-reviewed, secret audit passed with zero findings, and repository privacy was confirmed.
-Git remotes and existing history are preserved. Stop here for Phase 2C review.
+Final scoped correctness/security review covered read-only requests, owner-scoped APIs,
+page/cursor validation, replay state projection, safe text rendering and interaction
+coverage. No remaining blocking finding identified. Verified milestone is committed
+and pushed to the existing private origin under `Add recorded execution diagram and
+read-only replay` after staged review, secret audit and private-repository checks.
+No subsequent phase is started.

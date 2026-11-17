@@ -46,3 +46,23 @@ reduced motion removes transitions. Mobile uses a stacked navigation/library/edi
 with bounded library scrolling and no horizontal overflow. No decorative graph or
 fake processing state. Desktop/mobile screenshots inspected in this milestone; no
 physical-device keyboard/GPU claim. Gemini processing remains absent.
+
+## Phase 3 — recorded execution view (2026-11-17)
+
+How It Works is a bounded addition to Capture, not a workspace redesign. Graphite
+surfaces and lavender selection outline frame five connected stages, with text labels
+and mint/amber/error borders derived from recorded observations. Unknown legacy keys
+remain inspectable. No floating particles, decorative 3D or simulated activity.
+
+Desktop: compact run-history rail, connected horizontal nodes, replay controls and
+scrollable event log beside a metadata inspector. Mobile: stacked stages and inspector,
+bounded history/event scrolling, no horizontal overflow. Scope inspector styles to
+avoid inheriting Focus City's responsive navigation-aside layout. Native range/select/
+buttons retain keyboard and 44px touch targets. Focus moves to the view heading on
+run navigation; node/event controls expose selection and cursor announcements.
+
+Replay intervals clamp to 0.3–1.8 seconds at 1x and are explicitly scaled; actual step
+wall times are separately identified. Reduced motion uses manual steps/log/range and
+no autoplay. Recovery and cancellation remain distinct from success. Capture drafts
+stay mounted while viewing history. Desktop/mobile screenshots inspected from real
+isolated mock traces; software browser tests do not establish physical-device quality.

@@ -8,7 +8,7 @@
     "build": "vite build",
     "serve": "vite preview --host 0.0.0.0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "tsx src/city/layout.test.ts && tsx src/spring.test.ts",
+    "test": "tsx src/city/layout.test.ts && tsx src/spring.test.ts && tsx src/replay.test.ts",
     "test:security": "tsx src/security.test.ts"
   },
   "devDependencies": {

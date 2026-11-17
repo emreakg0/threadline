@@ -191,3 +191,32 @@ separately authorized. See RESULT.md for commands, source changes and limitation
 
 0004 was applied after isolated upgrade/rerun checks; local API restarted for the
 new readiness marker. No source/task/history rewrite or deployment.
+
+## Phase 3 — actual execution diagram and deterministic replay
+
+Implemented How It Works from Capture (#capture/runs and #capture/run/<id>), owned
+history pagination, stage nodes, event/step inspector and deterministic read-only
+Play/Pause/Restart/back/forward/rate/seek controls. Trace reader validates and paginates
+all events/steps, deduplicates safely, warns on gaps/unknown observations and never
+fabricates missing stages. Recovery stays interrupted; LIVE_DISABLED stays failed.
+Reduced motion retains manual controls. Capture drafts survive view navigation.
+No backend lifecycle/schema/inference changes; LIVE_AUTHORIZED=false unchanged.
+
+Verification: replay model tests, typecheck, frontend tests/build, API build, API
+integration/durable tests, foundation and security tests PASS; pnpm audit reports no
+known vulnerabilities. Full API command initially exited SIGTERM after its passes;
+isolating the durable crash test with node --import tsx exited 0, and changing only
+that script entry made the full command exit 0. No dependency changes/install.
+Browser suite passes real persisted mock success/retry/interruption/recovery/cancel,
+forced small pages, identical reloaded IDs/sequences/status/timings, owner isolation,
+network failure, play/pause/seek/back/forward/speed, keyboard/touch/reduced-motion and
+Capture/City navigation. Replay created zero new runs. Desktop/mobile images inspected;
+corrected inherited mobile inspector layout and a test reload timing race. Initial
+test-server crash fixture schema was positively identified/removed; no user data removed.
+
+No city-specific changes; city/scenery/camera/spring regressions pass; full 0/1/5/20
+city browser counts not repeated. Existing city chunk advisory persists. Live Gemini,
+Google consent, physical-device behavior and published Replit acceptance unverified.
+No credential access, paid inference, billing, install, deployment, rename or Phase 4/5.
+Exact next unfinished task: owner review of Phase 3. Do not start further phases or
+live inference automatically. RESULT.md holds the shareable completion report.

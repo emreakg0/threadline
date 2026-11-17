@@ -229,3 +229,43 @@ Git 133c0f1 created the initial repository; 3f10439 initialized the productivity
   permissive check on rollback rather than falsifying history to restore the old one.
 - Applied 0004 through the existing runner after isolated validation. Restarted the
   local API development workflow after its readiness marker changed; no deployment.
+
+## 2026-11-17 — Phase 3 real trace diagram/replay only
+
+- Read current AGENTS/status/result/contracts/design/log and source endpoint/step/event
+  contracts; Git initially clean. Used frontend/UI/reuse/token-discipline, debugger and
+  scoped review guidance. Preserved worker/auth/schema/city/source and closed live gate.
+- Added trace.ts for projected, validated, all-page trace reads and replay.ts for pure
+  sequence-driven timing/state. No existing module handled recorded playback. Added
+  HowItWorks.tsx (history/links/refresh), ExecutionReplay.tsx (diagram/controls),
+  TraceInspector.tsx (safe metadata) and scoped execution.css; existing capture forms
+  and sheet components did not supply these read-only domain views. CaptureWorkspace,
+  App and ExtractionPanel add only necessary hash navigation; editor stays mounted.
+- Stage states derive from events, not eventual step status. Final metadata is labeled
+  separately; missing events are not invented. Legacy keys shown as extra stages.
+  Recovery never implies success. Sequence is authoritative; time gaps are clamped
+  300–1800ms and labeled as replay rather than real wall time. Native keyboard/touch,
+  focus and reduced-motion controls remain usable without animated playback.
+- Added replay.test.ts and frontend test entry. Extended isolated browser harness with
+  replay-browser-check.mjs: normal mock services generate real successful/retried runs,
+  lease expiry/reconciliation and cancellation. Test-only response slicing forces small
+  pages without modifying persisted event records. Serialized traces survive reload
+  exactly; every UI event ID matches PostgreSQL, and replay run count stays constant.
+  Foreign detail/events/steps return 404; injected page error shows no partial trace.
+- Browser tests cover play/pause, restart, both step directions, seek/rate change,
+  keyboard/touch, reduced motion, history paging and Capture draft preservation. Desktop/
+  mobile inspected; fixed inherited aside styling. A reload test initially examined old
+  DOM, then the new loading DOM: now waits for changed performance.timeOrigin and full
+  expected event count. A test response-wrapper crash was corrected (Express response
+  prototype is attached only inside app handling); confirmed/cleaned its orphaned
+  isolated fixture schema, leaving all user data intact.
+- API test command twice terminated SIGTERM after printing test passes. Hypothesis was
+  crash-test CLI signal supervision, not application assertions. Direct Node with the
+  installed tsx loader exited 0 for the same durable test; changed only that test script
+  invocation. Full API command then exited 0. Document test standalone also exited 0.
+- Replay tests, workspace typecheck, frontend tests/build, API tests/build, foundation,
+  frontend security and audit passed (no known vulnerabilities). Existing city bundle
+  warning persists; city regression unit tests and navigation pass; full count-browser
+  and physical-device/live OAuth/deployed checks not claimed. No inference/key access,
+  dependencies installed, security/supply-chain weakening, schema migration, rename,
+  billing or deployment. Updated continuity/design/contracts and RESULT; stop for review.

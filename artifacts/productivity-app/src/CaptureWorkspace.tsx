@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { HowItWorks } from "./HowItWorks";
 import { api } from "./api";
 import { documents } from "./documents-api";
 import { useCapture } from "./useCapture";
@@ -11,6 +13,16 @@ export function CaptureWorkspace({
   onExit: () => void;
 }) {
   const capture = useCapture();
+  const [route, setRoute] = useState(location.hash);
+  useEffect(() => {
+    const change = () => setRoute(location.hash);
+    window.addEventListener("hashchange", change);
+    return () => window.removeEventListener("hashchange", change);
+  }, []);
+  const showingTrace = route.startsWith("#capture/run");
+  const traceId = route.startsWith("#capture/run/")
+    ? route.slice("#capture/run/".length)
+    : null;
   const {
     saved,
     busy,
@@ -40,7 +52,14 @@ export function CaptureWorkspace({
           <span className="tl-private">PRIVATE</span>
         </a>
         <div className="tl-nav-label">WORKSPACE</div>
-        <button className="tl-nav-current" onClick={fresh} disabled={busy}>
+        <button
+          className="tl-nav-current"
+          onClick={() => {
+            if (showingTrace) location.hash = "#capture";
+            else fresh();
+          }}
+          disabled={busy}
+        >
           ＋ Capture <kbd>↵</kbd>
         </button>
         <button
@@ -51,6 +70,12 @@ export function CaptureWorkspace({
         >
           ▦ Focus City <span>Tasks & projects ↗</span>
         </button>
+        <a
+          href="#capture/runs"
+          aria-current={showingTrace ? "page" : undefined}
+        >
+          How It Works ↗
+        </a>
         <div className="tl-library-head">
           <h2>Knowledge library</h2>
           <button onClick={fresh} disabled={busy} aria-label="New capture">
@@ -98,7 +123,10 @@ export function CaptureWorkspace({
                   key={item.id}
                   aria-current={saved?.id === item.id ? "page" : undefined}
                   disabled={busy}
-                  onClick={() => void open(item.id)}
+                  onClick={() => {
+                    void open(item.id);
+                    location.hash = "#capture";
+                  }}
                 >
                   <span>{item.title}</span>
                   <small>
@@ -154,7 +182,10 @@ export function CaptureWorkspace({
             Sign out
           </button>
         </header>
-        <CaptureEditor capture={capture} />
+        <div hidden={showingTrace}>
+          <CaptureEditor capture={capture} />
+        </div>
+        {showingTrace && <HowItWorks runId={traceId} />}
       </main>
     </div>
   );

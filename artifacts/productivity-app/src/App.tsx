@@ -6,7 +6,7 @@ import CityView from "./city/CityView";
 import { ViewSwitch } from "./ViewSwitch";
 import { TaskSheet } from "./TaskSheet";
 export default function App() {
-  const [workspace, setWorkspace] = useState<"focus" | "capture">(location.hash === "#capture" ? "capture" : "focus");
+  const [workspace, setWorkspace] = useState<"focus" | "capture">(location.hash.startsWith("#capture") ? "capture" : "focus");
   const [composerOpen, setComposerOpen] = useState(false),
     [notice, setNotice] = useState("");
   const [view, setView] = useState<"city" | "list">("city");

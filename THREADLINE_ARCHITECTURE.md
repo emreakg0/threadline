@@ -244,3 +244,47 @@ Retain the expanded timing constraint on rollback; old code remains compatible.
 Do not restore the stricter constraint by rewriting valid new history. A sleeping/stopped Replit instance cannot
 execute jobs; durable queue resumes/reconciles on the next API process start. No
 always-on-hosting, live OAuth, real-provider or production Replit claim is made.
+
+## Phase 3 — read-only How It Works and replay
+
+Capture links to #capture/runs (history) and #capture/run/<owned UUID> (shareable run
+location for authenticated owners). The Capture editor stays mounted/hidden while
+inspecting a trace so unsaved text survives returning. Existing Focus City remains.
+No backend worker, source schema, live gate or inference capability changed.
+
+trace.ts projects only safe run/step/event fields from existing authenticated APIs;
+blocks, source text and lease tokens are not rendered by the inspector. It consumes
+all step/event pages, validates IDs/timestamps/cursor advancement, rejects conflicting
+duplicate IDs/sequences and foreign run references, deduplicates and sorts by sequence.
+Missing sequences, unavailable step references, unknown types/status and backward
+observed timestamps produce explicit warnings instead of reconstructed activity.
+No partial playback is shown if a page fails. Limits: 2000 pages per trace collection;
+history pages remain explicit Load older runs. Offset history is not a snapshot.
+
+replay.ts is a pure deterministic projection. Saved source is recorded when queued
+is observed; validate_source/extract/validate_output/persist nodes follow actual step
+start/completion/failure events. Legacy/unknown stored stage keys get extra nodes.
+Absent observations remain not observed. A recorded interruption/cancellation closes
+an observed started stage; recovered is an observed recovery decision, never success.
+Final stored step status/duration is separately labeled in the inspector and does not
+leak terminal outcomes into earlier node states at the replay cursor.
+
+Playback order is event sequence, not row offsets or timestamps. The interval between
+observed events is clamped to 300–1800ms at replay 1x, with 0.5x/1x/2x bounded speeds.
+This deliberately expands short stages and compresses waits. UI labels replay time
+separately from actual observed span and stored step wall-clock durations. Play/Pause,
+Restart, previous/next event and range seek never invoke processing or mutate runs.
+Reduced motion disables automatic playback but retains the event log/manual controls.
+Keyboard and touch controls and polite cursor announcements use native elements.
+
+HowItWorks.tsx handles history, run links and bounded refresh (30 reads at 3s for
+queued/running), while ExecutionReplay/TraceInspector handle deterministic controls
+and metadata inspection. Connected nodes use restrained CSS and visible text states;
+no fake beam, diagram activity, 3D or Phase 4/5 navigation redesign is introduced.
+Mock provenance is explicit; real LIVE_DISABLED failures remain failed.
+
+Verification uses normal queue/worker/recovery/cancel services with mock adapters in
+an isolated schema. Test-only response page slicing exercises all-page loading using
+unaltered real persisted events. Serialized trace IDs/sequences/statuses/timings match
+after browser reload; replay leaves total run count unchanged. Cross-owner detail,
+event and step requests return 404. No provider calls or production mock successes.
