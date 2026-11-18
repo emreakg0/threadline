@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { api, ApiError } from "./api";
 export function ExtractionPanel({
   sourceId,
+  documentId,
   disabled,
 }: {
   sourceId: string;
+  documentId: string;
   disabled: boolean;
 }) {
   const [runId, setRunId] = useState<string | null>(null),
@@ -12,9 +14,7 @@ export function ExtractionPanel({
   const [pending, setPending] = useState(false),
     [message, setMessage] = useState("");
   const [key] = useState(() => crypto.randomUUID());
-  const [blocks, setBlocks] = useState<
-    { kind: string; content: string; uncertainty_reason: string | null }[]
-  >([]);
+  const [count, setCount] = useState<number | null>(null);
   useEffect(() => {
     let cancelled = false;
     api("/extractions?source_revision_id=" + sourceId)
@@ -51,24 +51,7 @@ export function ExtractionPanel({
         );
         const active = ["queued", "running"].includes(run.status);
         setPending(active);
-        if (run.status === "succeeded") {
-          if (
-            !result.blocks.every(
-              (b: unknown) =>
-                b &&
-                typeof b === "object" &&
-                "kind" in b &&
-                typeof b.kind === "string" &&
-                "content" in b &&
-                typeof b.content === "string" &&
-                "uncertainty_reason" in b &&
-                (b.uncertainty_reason === null ||
-                  typeof b.uncertainty_reason === "string"),
-            )
-          )
-            throw Error("Invalid blocks");
-          setBlocks(result.blocks);
-        }
+        setCount(run.status === "succeeded" ? result.blocks.length : null);
         if (active && ++polls < 60) timer = setTimeout(() => void poll(), 2000);
         else if (active)
           setMessage(
@@ -110,8 +93,10 @@ export function ExtractionPanel({
   }
   return (
     <section className="tl-history" aria-label="AI organization">
-      <h2>Find the structure in your notes</h2>
-      <a href={runId?"#capture/run/"+runId:"#capture/runs"}>How It Works · inspect recorded execution ↗</a>
+      <h2>Extraction</h2>
+      <a href={runId ? "#capture/run/" + runId : "#capture/runs"}>
+        How It Works · inspect recorded execution ↗
+      </a>
       <p>
         Gemini Free Tier may use inputs and outputs to improve Google products.
         Avoid sensitive notes. Live processing remains disabled; queued state
@@ -144,13 +129,11 @@ export function ExtractionPanel({
         </>
       )}
       <p role="status">{message}</p>
-      {blocks.map((b, i) => (
-        <article key={i}>
-          <h3>{b.kind} · Needs review</h3>
-          <p>{b.content}</p>
-          {b.uncertainty_reason && <p>Uncertainty: {b.uncertainty_reason}</p>}
-        </article>
-      ))}
+      {count !== null && (
+        <a className="tl-text-link" href={"#capture/review/" + documentId}>
+          Review extracted blocks ({count})
+        </a>
+      )}
     </section>
   );
 }

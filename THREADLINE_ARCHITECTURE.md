@@ -288,3 +288,44 @@ an isolated schema. Test-only response page slicing exercises all-page loading u
 unaltered real persisted events. Serialized trace IDs/sequences/statuses/timings match
 after browser reload; replay leaves total run count unchanged. Cross-owner detail,
 event and step requests return 404. No provider calls or production mock successes.
+
+## Phase 4 — workspace, organization and block review
+
+The authenticated Threadline shell uses existing hash navigation. Knowledge is
+at #capture/library, documents at #capture/document/<UUID>, review at
+#capture/review[/<UUID>], and collections at #capture/collections. Phase 3 run
+URLs still resolve. Capture stays mounted through navigation, including Focus
+City. Dirty documents and new captures retain their IDs, saved base versions
+and text in memory until saved, discarded or the page closes. Unsaved review
+edits also stay mounted across workspace navigation. Reload prompts about
+unsaved work. Focus City remains the default entry pending owner design
+acceptance.
+
+The document list supports literal case-insensitive title and latest source
+matching, active/archived views, collection and tag filters, and a review
+filter. It returns collection, active tag and pending-review metadata. Lists
+are paginated. The query is scoped to the signed-in owner. Search is bounded
+substring matching for a personal library. Large-library search indexing and
+cross-request pagination snapshots remain future work.
+
+GET/POST /api/documents/organization list active organization labels and
+create flat collections. Versioned document PATCH assigns or clears a
+collection and replaces document tag assignments in the same transaction as
+other document changes. The schema's scoped foreign keys and API owner check
+both apply. Collection/tag changes preserve the current immutable source
+revision. Tags are reused by exact name within an owner.
+
+GET /api/documents/:id/blocks pages a document's knowledge blocks and original
+source excerpts. Optional filters select kind, review state or an exact block.
+PATCH /api/documents/:id/blocks/:block requires the expected version and checks
+owner, document and block together. A content change sets edited_at and returns
+the block to needs_review unless the request explicitly specifies a state.
+The original uncertainty, exact source evidence and originating run association
+stay attached. The UI presents evidence as a separate quote from the source
+revision. No review operation creates a task or changes extraction history.
+
+Migration 0005 introduces the nullable edited_at field with a lock timeout.
+Apply migrations before serving the new app. Older app versions can continue
+reading the expanded schema. For application rollback, leave the additive
+column in place to preserve edit provenance. No backfill is needed because
+earlier releases could not edit extracted blocks.

@@ -74,9 +74,8 @@ export function HowItWorks({ runId }: { runId: string | null }) {
   }, [runId, refresh]);
   return (
     <div className="tl-content execution-workspace">
-      <div className="tl-eyebrow">HOW IT WORKS</div>
       <h1 ref={heading} tabIndex={-1}>
-        Follow the thread.
+        How It Works
       </h1>
       <p>
         Actual recorded execution. Inspect every observation, then replay it at
@@ -97,22 +96,24 @@ export function HowItWorks({ runId }: { runId: string | null }) {
               Gemini remains disabled.
             </p>
           )}
-          {runs.map((r) => (
-            <a
-              key={r.id}
-              href={"#capture/run/" + r.id}
-              aria-current={r.id === runId ? "page" : undefined}
-            >
-              <strong>{r.status}</strong>
-              <span>
-                {r.provider === "mock"
-                  ? "Mock adapter"
-                  : "Gemini disabled / unverified"}
-              </span>
-              <small>{new Date(r.created_at).toLocaleString()}</small>
-              <code>{r.id.slice(0, 8)}</code>
-            </a>
-          ))}
+          <div className="execution-run-list">
+            {runs.map((r) => (
+              <a
+                key={r.id}
+                href={"#capture/run/" + r.id}
+                aria-current={r.id === runId ? "page" : undefined}
+              >
+                <strong>{r.status}</strong>
+                <span>
+                  {r.provider === "mock"
+                    ? "Mock adapter"
+                    : "Gemini disabled / unverified"}
+                </span>
+                <small>{new Date(r.created_at).toLocaleString()}</small>
+                <code>{r.id.slice(0, 8)}</code>
+              </a>
+            ))}
+          </div>
           {next !== null && (
             <button
               onClick={() =>

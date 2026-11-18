@@ -269,3 +269,26 @@ Git 133c0f1 created the initial repository; 3f10439 initialized the productivity
   and physical-device/live OAuth/deployed checks not claimed. No inference/key access,
   dependencies installed, security/supply-chain weakening, schema migration, rename,
   billing or deployment. Updated continuity/design/contracts and RESULT; stop for review.
+
+## 2026-11-18 — Threadline Phase 4
+
+- App and CaptureWorkspace integrate the existing editor, Library, ReviewPanel,
+  Collections, CommandPalette and recorded How It Works. Capture and review
+  drafts survive section changes. capture.css scopes the graphite palette,
+  focus, mobile layout and motion preferences to Threadline.
+- Document queries now match saved titles/latest source text with active,
+  archive, collection and tag filters. Organization updates use the document
+  transaction and expected version. The review router uses versioned and
+  owner-scoped block writes. Migration 0005 records the last human content edit
+  while preserving original evidence and run provenance. The normal API entry
+  point checks for migration 0005 on startup.
+- Extended the document integration suite and capture/replay browser harness
+  for the new write, search, focus and concurrency paths. Adjusted inherited
+  city heading/select styles, dialog focus and rapid-reopen behavior, and
+  narrow history after running the browser and inspecting screenshots.
+- Passed workspace typecheck, app tests, API integration/extraction/durability
+  tests, foundation migrations, production builds, Vite security checks,
+  package audit and isolated desktop/mobile Chromium. The app had zero browser
+  exceptions in the harness. The separate City browser checks passed at 0, 1,
+  5 and 20 tasks. City rendering code, worker, provider gate and
+  legacy data contracts stay intact.

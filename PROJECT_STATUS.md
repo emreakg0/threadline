@@ -1,6 +1,6 @@
 # Focus City project status
 
-Last inspection: 2026-11-12 (UTC). Continued Apple-design interface refinement; see the latest section below.
+Last inspection: 2026-11-18 (UTC). See the Phase 4 section below for the current verification and next task.
 
 ## Version control and backup
 
@@ -45,7 +45,7 @@ Known debt: health-only generated contracts; dense procedural code; large lazy 3
 
 Current visual milestone is verified. Camera framing now includes the floating platform underside, outer rim, empty-city lamps and tallest rooftop accents. Lighting is less washed out; parked cars now use both intended colors. The prior overhaul was substantially implemented before recovery; this session verified it and repaired these remaining details.
 
-Exact next implementation task: add project rename with ownership-scoped PATCH /api/projects/:id, validated names, sidebar editing and two-account integration coverage. Project deletion and task moves should follow with explicit data-preservation semantics. Before claiming final visual performance acceptance, profile a representative physical mobile device/laptop and test live Google consent with the registered account.
+At the 2026-11-10 checkpoint, the next implementation task was to add project rename with ownership-scoped PATCH /api/projects/:id, validated names, sidebar editing and two-account integration coverage. Project deletion and task moves should follow with explicit data-preservation semantics. Before claiming final visual performance acceptance, profile a representative physical mobile device/laptop and test live Google consent with the registered account.
 
 ## Verification
 
@@ -220,3 +220,24 @@ Google consent, physical-device behavior and published Replit acceptance unverif
 No credential access, paid inference, billing, install, deployment, rename or Phase 4/5.
 Exact next unfinished task: owner review of Phase 3. Do not start further phases or
 live inference automatically. RESULT.md holds the shareable completion report.
+
+## 2026-11-18 — Threadline Phase 4 knowledge workspace
+
+Implemented the workspace shell, keyboard palette, document search and
+organization, and persisted versioned block review with immutable source
+evidence. How It Works still reads recorded execution data. Threadline is
+available from Focus City and by hash link. Focus City remains the default
+entry pending design acceptance.
+
+Workspace typecheck, frontend unit/security tests, frontend/API builds, all
+API integrations, isolated migrations and package audit passed. Chromium
+passed capture, organization, review, draft preservation, real conflicts,
+focus recovery, mobile touch/overflow, reduced motion, explicit mock replay
+and LIVE_DISABLED paths, owner isolation and the Focus City/List View round
+trip. Focus City also passed browser scenarios with 0, 1, 5 and 20 tasks.
+Desktop and mobile screenshots were examined. See RESULT.md for the
+full verification record and limitations.
+
+Exact next unfinished task: owner review of Phase 4 to decide whether
+Threadline should become the authenticated default. Keep Gemini disabled and
+stop at Phase 4.

@@ -25,7 +25,7 @@
   font-weight: 500;
   margin-bottom: 12px;
 }
-.execution-history > a {
+.execution-run-list > a {
   display: block;
   text-decoration: none;
   padding: 12px;
@@ -34,7 +34,7 @@
   color: var(--tl-text);
   background: #ffffff03;
 }
-.execution-history > a[aria-current="page"] {
+.execution-run-list > a[aria-current="page"] {
   border-color: var(--tl-accent);
   background: #aaa1ff0c;
 }
@@ -286,19 +286,19 @@
     grid-template-columns: 1fr;
   }
   .execution-history {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
     border-right: 0;
-    border-bottom: 1px solid #ffffff12;
-    max-height: 200px;
-    overflow: auto;
+    border-bottom: 1px solid var(--tl-line);
+    padding: 0 0 6px;
   }
-  .execution-history > a {
-    min-width: 150px;
+  .execution-run-list {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 4px;
   }
-  .execution-history h2 {
-    width: 100%;
+  .execution-run-list > a {
+    flex: 0 0 148px;
+    margin: 0;
   }
 }
 @media (max-width: 680px) {
@@ -351,17 +351,4 @@
 }
 .execution-workspace h1:focus-visible {
   outline: none;
-}
-.threadline .tl-sidebar > a[href="#capture/runs"],
-.execution-workspace > a,
-.execution-run-link > a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 8px 12px;
-}
-.threadline .tl-sidebar > a[aria-current="page"] {
-  color: var(--tl-accent);
-  background: #aaa1ff0c;
-  border-radius: 6px;
 }

@@ -66,3 +66,25 @@ wall times are separately identified. Reduced motion uses manual steps/log/range
 no autoplay. Recovery and cancellation remain distinct from success. Capture drafts
 stay mounted while viewing history. Desktop/mobile screenshots inspected from real
 isolated mock traces; software browser tests do not establish physical-device quality.
+
+## Threadline Phase 4 workspace
+
+The sidebar carries Capture, Knowledge, Review, Collections and How It Works.
+The workspace header holds the current section and command palette. Focus City
+and the signed-in account are available from the sidebar. On smaller screens the
+section navigation moves into a two-row header with at least 44px touch targets.
+The document editor has a solid graphite writing surface, editable title,
+plain source text and a compact save bar. Quiet document controls link to source
+history, review and organization.
+
+Threadline scopes its tokens to the workspace. Graphite surfaces use #0D1016,
+#11151C and #191E29 with #EBEAF3 primary text and #9AA2B2 secondary text. Lavender
+marks selection, focus and primary actions. Mint and amber accompany written
+save and review statuses. Geist is preferred if available locally, with a system
+fallback. Only the floating command palette uses translucent material.
+
+Navigation changes use short 160–180ms transitions. Review content and the
+native dialog use 220–240ms entrances, with a brief stagger on loaded blocks.
+Escape returns palette focus to the previous control. Focus follows document
+selection. Reduced motion removes transitions, increased contrast strengthens
+surface boundaries and reduced transparency makes the palette opaque.

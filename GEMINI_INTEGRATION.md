@@ -170,3 +170,12 @@ Successful/retried/interrupted/cancelled replay validation uses isolated non-sen
 fixtures and actual persisted records produced by existing mock worker/recovery
 services. No actual Gemini calls, key reads/changes, free-tier verification or billing
 changes. Any future first inference call still requires the separate owner gate.
+
+## Phase 4 — human review
+
+Review reads stored extraction blocks through the document owner scope.
+Confirm, dismiss and edit are versioned writes on the block. They preserve
+the originating run, source revision, exact excerpt and original extraction
+uncertainty. A user edit is identified separately from extraction provenance.
+Mock blocks retain the mock label. How It Works continues to read recorded
+events and replay them without starting processing. LIVE_AUTHORIZED=false.

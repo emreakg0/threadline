@@ -30,6 +30,15 @@ type TestJson = {
   archived_at: string | null;
   documents: { id: string }[];
   revisions: unknown[];
+  collections: { id: string; name: string }[];
+  tags: string[];
+  blocks: {
+    id: string;
+    content: string;
+    review_state: string;
+    edited_at: string | null;
+    evidence: unknown[];
+  }[];
 };
 const request = (path: string, method = "GET", body?: unknown, owner = 0) =>
   fetch(base + path, {
@@ -159,7 +168,8 @@ try {
     { version: 1, archived: "yes" },
     { version: 1, source_text: null },
     { version: 1, title: "" },
-    { version: 1, collection_id: randomUUID() },
+    { version: 1, collection_id: "invalid" },
+    { version: 1, tags: [null] },
   ])
     assert.equal(
       (await request(`/documents/${id}`, "PATCH", invalid)).status,
@@ -248,6 +258,127 @@ try {
   });
   assert.equal(response.status, 200);
   assert.equal((await response.json()).archived_at, null);
+  const organization = "/documents/organization";
+  const collection = await (
+    await request(organization, "POST", { name: "Research" })
+  ).json();
+  const foreign = await (
+    await request(organization, "POST", { name: "Private" }, 1)
+  ).json();
+  assert.deepEqual((await (await request(organization)).json()).collections, [
+    { id: collection.id, name: "Research" },
+  ]);
+  const path = "/documents/" + id;
+  assert.equal(
+    (await request(path, "PATCH", { version: 5, collection_id: foreign.id }))
+      .status,
+    404,
+  );
+  response = await request(path, "PATCH", {
+    version: 5,
+    collection_id: collection.id,
+    tags: [" planning ", "team", "planning"],
+  });
+  assert.equal(response.status, 200);
+  const organized = await response.json();
+  assert.deepEqual(organized.tags, ["planning", "team"]);
+  assert.equal(organized.source.revision, 2);
+  const filters = new URLSearchParams({
+    q: current.source.source_text.toUpperCase(),
+    tag: "planning",
+    collection: collection.id,
+  });
+  assert.equal(
+    (await (await request("/documents?" + filters)).json()).documents[0].id,
+    id,
+  );
+  assert.deepEqual(
+    (await (await request("/documents?" + filters, "GET", undefined, 1)).json())
+      .documents,
+    [],
+  );
+  assert.deepEqual(
+    (await (await request("/documents?q=%25")).json()).documents,
+    [],
+  );
+  assert.equal((await request("/documents?q=one&q=two")).status, 400);
+
+  const block = randomUUID();
+  await pool.query(
+    `INSERT INTO threadline_knowledge_blocks(id,user_id,document_id,kind,position,content,uncertainty_reason)
+     VALUES ($1,$2,$3,'note',0,'Original source.','Test uncertainty')`,
+    [block, users[0], id],
+  );
+  await pool.query(
+    `INSERT INTO threadline_block_evidence(id,user_id,block_id,document_id,source_revision_id,quote,start_offset,end_offset)
+     VALUES ($1,$2,$3,$4,$5,'Original source.',2,18)`,
+    [randomUUID(), users[0], block, id, initial.source.id],
+  );
+  const blocks = path + "/blocks";
+  const blockPath = blocks + "/" + block;
+  const [before] = (
+    await (await request(blocks + "?kind=note&state=needs_review")).json()
+  ).blocks;
+  assert.equal(before.id, block);
+  assert.equal(before.edited_at, null);
+  assert.equal((await request(blocks, "GET", undefined, 1)).status, 404);
+  assert.equal(
+    (
+      await request(
+        blockPath,
+        "PATCH",
+        { version: 1, review_state: "confirmed" },
+        1,
+      )
+    ).status,
+    404,
+  );
+  assert.equal(
+    (await request(blockPath, "PATCH", { version: 1, evidence: [] })).status,
+    400,
+  );
+  const reviews = await Promise.all(
+    ["Confirmed text A", "Confirmed text B"].map((content) =>
+      request(blockPath, "PATCH", {
+        version: 1,
+        content,
+        review_state: "confirmed",
+      }),
+    ),
+  );
+  assert.deepEqual(reviews.map((result) => result.status).sort(), [200, 409]);
+  const [confirmed] = (
+    await (await request(blocks + "?state=confirmed")).json()
+  ).blocks;
+  assert.ok(confirmed.edited_at);
+  assert.deepEqual(confirmed.evidence, before.evidence);
+  assert.equal(
+    (
+      await request(blockPath, "PATCH", {
+        version: 2,
+        review_state: "dismissed",
+      })
+    ).status,
+    200,
+  );
+  assert.equal(
+    (
+      await request(blockPath, "PATCH", {
+        version: 3,
+        content: "Revised wording",
+      })
+    ).status,
+    200,
+  );
+  const [reopened] = (
+    await (await request(blocks + "?state=needs_review")).json()
+  ).blocks;
+  assert.equal(reopened.content, "Revised wording");
+  assert.deepEqual(reopened.evidence, before.evidence);
+  assert.equal(
+    (await (await request("/documents?review=true")).json()).documents[0].id,
+    id,
+  );
   const extractionBody = {
     source_revision_id: initial.source.id,
     idempotency_key: randomUUID(),
@@ -312,8 +443,10 @@ try {
     recordedEvents,
   );
   const persisted = await (await request(`/documents/${id}`)).json();
-  assert.equal(persisted.version, 5);
+  assert.equal(persisted.version, 6);
   assert.equal(persisted.source.revision, 2);
+  assert.deepEqual(persisted.tags, ["planning", "team"]);
+  assert.deepEqual((await (await request(blocks)).json()).blocks, [reopened]);
   console.log(
     "PASS: document persistence/restart, idempotent capture, owner isolation, input validation, concurrent edit conflicts, archive/restore, exact immutable source history, security headers/origin",
   );

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { randomUUID } from "node:crypto";
 import { pool } from "@workspace/db";
+import review from "./review";
 
 // Mounted after Focus City's session and write-origin middleware.
 const router = Router();
@@ -19,7 +20,10 @@ const sourceValid = (v: unknown): v is string =>
   !/[\uD800-\uDFFF]/u.test(v);
 const object = (v: unknown): v is Record<string, unknown> =>
   !!v && typeof v === "object" && !Array.isArray(v);
-const latest = `SELECT d.*, row_to_json(s) AS source FROM threadline_documents d
+const tagsForDocument = `ARRAY(SELECT t.name FROM threadline_document_tags dt
+ JOIN threadline_tags t ON t.id=dt.tag_id AND t.user_id=dt.user_id
+ WHERE dt.document_id=d.id AND dt.user_id=d.user_id ORDER BY t.name)`;
+const latest = `SELECT d.*, ${tagsForDocument} AS tags, row_to_json(s) AS source FROM threadline_documents d
  JOIN LATERAL (SELECT id, revision, source_text, created_at FROM threadline_source_revisions
  WHERE document_id=d.id AND user_id=d.user_id ORDER BY revision DESC LIMIT 1) s ON true
  WHERE d.id=$1 AND d.user_id=$2`;
@@ -33,8 +37,16 @@ router.param("id", (req, res, next, id: string) => {
 });
 router.get("/", async (req, res) => {
   const archived = req.query.archived ?? "false";
+  const { q = "", collection = "", tag = "", review = "false" } = req.query;
   const offset = Number(req.query.offset ?? 0);
   if (
+    typeof q !== "string" ||
+    (q !== "" && !titleValid(q)) ||
+    typeof collection !== "string" ||
+    (collection !== "" && !uuid.test(collection)) ||
+    typeof tag !== "string" ||
+    (tag !== "" && (!titleValid(tag) || tag.length > 100)) ||
+    (review !== "false" && review !== "true") ||
     typeof archived !== "string" ||
     !["true", "false"].includes(archived) ||
     (req.query.offset !== undefined && typeof req.query.offset !== "string") ||
@@ -46,15 +58,73 @@ router.get("/", async (req, res) => {
     return;
   }
   const result = await pool.query(
-    `SELECT id,title,version,created_at,updated_at,archived_at
- FROM threadline_documents WHERE user_id=$1 AND (archived_at IS NOT NULL)=$2
- ORDER BY updated_at DESC,id LIMIT 51 OFFSET $3`,
-    [res.locals.userId, archived === "true", offset],
+    `SELECT d.id,d.title,d.version,d.created_at,d.updated_at,d.archived_at,
+      d.collection_id,c.name AS collection_name,${tagsForDocument} AS tags,
+      (SELECT count(*)::int FROM threadline_knowledge_blocks b
+       WHERE b.document_id=d.id AND b.user_id=d.user_id AND b.review_state='needs_review') AS pending_review
+    FROM threadline_documents d
+    LEFT JOIN threadline_collections c ON c.id=d.collection_id AND c.user_id=d.user_id
+    WHERE d.user_id=$1 AND (d.archived_at IS NOT NULL)=$2
+      AND ($4='' OR strpos(lower(d.title),lower($4))>0 OR strpos(lower(
+        (SELECT source_text FROM threadline_source_revisions
+         WHERE document_id=d.id AND user_id=d.user_id ORDER BY revision DESC LIMIT 1)
+      ),lower($4))>0)
+      AND ($5::uuid IS NULL OR d.collection_id=$5)
+      AND ($6='' OR $6=ANY(${tagsForDocument}))
+      AND (NOT $7::boolean OR EXISTS(SELECT 1 FROM threadline_knowledge_blocks b
+        WHERE b.document_id=d.id AND b.user_id=d.user_id))
+    ORDER BY d.updated_at DESC,d.id LIMIT 51 OFFSET $3`,
+    [
+      res.locals.userId,
+      archived === "true",
+      offset,
+      q.trim(),
+      collection || null,
+      tag,
+      review === "true",
+    ],
   );
   res.json({
     documents: result.rows.slice(0, 50),
     next_offset: result.rows.length > 50 ? offset + 50 : null,
   });
+});
+router.get("/organization", async (_req, res) => {
+  const [collections, tags] = await Promise.all([
+    pool.query(
+      "SELECT id,name FROM threadline_collections WHERE user_id=$1 ORDER BY name,id",
+      [res.locals.userId],
+    ),
+    pool.query(
+      `SELECT name FROM threadline_tags t WHERE user_id=$1
+      AND EXISTS (SELECT 1 FROM threadline_document_tags dt WHERE dt.tag_id=t.id AND dt.user_id=t.user_id)
+      ORDER BY name`,
+      [res.locals.userId],
+    ),
+  ]);
+  res.json({
+    collections: collections.rows,
+    tags: tags.rows.map((row) => row.name),
+  });
+});
+router.post("/organization", async (req, res) => {
+  const body: unknown = req.body;
+  if (
+    !object(body) ||
+    Object.keys(body).length !== 1 ||
+    !titleValid(body.name) ||
+    body.name.trim().length > 100
+  ) {
+    res
+      .status(400)
+      .json({ error: "Provide a collection name of 1–100 characters." });
+    return;
+  }
+  const result = await pool.query(
+    "INSERT INTO threadline_collections(id,user_id,name) VALUES ($1,$2,$3) RETURNING id,name",
+    [randomUUID(), res.locals.userId, body.name.trim()],
+  );
+  res.status(201).json(result.rows[0]);
 });
 router.post("/", async (req, res) => {
   const b: unknown = req.body;
@@ -172,18 +242,34 @@ router.patch("/:id", async (req, res) => {
   if (
     !object(b) ||
     Object.keys(b).some(
-      (k) => !["version", "title", "source_text", "archived"].includes(k),
+      (k) =>
+        ![
+          "version",
+          "title",
+          "source_text",
+          "archived",
+          "collection_id",
+          "tags",
+        ].includes(k),
     ) ||
     !Number.isSafeInteger(b.version) ||
     Number(b.version) < 1 ||
-    !["title", "source_text", "archived"].some((k) => k in b) ||
+    !["title", "source_text", "archived", "collection_id", "tags"].some(
+      (k) => k in b,
+    ) ||
     ("title" in b && !titleValid(b.title)) ||
     ("source_text" in b && !sourceValid(b.source_text)) ||
+    ("collection_id" in b &&
+      b.collection_id !== null &&
+      (typeof b.collection_id !== "string" || !uuid.test(b.collection_id))) ||
+    ("tags" in b &&
+      (!Array.isArray(b.tags) ||
+        b.tags.length > 20 ||
+        b.tags.some((tag) => !titleValid(tag) || tag.trim().length > 100))) ||
     ("archived" in b && typeof b.archived !== "boolean")
   ) {
     res.status(400).json({
-      error:
-        "Provide the current version and a valid title, source, or archive state.",
+      error: "Provide the current version and valid document changes.",
     });
     return;
   }
@@ -207,15 +293,47 @@ router.patch("/:id", async (req, res) => {
       });
       return;
     }
+    if (typeof b.collection_id === "string") {
+      const collection = await client.query(
+        "SELECT 1 FROM threadline_collections WHERE id=$1 AND user_id=$2",
+        [b.collection_id, res.locals.userId],
+      );
+      if (!collection.rowCount) {
+        await client.query("ROLLBACK");
+        res.status(404).json({ error: "Collection not found" });
+        return;
+      }
+    }
+    if (Array.isArray(b.tags)) {
+      const names = [...new Set(b.tags.map((tag: string) => tag.trim()))];
+      await client.query(
+        `INSERT INTO threadline_tags(id,user_id,name)
+         SELECT gen_random_uuid(),$1,name FROM unnest($2::text[]) AS names(name) ORDER BY name
+         ON CONFLICT(user_id,name) DO NOTHING`,
+        [res.locals.userId, names],
+      );
+      await client.query(
+        "DELETE FROM threadline_document_tags WHERE document_id=$1 AND user_id=$2",
+        [req.params.id, res.locals.userId],
+      );
+      await client.query(
+        `INSERT INTO threadline_document_tags(id,user_id,document_id,tag_id)
+         SELECT gen_random_uuid(),user_id,$1,id FROM threadline_tags WHERE user_id=$2 AND name=ANY($3::text[])`,
+        [req.params.id, res.locals.userId, names],
+      );
+    }
     await client.query(
       `UPDATE threadline_documents SET title=COALESCE($3,title),
    archived_at=CASE WHEN $4::boolean IS NULL THEN archived_at WHEN $4 THEN COALESCE(archived_at,now()) ELSE NULL END,
+   collection_id=CASE WHEN $5::boolean THEN $6::uuid ELSE collection_id END,
    version=version+1,updated_at=now() WHERE id=$1 AND user_id=$2`,
       [
         req.params.id,
         res.locals.userId,
         typeof b.title === "string" ? b.title.trim() : null,
         b.archived ?? null,
+        "collection_id" in b,
+        b.collection_id ?? null,
       ],
     );
     if ("source_text" in b) {
@@ -240,4 +358,5 @@ router.patch("/:id", async (req, res) => {
     client.release();
   }
 });
+router.use("/:id/blocks", review);
 export default router;

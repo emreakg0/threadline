@@ -1,11 +1,18 @@
+import { useState } from "react";
+import type { Ref } from "react";
 import { ExtractionPanel } from "./ExtractionPanel";
-import { documents } from "./documents-api";
+import { documents, type Collection } from "./documents-api";
 import type { useCapture } from "./useCapture";
 export function CaptureEditor({
   capture,
+  collections,
+  heading,
 }: {
   capture: ReturnType<typeof useCapture>;
+  collections: Collection[];
+  heading: Ref<HTMLHeadingElement>;
 }) {
+  const [tagDraft, setTagDraft] = useState({ id: "", text: "" });
   const {
     saved,
     title,
@@ -32,29 +39,42 @@ export function CaptureEditor({
     setEvidence,
     setHistory,
     setHistoryNext,
+    collection,
+    setCollection,
+    tags,
+    setTags,
   } = capture;
+  const tag = tagDraft.id === saved?.id ? tagDraft.text : "";
+  const setTag = (text: string) => setTagDraft({ id: saved?.id ?? "", text });
   return (
     <div className="tl-content">
-      <div className="tl-page-heading">
+      <header className="tl-page-heading">
         <div>
-          <div className="tl-eyebrow">MAKE ROOM FOR YOUR THOUGHTS</div>
-          <h1>
-            {saved
-              ? "Your words, kept together."
-              : "Start with what’s on your mind."}
+          <h1 ref={heading} tabIndex={-1}>
+            {saved ? "Document" : "New capture"}
           </h1>
-          <p>
-            Meeting notes, loose ideas, a plan taking shape. Keep the original.
-            Find your thread.
-          </p>
+          {!saved && (
+            <p>
+              Write a thought or paste your notes. Each saved version keeps the
+              original text.
+            </p>
+          )}
         </div>
-        <span className="tl-phase">Capture</span>
-      </div>
+        {saved && (
+          <a className="tl-text-link" href="#capture/library">
+            Back to knowledge
+          </a>
+        )}
+      </header>
       <form
         className="tl-editor"
         onSubmit={(e) => void save(e)}
         onKeyDown={(e) => {
-          if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+          if (
+            !e.nativeEvent.isComposing &&
+            (e.metaKey || e.ctrlKey) &&
+            e.key === "Enter"
+          ) {
             e.preventDefault();
             e.currentTarget.requestSubmit();
           }
@@ -62,13 +82,13 @@ export function CaptureEditor({
       >
         <div className="tl-editor-top">
           <span>
-            {saved?.archived_at
-              ? "Archived document"
-              : saved
-                ? "Saved document"
-                : "New capture"}
+            {saved?.archived_at ? "Archived document" : "Source text"}
           </span>
-          <span role="status" aria-live="polite">
+          <span
+            role="status"
+            aria-live="polite"
+            data-status={dirty ? "dirty" : saved ? "saved" : undefined}
+          >
             {busy
               ? "Working…"
               : dirty
@@ -86,10 +106,10 @@ export function CaptureEditor({
           id="capture-title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Give this thought a title"
+          placeholder="Title"
           maxLength={300}
           required
-          disabled={busy || !!saved?.archived_at}
+          readOnly={busy || !!saved?.archived_at}
         />
         <label className="tl-sr-only" htmlFor="capture-source">
           Source text
@@ -98,12 +118,10 @@ export function CaptureEditor({
           id="capture-source"
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          placeholder={
-            "Begin anywhere.\n\nPaste your notes or write freely. Every saved version stays accessible."
-          }
+          placeholder="Start writing or paste your notes…"
           maxLength={20000}
           required
-          disabled={busy || !!saved?.archived_at}
+          readOnly={busy || !!saved?.archived_at}
           aria-describedby="capture-limit"
         />
         <div className="tl-editor-bottom">
@@ -160,6 +178,9 @@ export function CaptureEditor({
               {new Date(saved.updated_at).toLocaleString()}
             </span>
             <div>
+              <a className="tl-text-link" href={"#capture/review/" + saved.id}>
+                Review blocks
+              </a>
               <button disabled={busy} onClick={() => void showHistory()}>
                 Source history
               </button>
@@ -172,16 +193,98 @@ export function CaptureEditor({
               </button>
             </div>
           </>
-        ) : (
-          <span>
-            Your source stays yours. Nothing is sent to an AI service.
-          </span>
-        )}
+        ) : null}
       </div>
+      {saved && (
+        <details key={saved.id} className="tl-document-organization">
+          <summary>
+            Collection and tags
+            {tags.length
+              ? " · " + tags.length + (tags.length === 1 ? " tag" : " tags")
+              : ""}
+          </summary>
+          <div>
+            <label>
+              Collection
+              <select
+                value={collection}
+                disabled={busy || !!saved.archived_at}
+                onChange={(event) => setCollection(event.target.value)}
+              >
+                <option value="">Unfiled</option>
+                {collection &&
+                  !collections.some((item) => item.id === collection) && (
+                    <option value={collection}>Current collection</option>
+                  )}
+                {collections.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {!!tags.length && (
+              <ul className="tl-tag-list">
+                {tags.map((name) => (
+                  <li key={name}>
+                    <button
+                      aria-label={"Remove tag " + name}
+                      disabled={busy || !!saved.archived_at}
+                      onClick={() =>
+                        setTags(tags.filter((entry) => entry !== name))
+                      }
+                    >
+                      {name} ×
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                const name = tag.trim();
+                if (
+                  !busy &&
+                  !saved.archived_at &&
+                  name &&
+                  !tags.includes(name) &&
+                  tags.length < 20
+                ) {
+                  setTags([...tags, name].sort());
+                  setTag("");
+                }
+              }}
+            >
+              <input
+                key={saved.id}
+                aria-label="New tag"
+                value={tag}
+                maxLength={100}
+                onChange={(event) => setTag(event.target.value)}
+                placeholder="Tag name"
+                disabled={busy || !!saved.archived_at || tags.length >= 20}
+              />
+              <button
+                disabled={
+                  busy ||
+                  !!saved.archived_at ||
+                  !tag.trim() ||
+                  tags.includes(tag.trim()) ||
+                  tags.length >= 20
+                }
+              >
+                Add tag
+              </button>
+            </form>
+            <small>Save changes to apply collection and tag edits.</small>
+          </div>
+        </details>
+      )}
       {historyOpen && (
         <section className="tl-history" aria-label="Source history">
           <div className="tl-history-header">
-            <h2>Originals, always within reach.</h2>
+            <h2>Source history</h2>
             <button onClick={() => setHistoryOpen(false)} disabled={busy}>
               Close history
             </button>
@@ -240,11 +343,14 @@ export function CaptureEditor({
           )}
         </section>
       )}
-      {saved && <ExtractionPanel key={saved.source.id} sourceId={saved.source.id} disabled={busy || dirty || !!saved.archived_at} />}
-      <div className="tl-bottom-note">
-        <span aria-hidden="true">⌁</span>
-        <span>From scattered thoughts to something worth keeping.</span>
-      </div>
+      {saved && (
+        <ExtractionPanel
+          key={saved.source.id}
+          sourceId={saved.source.id}
+          documentId={saved.id}
+          disabled={busy || dirty || !!saved.archived_at}
+        />
+      )}
     </div>
   );
 }

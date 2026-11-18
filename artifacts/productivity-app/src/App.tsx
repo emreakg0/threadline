@@ -129,8 +129,13 @@ export default function App() {
     () => (project ? projects.filter((p) => p.id === project) : projects),
     [projects, project],
   );
-  if (auth?.user && workspace === "capture") return <CaptureWorkspace name={auth.user.name} onExit={() => { setWorkspace("focus"); history.replaceState(null,"",location.pathname+location.search); }} />;
-  return (
+  useEffect(() => {
+    const change = () => setWorkspace(location.hash.startsWith("#capture") ? "capture" : "focus");
+    window.addEventListener("hashchange", change);
+    return () => window.removeEventListener("hashchange", change);
+  }, []);
+  const inThreadline = !!auth?.user && workspace === "capture";
+  const focusWorkspace = !inThreadline && (
     <div className="shell">
       <aside aria-label="Workspace navigation">
         <a className="brand" href="/">
@@ -139,7 +144,7 @@ export default function App() {
             FOCUS CITY<small>YOUR PERSONAL WORKSPACE</small>
           </span>
         </a>
-        {auth?.user && <button className="threadline-entry" onClick={() => {setWorkspace("capture");history.replaceState(null,"","#capture");}}>⌁ Threadline Capture ↗</button>}
+        {auth?.user && <button className="threadline-entry" onClick={() => { location.hash = "#capture"; }}>Threadline ↗</button>}
         <div className="side-label">YOUR WORKSPACE</div>
         <button
           aria-current={!project ? "page" : undefined}
@@ -567,5 +572,17 @@ export default function App() {
         </footer>
       </main>
     </div>
+  );
+  return (
+    <>
+      {auth?.user && (
+        <CaptureWorkspace
+          name={auth.user.name}
+          active={inThreadline}
+          onExit={() => { location.hash = "#city"; }}
+        />
+      )}
+      {focusWorkspace}
+    </>
   );
 }

@@ -3,23 +3,31 @@ import { ApiError } from "./api";
 import {
   documents,
   type CaptureDocument,
-  type DocumentSummary,
   type RevisionSummary,
   type SourceRevision,
 } from "./documents-api";
 
-export function useCapture() {
+type Draft = {
+  saved: CaptureDocument | null;
+  captureId: string;
+  title: string;
+  body: string;
+  collection: string;
+  tags: string[];
+  conflict: CaptureDocument | null;
+};
+
+export function useCapture(unsavedReview: boolean) {
   const [saved, setSaved] = useState<CaptureDocument | null>(null);
   const [captureId, setCaptureId] = useState<string>(() => crypto.randomUUID());
   const [title, setTitle] = useState(""),
     [body, setBody] = useState("");
-  const [items, setItems] = useState<DocumentSummary[]>([]),
-    [archived, setArchived] = useState(false);
-  const [next, setNext] = useState<number | null>(null),
-    [loading, setLoading] = useState(true);
+  const [collection, setCollection] = useState(""),
+    [tags, setTags] = useState<string[]>([]);
+  const [revision, setRevision] = useState(0);
   const [busy, setBusy] = useState(false),
-    [error, setError] = useState(""),
-    [listError, setListError] = useState("");
+    [error, setError] = useState("");
+  const drafts = useRef(new Map<string, Draft>());
   const [notice, setNotice] = useState(""),
     [conflict, setConflict] = useState<CaptureDocument | null>(null);
   const [history, setHistory] = useState<RevisionSummary[]>([]),
@@ -28,8 +36,15 @@ export function useCapture() {
     [historyOpen, setHistoryOpen] = useState(false);
   const titleInput = useRef<HTMLInputElement>(null);
   const operation = useRef(false);
+  const tagsChanged =
+    !!saved && JSON.stringify(tags) !== JSON.stringify(saved.tags);
+  const collectionChanged =
+    !!saved && collection !== (saved.collection_id ?? "");
   const dirty = saved
-    ? title !== saved.title || body !== saved.source.source_text
+    ? title !== saved.title ||
+      body !== saved.source.source_text ||
+      collectionChanged ||
+      tagsChanged
     : !!(title || body);
   const valid =
     title.trim().length > 0 &&
@@ -38,58 +53,59 @@ export function useCapture() {
     body.length <= 20000;
   useEffect(() => {
     const prevent = (event: BeforeUnloadEvent) => {
-      if (dirty) event.preventDefault();
+      if (dirty || drafts.current.size || unsavedReview) event.preventDefault();
     };
     window.addEventListener("beforeunload", prevent);
     return () => window.removeEventListener("beforeunload", prevent);
-  }, [dirty]);
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setListError("");
-    documents
-      .list(archived)
-      .then((page) => {
-        if (!cancelled) {
-          setItems(page.items);
-          setNext(page.next);
-        }
-      })
-      .catch((e) => {
-        if (!cancelled) setListError(e.message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [archived]);
+  }, [dirty, unsavedReview]);
   function allowLeave() {
     return (
-      !dirty || window.confirm("Discard the unsaved changes in this draft?")
+      !(dirty || drafts.current.size || unsavedReview) ||
+      window.confirm("Discard your unsaved workspace drafts?")
     );
+  }
+  function resetPanels() {
+    setConflict(null);
+    setHistory([]);
+    setHistoryOpen(false);
+    setEvidence(null);
+    setError("");
+    setNotice("");
+  }
+  function stash() {
+    if (dirty)
+      drafts.current.set(saved?.id ?? "new", {
+        saved,
+        captureId,
+        title,
+        body,
+        collection,
+        tags,
+        conflict,
+      });
+  }
+  function restore(key: string) {
+    const draft = drafts.current.get(key);
+    if (!draft) return false;
+    drafts.current.delete(key);
+    resetPanels();
+    setSaved(draft.saved);
+    setCaptureId(draft.captureId);
+    setTitle(draft.title);
+    setBody(draft.body);
+    setCollection(draft.collection);
+    setTags(draft.tags);
+    setConflict(draft.conflict);
+    return true;
   }
   function adopt(doc: CaptureDocument) {
     setSaved(doc);
     setCaptureId(doc.id);
     setTitle(doc.title);
     setBody(doc.source.source_text);
-    setConflict(null);
-    setHistory([]);
-    setHistoryOpen(false);
-    setEvidence(null);
-    setError("");
-  }
-  async function refreshList() {
-    try {
-      const page = await documents.list(archived);
-      setItems(page.items);
-      setNext(page.next);
-      setListError("");
-    } catch (e) {
-      setListError((e as Error).message);
-    }
+    setCollection(doc.collection_id ?? "");
+    setTags(doc.tags);
+    resetPanels();
   }
   async function perform(action: () => Promise<void>) {
     if (operation.current) return;
@@ -115,17 +131,19 @@ export function useCapture() {
           ? await documents.update(saved.id, saved.version, {
               title,
               source_text: body,
+              collection_id: collectionChanged ? collection || null : undefined,
+              tags: tagsChanged ? tags : undefined,
             })
           : await documents.create(captureId, title, body);
         adopt(doc);
         setNotice("Saved to your library");
-        await refreshList();
+        setRevision((value) => value + 1);
       } catch (e) {
         if (e instanceof ApiError && e.status === 409) {
           setError(e.message);
           try {
             setConflict(await documents.get(saved?.id ?? captureId));
-            await refreshList();
+            setRevision((value) => value + 1);
           } catch {
             setError(
               "Your draft is intact. The saved version could not be loaded; retry when connected.",
@@ -136,22 +154,30 @@ export function useCapture() {
     });
   }
   function fresh() {
-    if (busy || !allowLeave()) return;
+    if (busy || operation.current || !saved) return;
+    stash();
+    if (restore("new")) return;
+    resetPanels();
     setSaved(null);
     setCaptureId(crypto.randomUUID());
     setTitle("");
     setBody("");
-    setConflict(null);
-    setHistory([]);
-    setHistoryOpen(false);
-    setEvidence(null);
-    setError("");
-    setNotice("");
-    titleInput.current?.focus();
+    setCollection("");
+    setTags([]);
   }
   async function open(id: string) {
-    if (busy || !allowLeave()) return;
-    await perform(async () => adopt(await documents.get(id)));
+    if (busy || operation.current) return;
+    if (saved?.id === id) return;
+    if (drafts.current.has(id)) {
+      stash();
+      restore(id);
+      return;
+    }
+    await perform(async () => {
+      const doc = await documents.get(id);
+      stash();
+      adopt(doc);
+    });
   }
   async function archive() {
     if (!saved || dirty) return;
@@ -161,7 +187,7 @@ export function useCapture() {
       });
       adopt(doc);
       setNotice(doc.archived_at ? "Document archived" : "Document restored");
-      await refreshList();
+      setRevision((value) => value + 1);
     });
   }
   async function showHistory() {
@@ -200,17 +226,14 @@ export function useCapture() {
     setEvidence,
     setHistory,
     setHistoryNext,
-    items,
-    archived,
-    setArchived,
-    next,
-    loading,
-    listError,
+    collection,
+    setCollection,
+    tags,
+    setTags,
+    revision,
     allowLeave,
     fresh,
     open,
-    refreshList,
-    setItems,
-    setNext,
+    hasNewDraft: drafts.current.has("new"),
   };
 }
