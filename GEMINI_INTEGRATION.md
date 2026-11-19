@@ -235,7 +235,7 @@ model, quotas, and retry policies.
 - The app reserves serialized UTF-8 request bytes, the full output ceiling,
   and additional framing headroom. It accepts at most 10 reservations and
   180,000 estimated tokens in a rolling minute, at least six seconds apart,
-  with one active dispatch. It admits up to 240 project and 20 owner attempts
+  with one active dispatch. It admits up to 240 project and 100 owner attempts
   per Pacific day, counting queued work at admission, and limits waiting
   requests to 40 project-wide and four per owner. A 429 writes a shared
   cooldown until the later of the next Pacific midnight and a valid
@@ -321,11 +321,11 @@ The third authorized pilot used one standard v1beta generateContent request with
 
 Migration 0008 creates an empty singleton grant table and adds nullable consent and dispatch fields to runs. Existing runs remain readable. The normal provider gates are still closed. A database grant alone cannot open inference. There is no browser or API endpoint for issuing, extending or revoking grants.
 
-**Separate owner decision.** Before any activation, record the exact verified Google OAuth subject (`focus_users.id`), start and expiry instants, absolute request ceiling, and renewed confirmation of the unbilled `threadline-gemini` project and its verified key. Suggested initial approval is three requests total in 24 hours. The database admits an explicit ceiling from 1 to 20 and a window up to seven days. A future activation also requires the server-side Free Tier approval pinned to that project, key fingerprint, model and expiry. Do not copy a key or its fingerprint into repository documentation.
+**Separate owner decision.** Before any activation, record the exact verified Google OAuth subject (`focus_users.id`), start and expiry instants, absolute request ceiling, and verification of the unbilled `threadline-gemini` project and its key. The database admits an explicit ceiling from 1 to 100 and a window up to seven days. Activation also requires the server-side Free Tier approval pinned to that project, key fingerprint, model and expiry. Do not copy a key or its fingerprint into repository documentation.
 
-**Admission.** The authenticated server derives the account from its session. It requires affirmative consent for this immutable source revision, then associates a queued run with the active grant. The provider and mode are chosen by the server. Live model and endpoint remain fixed. The worker can spend a grant only for its leased run and pinned revision. PostgreSQL commits the grant debit and run dispatch timestamp together before any outbound request. Failures and uncertain outcomes cannot refund or repeat an admitted dispatch. Project and per-user daily quotas (240 and 20), the rolling token/request limits and provider cooldown still apply; the grant's total ceiling can be tighter than all of them.
+**Admission.** The authenticated server derives the account from its session. It requires affirmative consent for this immutable source revision, then associates a queued run with the active grant. The provider and mode are chosen by the server. Live model and endpoint remain fixed. The worker can spend a grant only for its leased run and pinned revision. PostgreSQL commits the grant debit and run dispatch timestamp together before any outbound request. Failures and uncertain outcomes cannot refund or repeat an admitted dispatch. Project and per-user daily quotas (240 and 100), the rolling token/request limits and provider cooldown still apply. The grant's total ceiling can be tighter than all of them.
 
-**Administrative stop.** A trusted database administrator can commit `DELETE FROM threadline_beta_grant` to revoke the current window. Every subsequent dispatch checks the database, including work already queued. Revocation cannot recall a submission already authorized for transport. A new approval gets a fresh grant ID; queued work from an old grant cannot spend a replacement. Keep both provider gates closed after the window. The current milestone grants no permission to provision or activate anything.
+**Administrative stop.** A trusted database administrator can commit `DELETE FROM threadline_beta_grant` to revoke the current window. Every subsequent dispatch checks the database, including work already queued. Revocation cannot recall a submission already authorized for transport. A replacement grant gets a fresh grant ID, so work queued against a revoked grant cannot spend it. An explicitly authorized in-place renewal preserves the grant ID, owner and used count and requires an empty live queue. Both gates close automatically at expiry.
 
 **Review boundary.** Exact unique excerpts open beside the proposal during review. An uncertainty note is a model interpretation. Its absence does not certify a definite commitment. Compare the quotation, edit or dismiss the proposal, resolve the date and choose priority before approving. Use manual planning for sensitive information.
 
@@ -372,3 +372,12 @@ It can also scan available retained logs without echoing matched values.
 The default full audit still rejects the historical approval/fingerprint record
 in `.replit`; `--current-only` validates the cleaned index/worktree only and must
 not be represented as a clean-history result. No history rewrite is authorized.
+
+## Development owner budget renewal
+
+Migration 0009 expanded the grant ceiling. The owner authorized 100 total
+requests for a new 24-hour development window. The existing grant and three
+prior dispatches were preserved. The matching private Free Tier authorization
+expires one minute before the database grant. This renewal authorizes only
+owner-initiated submissions with consent. Setup and verification sent zero
+provider requests.

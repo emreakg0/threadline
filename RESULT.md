@@ -1,4 +1,28 @@
-# Threadline security cleanup — Private beta authorization
+# Threadline owner beta budget renewal
+
+- Applied forward-only migration 0009 to development and expanded the existing
+  owner grant to **100 total Gemini 3.5 Flash-Lite requests**. The same owner and
+  grant retained all three dispatch records and the used count. At verification,
+  **3 were used and 97 remained**.
+- The 24-hour database window ends **2026-11-20 23:38:35.931 UTC**. The private
+  provider authorization lasts 23 hours and 59 minutes, so live eligibility ends
+  one minute earlier. Verified the existing owner-confirmed project and local
+  model/key binding. Project billing verification relies on the owner's recorded
+  confirmation. The renewed authorization is confined to the approved 0600 file.
+- The owner daily quota is 100 per Pacific day. Project limits are 240/day,
+  10 requests/minute and 180,000 tokens/minute. Owner-only admission, explicit
+  consent, atomic accounting and the production block were verified.
+- Migration upgrade and repeat-run tests, API authorization, quota/concurrency,
+  PostgreSQL integration, workspace typecheck, frontend and security tests,
+  both builds, secret-audit regressions and dependency audit passed. Setup and
+  verification sent zero Gemini requests.
+- The full secret audit flags pre-existing approval metadata outside the
+  history reachable from `main`. Current and staged files and the reachable
+  `main` history passed review for the private GitHub push.
+- Next unfinished task is owner-initiated testing and review of the saved
+  evidence during the renewed window. Action Thread redesign remains deferred.
+
+## Earlier security cleanup — Private beta authorization
 
 - Removed both beta authorization values from tracked `.replit`. Preserved the
   exact existing approval in an owner-only, Git-ignored and deployment-excluded

@@ -385,3 +385,22 @@ logs. The default audit still rejects the historical approval/fingerprint in
 `.replit`; no rewriting or allowlisting was performed. Current files are clean.
 Next unfinished task: restore GitHub access, verify the private origin and
 review the historical audit finding before completing the remote backup.
+
+## 2026-11-19 — Development owner beta budget renewal
+
+Migration 0009 is applied in development. The existing owner grant now has a
+100-request ceiling and a new 24-hour window ending 2026-11-20 23:38:35.931 UTC.
+It retained the owner binding and three used dispatches, leaving 97 at
+verification. The renewed Free Tier authorization in the approved 0600
+runtime file is valid for 23 hours and 59 minutes. The project uses the
+owner's previously verified Free Tier status and the locally verified key/model
+binding. Setup and verification submitted zero Gemini requests.
+
+Migration replay, API authorization/quota/concurrency, PostgreSQL integration,
+typecheck, frontend/security, both builds and package audit passed. GitHub
+privacy verification is available again. The pre-existing audit finding is
+outside the history reachable from `main`; current/staged files and reachable
+`main` history were checked for the private push. See RESULT.md.
+
+Next unfinished task is owner-initiated testing and review of persisted
+evidence within the renewed window. Action Thread redesign remains deferred.

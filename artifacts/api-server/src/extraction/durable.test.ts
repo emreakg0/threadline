@@ -318,9 +318,15 @@ try {
     projectDaily,
     userDaily,
     userQueue,
+    requestsPerMinute,
+    tokensPerMinute,
     nextPacificMidnight,
     pacificMidnight,
   } = await import("./quota");
+  assert.deepEqual(
+    { projectDaily, userDaily, requestsPerMinute, tokensPerMinute },
+    { projectDaily: 240, userDaily: 100, requestsPerMinute: 10, tokensPerMinute: 180_000 },
+  );
   const first = await fixture();
   const second = await fixture();
   const { activeBetaGrant, consumeBetaDispatch } = await import("./beta");

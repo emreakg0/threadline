@@ -463,3 +463,20 @@ Added migration 0008 and server-side checks tying consent, the authenticated own
   security tests, both builds and package audit passed.
 - GitHub privacy lookup reported no accessible GitHub connection. Remote backup
   remains blocked pending restored access and review of the historical finding.
+
+## 2026-11-19 — Expand owner testing budget
+
+- Raised the owner daily ceiling in `extraction/quota.ts` to 100 and added
+  forward-only migration 0009 to expand the database grant ceiling. Kept the
+  project, rolling, queue and cooldown limits and consent/debit path in place.
+- Extended the database upgrade and durable worker tests to cover an existing
+  grant's preserved usage, the new ceiling and the exact rate-limit constants.
+  The migration runner applied 0009 in development after isolated checks.
+- Renewed the same grant and owner for 24 hours after confirming an empty
+  live queue and three recorded dispatches. The 0600 private authorization
+  was renewed for 23 hours and 59 minutes using the existing owner-confirmed
+  Free Tier project, model and matching server key. Zero Gemini calls.
+- Authorization, API/PostgreSQL integration and worker quota/concurrency,
+  migration re-run, typecheck, frontend and security tests, both builds and
+  package audit passed. Full secret audit still flags earlier approval metadata
+  outside `main` history. The private origin and pushable history were verified.

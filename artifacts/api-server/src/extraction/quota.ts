@@ -1,7 +1,7 @@
 import type { Client } from "./lifecycle";
 
 export const projectDaily = 240;
-export const userDaily = 20;
+export const userDaily = 100;
 export const projectQueue = 40;
 export const userQueue = 4;
 export const minimumSpacingSeconds = 6;
