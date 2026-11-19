@@ -1,6 +1,6 @@
 .threadline .execution-workspace {
-  max-width: 1500px;
-  padding: 32px;
+  max-width: 1140px;
+  padding: clamp(24px, 4vw, 48px);
 }
 .execution-workspace > p {
   margin: 12px 0;

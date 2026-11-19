@@ -1,6 +1,6 @@
 # Focus City project status
 
-Last inspection: 2026-11-18 (UTC). See the Phase 4 section below for the current verification and next task.
+Last inspection: 2026-11-19 (UTC). See the Phase 4.1 section below for current verification and the next task.
 
 ## Version control and backup
 
@@ -241,3 +241,19 @@ full verification record and limitations.
 Exact next unfinished task: owner review of Phase 4 to decide whether
 Threadline should become the authenticated default. Keep Gemini disabled and
 stop at Phase 4.
+
+## 2026-11-19 — Threadline Phase 4.1 refinement
+
+Refined Capture, palette, Knowledge, Collections, Review, and the shared shell.
+The last browse view retains its selection and filters when opening a document.
+Review separates edited text and original evidence and keeps conflict recovery
+beside edits. The frontend uses the existing data and replay contracts.
+
+Workspace typecheck, frontend/API builds, app/security tests, isolated API
+suites, package audit, and the expanded Chromium harness passed. Baseline and
+final captures were inspected at desktop, tablet, and mobile widths. Narrow
+touch navigation, focus, and reduced motion passed. RESULT.md records
+limitations and the visual evidence. Live Gemini is disabled.
+
+The next unfinished task is owner design acceptance of Phase 4.1 and a decision
+on the authenticated default entry. Stop at Phase 4.1.

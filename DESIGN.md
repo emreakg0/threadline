@@ -88,3 +88,24 @@ native dialog use 220–240ms entrances, with a brief stagger on loaded blocks.
 Escape returns palette focus to the previous control. Focus follows document
 selection. Reduced motion removes transitions, increased contrast strengthens
 surface boundaries and reduced transparency makes the palette opaque.
+
+## Threadline Phase 4.1
+
+Capture treats the title and source as a single reading surface. The native
+title field wraps, and the source uses a bounded reading measure with vertical
+resize. A sticky save bar keeps the write action separate from the text. Saved
+documents place the next review action above document details in a separate
+column, which follows the manuscript on mobile.
+
+Knowledge uses compact rows with distinct collection, tag, date, and review
+metadata. Collections adds a folder navigator and a scoped pane using the same
+rows and filters. Review separates current text and its provenance from an
+expandable original quotation. Amber and mint carry written review statuses.
+When no blocks exist, the view explains why, shows the review workflow, and
+links to recorded execution.
+
+A shared set of line icons connects navigation, document rows, review, and the
+grouped command palette. The palette uses lighter backdrop blur and has one
+scrolling results area with a fixed search field and footer. The shell uses a
+compact tablet and phone header, with an icon-only capture button at the
+narrowest widths. Motion remains short and respects reduced-motion preferences.

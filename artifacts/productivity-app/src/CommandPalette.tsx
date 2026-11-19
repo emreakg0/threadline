@@ -1,9 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { documents, type LibraryDocument } from "./documents-api";
 
+import { WorkspaceIcon, type WorkspaceIconName } from "./WorkspaceIcon";
+
+const groups = ["Quick actions", "Navigation", "Documents"] as const;
+
 type Command = {
   id: string;
   label: string;
+  group: (typeof groups)[number];
+  icon: WorkspaceIconName;
   detail?: string;
   action: () => void;
 };
@@ -24,18 +30,28 @@ export function CommandPalette({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
-  const q = query.trim().toLowerCase();
-  const options = [
-    ...commands.filter((command) => command.label.toLowerCase().includes(q)),
-    ...found.map((item) => ({
+  const q = query.trim();
+  const matches: Command[] = [
+    ...commands.filter((command) =>
+      command.label.toLowerCase().includes(q.toLowerCase()),
+    ),
+    ...found.map((item): Command => ({
       id: item.id,
+      group: "Documents",
+      icon: "capture",
       label: item.title,
-      detail: item.archived_at
-        ? "Archived document"
-        : (item.collection_name ?? "Document"),
+      detail:
+        [item.archived_at ? "Archived" : null, item.collection_name]
+          .filter(Boolean)
+          .join(" · ") || undefined,
       action: () => onOpen(item),
     })),
   ];
+  const sections = groups.map((group) => ({
+    group,
+    options: matches.filter((option) => option.group === group),
+  }));
+  const options = sections.flatMap((section) => section.options);
   const selected = Math.min(index, options.length - 1);
 
   function show() {
@@ -49,6 +65,7 @@ export function CommandPalette({
     setIndex(0);
     setFound([]);
     setError("");
+    setPending(true);
     setOpen(true);
     node.showModal();
   }
@@ -121,10 +138,7 @@ export function CommandPalette({
         onClick={show}
         aria-haspopup="dialog"
       >
-        <svg viewBox="0 0 20 20" aria-hidden="true">
-          <circle cx="8.5" cy="8.5" r="4.5" />
-          <path d="m12 12 4 4" />
-        </svg>
+        <WorkspaceIcon name="search" />
         <span>Search or jump to…</span>
         <kbd>⌘ / Ctrl K</kbd>
       </button>
@@ -147,64 +161,118 @@ export function CommandPalette({
         }}
       >
         <div className="tl-command-inner">
-          <input
-            type="search"
-            role="combobox"
-            aria-label="Search documents and commands"
-            aria-expanded={open}
-            aria-controls="tl-command-results"
-            aria-autocomplete="list"
-            aria-activedescendant={
-              selected >= 0 ? "tl-command-" + selected : undefined
-            }
-            autoFocus
-            value={query}
-            maxLength={300}
-            placeholder="Search documents or type a command…"
-            onChange={(event) => {
-              setQuery(event.target.value);
-              setFound([]);
-              setIndex(0);
-              setError("");
-            }}
-            onKeyDown={(event) => {
-              if (event.nativeEvent.isComposing) return;
-              if (event.key === "Enter" && selected >= 0) {
-                event.preventDefault();
-                run(options[selected]);
-              } else if (
-                options.length &&
-                (event.key === "ArrowDown" || event.key === "ArrowUp")
-              ) {
-                event.preventDefault();
-                setIndex(
-                  (selected +
-                    options.length +
-                    (event.key === "ArrowDown" ? 1 : -1)) %
-                    options.length,
-                );
+          <div className="tl-command-query">
+            <WorkspaceIcon name="search" />
+            <input
+              type="search"
+              role="combobox"
+              aria-label="Search documents and commands"
+              aria-expanded={open}
+              aria-controls="tl-command-results"
+              aria-autocomplete="list"
+              aria-activedescendant={
+                selected >= 0 ? "tl-command-" + selected : undefined
               }
-            }}
-          />
-          <div id="tl-command-results" role="listbox" aria-label="Results">
-            {options.map((option, i) => (
-              <div
-                id={"tl-command-" + i}
-                role="option"
-                aria-selected={i === selected}
-                key={option.id}
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => run(option)}
-              >
-                <span>{option.label}</span>
-                {option.detail && <small>{option.detail}</small>}
-              </div>
-            ))}
+              autoFocus
+              value={query}
+              maxLength={300}
+              placeholder="Search notes or commands…"
+              onChange={(event) => {
+                setQuery(event.target.value);
+                if (event.target.value.trim() !== q) {
+                  setFound([]);
+                  setPending(true);
+                  setIndex(0);
+                  setError("");
+                }
+              }}
+              onKeyDown={(event) => {
+                if (event.nativeEvent.isComposing) return;
+                if (event.key === "Enter" && selected >= 0) {
+                  event.preventDefault();
+                  run(options[selected]);
+                } else if (
+                  options.length &&
+                  (event.key === "ArrowDown" || event.key === "ArrowUp")
+                ) {
+                  event.preventDefault();
+                  setIndex(
+                    (selected +
+                      options.length +
+                      (event.key === "ArrowDown" ? 1 : -1)) %
+                      options.length,
+                  );
+                }
+              }}
+            />
           </div>
-          {pending && <p role="status">Searching documents…</p>}
-          {!pending && !error && !options.length && (
-            <p role="status">No matching commands or documents.</p>
-          )}
+          <div className="tl-command-scroll">
+            <div
+              id="tl-command-results"
+              role="listbox"
+              aria-label="Results"
+              aria-busy={pending}
+            >
+              {sections.map(
+                ({ group, options: entries }, groupIndex) =>
+                  entries.length > 0 && (
+                    <div
+                      key={group}
+                      role="group"
+                      aria-labelledby={"tl-command-group-" + groupIndex}
+                    >
+                      <div
+                        className="tl-command-group"
+                        id={"tl-command-group-" + groupIndex}
+                      >
+                        {group}
+                      </div>
+                      {entries.map((option) => {
+                        const i = options.indexOf(option);
+                        return (
+                          <div
+                            id={"tl-command-" + i}
+                            role="option"
+                            aria-selected={i === selected}
+                            key={option.id}
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => run(option)}
+                          >
+                            <span className="tl-command-glyph">
+                              <WorkspaceIcon name={option.icon} />
+                            </span>
+                            <span className="tl-command-name">
+                              {option.label}
+                            </span>
+                            {option.detail && <small>{option.detail}</small>}
+                            <span
+                              aria-hidden="true"
+                              className="tl-command-enter"
+                            >
+                              ↵
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ),
+              )}
+            </div>
+            {pending && (
+              <p className="tl-command-status" role="status">
+                Finding documents…
+              </p>
+            )}
+            {!pending && !error && !options.length && (
+              <div className="tl-command-empty" role="status">
+                <WorkspaceIcon name="search" />
+                <p>
+                  <strong>No matching commands or documents</strong>
+                </p>
+                <p>Try a shorter phrase from the title or source.</p>
+              </div>
+            )}
+          </div>
           {error && (
             <p role="alert">
               {error}{" "}

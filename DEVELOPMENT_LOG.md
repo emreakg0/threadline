@@ -292,3 +292,24 @@ Git 133c0f1 created the initial repository; 3f10439 initialized the productivity
   exceptions in the harness. The separate City browser checks passed at 0, 1,
   5 and 20 tasks. City rendering code, worker, provider gate and
   legacy data contracts stay intact.
+
+## 2026-11-19 — Threadline Phase 4.1
+
+- Reworked CaptureEditor, ExtractionPanel, and the scoped workspace styles
+  around a plain-text manuscript and document tools. Kept the existing save
+  and extraction handlers. Added long title wrapping and source-history
+  focus restoration.
+- CaptureWorkspace and Library reuse one list for Knowledge, Collections,
+  and the Review queue. Added a collection navigator and retained the last
+  browse view when opening a document. Fixed the collection creation input
+  race by preserving the submitted field while the request is pending.
+- CommandPalette and ReviewPanel now group real results and separate original
+  evidence from block text, with shared icons from WorkspaceIcon. Existing
+  inline glyph paths are consolidated there because the shell, palette, and
+  list rows now need the same icons. Review adds block jump and local recovery
+  without changing block writes. execution.css aligns the replay view with
+  the workspace width.
+- Extended the capture/replay harness with representative long notes, multiple
+  tags and collections, source evidence, and before/after visual checks. Passed
+  browser regressions, typecheck, builds, frontend tests, API suites, Vite
+  security tests, and package audit. The browser used isolated fixture schemas.

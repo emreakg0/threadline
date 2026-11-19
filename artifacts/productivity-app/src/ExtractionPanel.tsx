@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, ApiError } from "./api";
+import { WorkspaceIcon } from "./WorkspaceIcon";
 export function ExtractionPanel({
   sourceId,
   documentId,
@@ -92,48 +93,62 @@ export function ExtractionPanel({
     }
   }
   return (
-    <section className="tl-history" aria-label="AI organization">
-      <h2>Extraction</h2>
-      <a href={runId ? "#capture/run/" + runId : "#capture/runs"}>
-        How It Works · inspect recorded execution ↗
+    <section className="tl-next-action" aria-label="Knowledge actions">
+      <h2>Next step</h2>
+      <a className="tl-review-link" href={"#capture/review/" + documentId}>
+        <WorkspaceIcon name="review" />
+        <span>Review blocks{count !== null ? " (" + count + ")" : ""}</span>
+        <WorkspaceIcon name="arrow" />
       </a>
-      <p>
-        Gemini Free Tier may use inputs and outputs to improve Google products.
-        Avoid sensitive notes. Live processing remains disabled; queued state
-        does not mean a provider call occurred.
-      </p>
-      <button
-        className="tl-primary"
-        disabled={disabled || pending}
-        onClick={() => void organize()}
+      <p className="tl-live-state">Live Gemini is disabled</p>
+      <div className="tl-run-tools">
+        <button
+          className="tl-organize"
+          disabled={disabled || pending}
+          onClick={() => void organize()}
+        >
+          {pending ? "Run pending…" : "Request extraction"}
+        </button>
+        {runId && (
+          <>
+            <button onClick={() => setVersion((v) => v + 1)}>
+              Refresh status
+            </button>
+            <button
+              disabled={!pending}
+              onClick={() =>
+                void api("/extractions/" + runId + "/cancel", "POST", {})
+                  .then(() => setVersion((v) => v + 1))
+                  .catch(() =>
+                    setMessage("Cancellation not confirmed. Refresh status."),
+                  )
+              }
+            >
+              Cancel run
+            </button>
+          </>
+        )}
+      </div>
+      {message && (
+        <p className="tl-run-message" role="status">
+          {message}
+        </p>
+      )}
+      <details className="tl-processing">
+        <summary>Processing details</summary>
+        <p>
+          Gemini Free Tier may use inputs and outputs to improve Google
+          products. Avoid sensitive notes. A queued request does not mean a
+          provider call occurred.
+        </p>
+      </details>
+      <a
+        className="tl-run-link"
+        href={runId ? "#capture/run/" + runId : "#capture/runs"}
       >
-        {pending ? "Run pending…" : "Organize with AI"}
-      </button>
-      {runId && (
-        <>
-          <button onClick={() => setVersion((v) => v + 1)}>
-            Refresh status
-          </button>
-          <button
-            disabled={!pending}
-            onClick={() =>
-              void api("/extractions/" + runId + "/cancel", "POST", {})
-                .then(() => setVersion((v) => v + 1))
-                .catch(() =>
-                  setMessage("Cancellation not confirmed. Refresh status."),
-                )
-            }
-          >
-            Cancel run
-          </button>
-        </>
-      )}
-      <p role="status">{message}</p>
-      {count !== null && (
-        <a className="tl-text-link" href={"#capture/review/" + documentId}>
-          Review extracted blocks ({count})
-        </a>
-      )}
+        <WorkspaceIcon name="trace" />{" "}
+        {runId ? "Inspect recorded run" : "How It Works"}
+      </a>
     </section>
   );
 }

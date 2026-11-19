@@ -9,6 +9,8 @@ import {
   type ReviewState,
 } from "./documents-api";
 
+import { WorkspaceIcon } from "./WorkspaceIcon";
+
 const labels: Record<ReviewState, string> = {
   needs_review: "Needs review",
   confirmed: "Confirmed by you",
@@ -174,6 +176,14 @@ export function ReviewPanel({
   }
   const current = editing && blocks.find((block) => block.id === editing.id);
   const newer = current && editing && current.version !== editing.version;
+  const recovery = error && (
+    <div className="tl-error" role="alert">
+      {error}{" "}
+      <button type="button" disabled={busy} onClick={() => void reload()}>
+        Reload blocks
+      </button>
+    </div>
+  );
   const editor = editing && (
     <form
       className="tl-block tl-block-edit"
@@ -203,6 +213,7 @@ export function ReviewPanel({
         onChange={(event) => setDraft(event.target.value)}
       />
       <small>Source evidence stays attached to the original extraction.</small>
+      {recovery}
       {newer && (
         <div className="tl-conflict">
           <p>Current saved text</p>
@@ -239,15 +250,25 @@ export function ReviewPanel({
       </div>
     </form>
   );
+  const visibleBlocks = blocks.filter(
+    (block) =>
+      editing?.id === block.id ||
+      ((!loading || offset > 0) &&
+        (!error || conflict || offset > 0) &&
+        (!state || block.review_state === state)),
+  );
   return (
     <section className="tl-review">
-      <button onClick={onBack} disabled={busy}>
+      <button className="tl-review-back" onClick={onBack} disabled={busy}>
         ← Review documents
       </button>
       <h1 ref={heading} tabIndex={-1}>
         {title || "Review knowledge"}
       </h1>
-      <div className="tl-filters">
+      <p className="tl-review-instruction">
+        Check each block against the original source before confirming.
+      </p>
+      <div className="tl-filters tl-review-filters">
         <select
           aria-label="Filter by block kind"
           value={kind}
@@ -282,72 +303,104 @@ export function ReviewPanel({
             </option>
           ))}
         </select>
+        {visibleBlocks.length > 1 && (
+          <select
+            aria-label="Jump to block"
+            value=""
+            onChange={(event) => {
+              document
+                .getElementById("tl-block-" + event.target.value)
+                ?.focus();
+            }}
+          >
+            <option value="">Jump to block…</option>
+            {visibleBlocks.map((block, index) => (
+              <option key={block.id} value={block.id}>
+                {index + 1}. {block.kind} · {block.content.trim().slice(0, 42)}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
-      {error && (
-        <div className="tl-error" role="alert">
-          {error}{" "}
-          <button disabled={busy} onClick={() => void reload()}>
-            Reload blocks
-          </button>
-        </div>
-      )}
+      {!editing && recovery}
       <div className="tl-feedback" role="status">
         {notice}
       </div>
       {loading && <p role="status">Loading knowledge blocks…</p>}
-      {!loading && !error && !blocks.length && (
-        <div className="tl-empty">
-          <h2>No matching blocks</h2>
-          <p>Change the filters or review another document.</p>
+      {!loading && !error && !visibleBlocks.length && (
+        <div className="tl-empty tl-review-intro">
+          <div className="tl-empty-glyph">
+            <WorkspaceIcon name="review" />
+          </div>
+          <h2>
+            {kind || state
+              ? "No matching blocks"
+              : "No extracted knowledge yet"}
+          </h2>
+          <p>
+            {kind || state
+              ? "Change the filters or review another document."
+              : "Blocks appear after a saved document is processed. Live Gemini is disabled."}
+          </p>
+          {!kind && !state && (
+            <a className="tl-text-link" href={"#capture/document/" + id}>
+              Return to the source document
+            </a>
+          )}
         </div>
       )}
-      {blocks
-        .filter(
-          (block) =>
-            editing?.id === block.id ||
-            ((!loading || offset > 0) &&
-              (!error || conflict || offset > 0) &&
-              (!state || block.review_state === state)),
-        )
-        .map((block, index) => (
-          <article
-            key={block.id}
-            className="tl-block"
-            style={{ animationDelay: Math.min(index, 5) * 24 + "ms" }}
-          >
-            <div className="tl-block-meta">
-              <h2>{block.kind}</h2>
-              <span data-review={block.review_state}>
-                {labels[block.review_state]}
-              </span>
-            </div>
-            <div className="tl-provenance">
-              {block.run_id ? (
-                <a href={"#capture/run/" + block.run_id}>
-                  {block.provider === "mock"
-                    ? "Mock extraction"
-                    : "AI extracted"}{" "}
-                  · Revision {block.run_revision} ↗
-                </a>
-              ) : (
-                "No extraction run recorded"
+      {visibleBlocks.map((block, index) => (
+        <article
+          key={block.id}
+          className="tl-block"
+          id={"tl-block-" + block.id}
+          tabIndex={-1}
+          aria-labelledby={"tl-block-kind-" + block.id}
+          data-state={block.review_state}
+          style={{ animationDelay: Math.min(index, 5) * 24 + "ms" }}
+        >
+          <div className="tl-block-meta">
+            <h2 id={"tl-block-kind-" + block.id}>
+              <WorkspaceIcon name="capture" /> {block.kind}
+            </h2>
+            <span data-review={block.review_state}>
+              {labels[block.review_state]}
+            </span>
+          </div>
+          <div className="tl-block-reading">
+            <div>
+              <div className="tl-provenance">
+                {block.run_id ? (
+                  <a href={"#capture/run/" + block.run_id}>
+                    {block.provider === "mock"
+                      ? "Mock extraction"
+                      : "AI extracted"}{" "}
+                    · Revision {block.run_revision} ↗
+                  </a>
+                ) : (
+                  "No extraction run recorded"
+                )}
+                {block.edited_at && <span>Edited by you</span>}
+              </div>
+              <p className="tl-block-content">{block.content}</p>
+              {block.uncertainty_reason && (
+                <p className="tl-uncertainty">
+                  <strong>Extraction uncertainty</strong>{" "}
+                  {block.uncertainty_reason}
+                </p>
               )}
-              {block.edited_at && <span>Edited by you</span>}
             </div>
-            <p className="tl-block-content">{block.content}</p>
-            {block.uncertainty_reason && (
-              <p className="tl-uncertainty">
-                Original extraction uncertainty · {block.uncertainty_reason}
-              </p>
-            )}
-            <details>
-              <summary>Source evidence ({block.evidence.length})</summary>
+            <details className="tl-evidence">
+              <summary>
+                <WorkspaceIcon name="evidence" /> Source evidence{" "}
+                <span>{block.evidence.length}</span>
+              </summary>
               {block.evidence.map((entry) => (
                 <figure key={entry.id}>
                   <blockquote>{entry.quote}</blockquote>
                   <figcaption>
-                    Revision {entry.revision} · Offsets {entry.start_offset}–
-                    {entry.end_offset}
+                    Original text · Revision {entry.revision} · Offsets{" "}
+                    {entry.start_offset}–{entry.end_offset}
                   </figcaption>
                 </figure>
               ))}
@@ -355,52 +408,58 @@ export function ReviewPanel({
                 <p>No source excerpts were recorded.</p>
               )}
             </details>
-            <div className="tl-block-actions">
+          </div>
+          <div className="tl-block-actions">
+            <button
+              disabled={busy || loading || !!editing}
+              onClick={(event) => {
+                returnFocus.current = event.currentTarget;
+                setConflict(false);
+                setEditing(block);
+                setDraft(block.content);
+              }}
+            >
+              Edit block
+            </button>
+            {block.review_state !== "confirmed" && (
               <button
-                disabled={busy || loading || !!editing}
-                onClick={(event) => {
-                  returnFocus.current = event.currentTarget;
-                  setConflict(false);
-                  setEditing(block);
-                  setDraft(block.content);
-                }}
+                disabled={busy || loading || !!editing || conflict}
+                className={
+                  block.review_state === "needs_review"
+                    ? "tl-confirm"
+                    : undefined
+                }
+                onClick={() =>
+                  void change(block, { review_state: "confirmed" })
+                }
               >
-                Edit block
+                Confirm
               </button>
-              {block.review_state !== "confirmed" && (
-                <button
-                  disabled={busy || loading || !!editing || conflict}
-                  onClick={() =>
-                    void change(block, { review_state: "confirmed" })
-                  }
-                >
-                  Confirm
-                </button>
-              )}
-              {block.review_state !== "dismissed" && (
-                <button
-                  disabled={busy || loading || !!editing || conflict}
-                  onClick={() =>
-                    void change(block, { review_state: "dismissed" })
-                  }
-                >
-                  Dismiss
-                </button>
-              )}
-              {block.review_state !== "needs_review" && (
-                <button
-                  disabled={busy || loading || !!editing || conflict}
-                  onClick={() =>
-                    void change(block, { review_state: "needs_review" })
-                  }
-                >
-                  Return to review
-                </button>
-              )}
-            </div>
-            {editing?.id === block.id && editor}
-          </article>
-        ))}
+            )}
+            {block.review_state !== "dismissed" && (
+              <button
+                disabled={busy || loading || !!editing || conflict}
+                onClick={() =>
+                  void change(block, { review_state: "dismissed" })
+                }
+              >
+                Dismiss
+              </button>
+            )}
+            {block.review_state !== "needs_review" && (
+              <button
+                disabled={busy || loading || !!editing || conflict}
+                onClick={() =>
+                  void change(block, { review_state: "needs_review" })
+                }
+              >
+                Return to review
+              </button>
+            )}
+          </div>
+          {editing?.id === block.id && editor}
+        </article>
+      ))}
       {!current && editor}
       {next !== null && !error && (
         <button

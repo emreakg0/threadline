@@ -34,7 +34,7 @@ export function useCapture(unsavedReview: boolean) {
     [historyNext, setHistoryNext] = useState<number | null>(null);
   const [evidence, setEvidence] = useState<SourceRevision | null>(null),
     [historyOpen, setHistoryOpen] = useState(false);
-  const titleInput = useRef<HTMLInputElement>(null);
+  const titleInput = useRef<HTMLTextAreaElement>(null);
   const operation = useRef(false);
   const tagsChanged =
     !!saved && JSON.stringify(tags) !== JSON.stringify(saved.tags);

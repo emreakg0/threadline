@@ -1,79 +1,76 @@
-# Threadline Phase 4 — Knowledge workspace
+# Threadline Phase 4.1 — Workspace refinement
 
-Open **Threadline** from Focus City or go to `/#capture`. Phase 4 includes a
-responsive workspace shell, source editor, Knowledge Library, flat Collections,
-structured Review, and existing recorded How It Works. The authenticated default
-stays on Focus City pending owner design acceptance. The workspace provides a
-Focus City shortcut and preserves unsaved work across the round trip.
+Open Threadline from Focus City or visit `/#capture` when signed in.
 
-## Delivered
+## Design improvements
 
-- The keyboard command palette opens with Cmd/Ctrl+K. It searches document
-  titles and latest saved source, opens active or archived results, jumps to
-  workspace sections, and restores prior focus on dismissal.
-- Capture retains stable create retries, explicit save status, exact immutable
-  source versions, optimistic conflict comparison, archive/restore, and
-  in-memory drafts across navigation. Collection assignment and tag changes
-  save with the document version.
-- Knowledge and Collections provide literal title/content search, active and
-  archived views, collection and tag filters, flat collection creation,
-  paginated documents, and pending-review metadata.
-- Review filters extracted blocks by kind and state. Confirm, dismiss, reopen,
-  or edit a block. Writes require an expected version. Conflict recovery
-  compares saved text and keeps the draft. Edited wording and confirmation
-  have distinct labels. The originating run, immutable source excerpts and
-  original extraction uncertainty remain attached. Review creates zero tasks.
-- How It Works retains recorded run history, stage and event ordering, replay
-  controls, mock labels, and error/recovery semantics. Phase 4 integrates the
-  view into the shell and fits run history on narrow screens.
-- Apply additive migration `0005_threadline_block_edits` with the existing
-  migration runner before serving the new app. Tests applied it only in
-  disposable schemas.
+- Capture uses a document canvas with a wrapping title, readable source measure,
+  and a compact save bar. Saved documents have a tools rail for review, source
+  history, organization, and archive. On phones, the tools follow the document.
+- The palette groups Quick actions, Navigation, and Documents. Shared line icons,
+  selected-row feedback, and restrained floating material connect it to the shell.
+- Knowledge uses compact document rows with separate title, collection, tags,
+  date, and review status. Collections uses a dedicated navigator, with the same
+  document list and filters in a separate pane.
+- Review explains the workflow and disabled live processing when empty. Actual
+  review blocks distinguish pending, confirmed, and dismissed states. Original
+  quotations sit beside the block text on wider screens and stack below on phones.
+- Tablet and phone navigation use compact header rows. Focus, reduced motion,
+  contrast, and reduced transparency remain part of the scoped styles.
 
-## Verification
+## Functional changes
 
-- Workspace typecheck and frontend/API production builds passed. The frontend
-  build retains the existing lazy city bundle-size advisory.
-- Frontend tests and Vite security regressions passed. The package audit found
-  no known vulnerabilities. No dependency installation or supply-chain change.
-- Isolated API suites and foundation migration tests passed. New coverage
-  includes owner-scoped collections, filters, tag assignment, concurrent block
-  writes, persistence across HTTP restart, and exact evidence after review.
-- Chromium verified first use, long titles and source text, search and filters,
-  collection/tag writes, retried creation, revision history, document and
-  block conflicts, draft recovery, archive/restore, keyboard palette and focus,
-  320px touch and 390px layout, reduced motion, and Focus City/List View.
-- The same harness verified persisted mock output and review, actual
-  LIVE_DISABLED failure, real event pagination and replay, recorded retry and
-  interruption recovery, cancellation, playback controls, and owner isolation.
-- The separate Focus City browser harness passed 0, 1, 5 and 20 tasks in a
-  disposable schema, including building selection, task editing, neighborhood
-  switching and context-loss fallback. Inspected desktop/mobile city frames.
-- Inspected screenshots at desktop and mobile widths for Capture, Knowledge,
-  command palette, Review with source evidence, and recorded execution.
-  Reproduce with Vite on 21646 and Chromium CDP on 9222, then run
-  `pnpm --filter @workspace/api-server exec tsx ../../lib/db/scripts/capture-browser.mjs`.
-  Screenshots are saved to `/tmp/threadline-4-*.png`.
+- Returning from a document to the last browse view retains its filters and
+  collection selection for the current session. The collection form is read-only
+  while saving, so a completed request cannot clear a second name being entered.
+- Source history focuses the panel on open and the launcher on close. Review has
+  a block jump control, and editing conflicts appear beside the affected draft.
+- The palette preserves keyboard search and document opening when trailing spaces
+  leave the query unchanged. Existing extraction requests are labeled as requests
+  and show the disabled live state.
+- The interface uses the existing APIs, persistence, worker, and replay engine.
+  There is no new migration or dependency.
 
-## Scoped review
+## Visual verification
 
-Ponytail Full and the scoped Ponytail and code-review passes covered state
-transitions, data ownership, transaction and version boundaries, accessibility
-and the isolated test paths for a personal library. Fixed rapid palette
-reopen invalidating its second search, stale block conflict reloads under
-filters, and review drafts being discarded when leaving a document. The browser
-suite verifies recovery for each flow. Staged review and secret audit cover
-source changes and test fixtures.
+Inspected the previous and final Chromium renders with isolated PostgreSQL
+fixtures. The final pass covered 1440px desktop, 820px tablet, 390px mobile,
+and 320px narrow navigation. It included long-document editing, multi-document
+Knowledge, three collections with assigned tags, command groups and search
+results, empty and populated Review, a confirmed edit beside its exact source
+excerpt, and recorded mock replay.
 
-## Limits and next task
+The checks surfaced clipped long titles, truncated palette helper text, and
+competing scrollbars on mobile. Final screenshots show the wrapped title and
+the palette's independent result scroll area. Focus outlines and page overflow
+were also checked. Images are in `/tmp/threadline-41-*.png`. Reproduce with Vite
+on 21646 and Chromium CDP on 9222, then run
+`pnpm --filter @workspace/api-server exec tsx ../../lib/db/scripts/capture-browser.mjs`.
 
-Drafts stay in memory during a session. Search matches the latest saved
-source and uses paginated substring queries. Phase 4 leaves backlinking,
-semantic search, graphs and action-to-task conversion for later scope.
-Chromium tests used isolated fixtures and software rendering. Live Google
-consent, device performance and screen-reader operation were outside this run.
+## Automated verification and review
 
-LIVE_AUTHORIZED=false. No live Gemini requests, Gemini credential access, deployment,
-or production data changes. Next unfinished task is owner review of the
-workspace and a decision on the authenticated default entry. Phase 5 is
-outside this milestone.
+- Workspace typecheck, frontend tests, frontend/API production builds, Vite
+  security tests, and isolated API integration/extraction/durability tests passed.
+- Chromium passed save and retry, Ctrl+Enter, immutable history and focus return,
+  draft preservation, archive/restore, search and tags, return to collection,
+  command keyboard and focus controls, block navigation, evidence integrity,
+  review conflicts and persistence, replay, owner isolation, reduced motion,
+  narrow touch navigation, and the Focus City/List View round trip.
+- Actual LIVE_DISABLED outcomes and successful mock runs were verified with
+  isolated fixture data. The package audit reported no known vulnerabilities.
+- Scoped Ponytail and code review traced UI state, focus, write boundaries,
+  retained filters, and fixture coverage for personal-workspace usage. The
+  collection input race and narrow palette layout were resolved. Staged review
+  and the secret audit passed.
+
+## Remaining limitations and owner review
+
+Collection totals are unavailable from the current API. Browse context is
+session-local. The existing city bundle-size advisory remains. Live Google
+consent, screen-reader use, and physical-device keyboard behavior were outside
+the browser run. Live Gemini remains disabled.
+
+Owner review should judge the reading measure, mobile tools placement, and
+preferable document density with real notes. The next decision is whether to
+accept the design and make Threadline the authenticated default. Work stops at
+Phase 4.1.

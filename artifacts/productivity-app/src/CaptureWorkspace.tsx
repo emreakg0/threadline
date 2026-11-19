@@ -7,29 +7,30 @@ import { CaptureEditor } from "./CaptureEditor";
 import { Library } from "./Library";
 import { ReviewPanel } from "./ReviewPanel";
 import { CommandPalette } from "./CommandPalette";
+import { WorkspaceIcon } from "./WorkspaceIcon";
 import "./capture.css";
 
 const navigation = [
-  { route: "#capture", label: "Capture", icon: "M4 3h12v14H4z M7 8h6m-6 4h6" },
+  { route: "#capture", label: "Capture", icon: "capture" },
   {
     route: "#capture/library",
     label: "Knowledge",
-    icon: "M3 4h3v12H3z m6 0h3v12H9z m5 1 2-1 3 11-2 1z",
+    icon: "knowledge",
   },
   {
     route: "#capture/review",
     label: "Review",
-    icon: "M4 4h12v12H4z m3 6 2 2 4-4",
+    icon: "review",
   },
   {
     route: "#capture/collections",
     label: "Collections",
-    icon: "M2 6h6l2 2h8v8H2z",
+    icon: "folder",
   },
   {
     route: "#capture/runs",
     label: "How It Works",
-    icon: "M4 4h4v4H4z m8 8h4v4h-4z M6 8v6h6",
+    icon: "trace",
   },
 ] as const;
 
@@ -45,6 +46,7 @@ export function CaptureWorkspace({
   const [unsavedReviews, setUnsavedReviews] = useState<string[]>([]);
   const capture = useCapture(unsavedReviews.length > 0);
   const [route, setRoute] = useState(location.hash);
+  const [lastBrowse, setLastBrowse] = useState<string | null>(null);
   const [organization, setOrganization] = useState<
     Awaited<ReturnType<typeof documents.organization>>
   >({ collections: [], tags: [] });
@@ -75,6 +77,15 @@ export function CaptureWorkspace({
     : null;
   const { open, fresh, busy } = capture;
   const documentReady = !documentId || documentId === capture.saved?.id;
+  const browsing =
+    section === "#capture/library" ||
+    section === "#capture/collections" ||
+    (section === "#capture/review" && !routedReviewId);
+  const browseSection = browsing ? section : lastBrowse;
+
+  useEffect(() => {
+    if (active && browsing) setLastBrowse(section);
+  }, [active, browsing, section]);
 
   useEffect(() => {
     const change = () => setRoute(location.hash);
@@ -160,15 +171,15 @@ export function CaptureWorkspace({
         <aside className="tl-sidebar" aria-label="Threadline navigation">
           <a href="#capture" className="tl-brand">
             <span aria-hidden="true" className="tl-mark">
-              <svg viewBox="0 0 24 24">
-                <path d="M4 8h16M8 12h12M4 16h12" />
-              </svg>
+              <WorkspaceIcon name="mark" />
             </span>
             Threadline
           </a>
           <button className="tl-new" disabled={busy} onClick={newCapture}>
-            <span aria-hidden="true">+</span>
-            {capture.hasNewDraft ? "Resume capture" : "New capture"}
+            <WorkspaceIcon name="plus" />
+            <span className="tl-new-label">
+              {capture.hasNewDraft ? "Resume capture" : "New capture"}
+            </span>
           </button>
           <nav aria-label="Workspace">
             <span className="tl-nav-label">Workspace</span>
@@ -178,26 +189,21 @@ export function CaptureWorkspace({
                 href={item.route}
                 aria-current={section === item.route ? "page" : undefined}
               >
-                <svg viewBox="0 0 20 20" aria-hidden="true">
-                  <path d={item.icon} />
-                </svg>
+                <WorkspaceIcon name={item.icon} />
                 {item.label}
               </a>
             ))}
           </nav>
           <div className="tl-sidebar-end">
             <button onClick={exit} disabled={busy}>
-              Focus City <span aria-hidden="true">↗</span>
+              <WorkspaceIcon name="city" /> <span>Focus City</span>
             </button>
             <details className="tl-profile">
-              <summary>
+              <summary aria-label={name + " account"}>
                 <span className="tl-avatar" aria-hidden="true">
                   {name.slice(0, 1).toUpperCase()}
                 </span>
-                <span>
-                  {name}
-                  <small>Personal workspace</small>
-                </span>
+                <span>{name}</span>
               </summary>
               <button
                 disabled={busy}
@@ -217,7 +223,7 @@ export function CaptureWorkspace({
         <main className="tl-main">
           <header className="tl-toolbar">
             <span>
-              Workspace <span aria-hidden="true">/</span>{" "}
+              <WorkspaceIcon name={current.icon} />
               <strong>{current.label}</strong>
             </span>
             {active && (
@@ -225,17 +231,30 @@ export function CaptureWorkspace({
                 commands={[
                   {
                     id: "new",
-                    label: "Create or resume capture",
+                    label: capture.hasNewDraft
+                      ? "Resume capture"
+                      : "Create a capture",
+                    detail: "Write or paste notes",
+                    group: "Quick actions",
+                    icon: "plus",
                     action: newCapture,
                   },
                   ...navigation.map((item) => ({
                     id: item.route,
                     label: "Open " + item.label,
+                    group: "Navigation" as const,
+                    icon: item.icon,
                     action: () => {
                       location.hash = item.route;
                     },
                   })),
-                  { id: "city", label: "Open Focus City", action: exit },
+                  {
+                    id: "city",
+                    label: "Open Focus City",
+                    group: "Navigation",
+                    icon: "city",
+                    action: exit,
+                  },
                 ]}
                 onOpen={(item) => openDocument(item.id)}
               />
@@ -274,27 +293,33 @@ export function CaptureWorkspace({
                 capture={capture}
                 collections={organization.collections}
                 heading={captureHeading}
+                backToCollections={lastBrowse === "#capture/collections"}
               />
             </div>
           </div>
-          {(section === "#capture/library" ||
-            section === "#capture/collections" ||
-            (section === "#capture/review" && !routedReviewId)) && (
-            <div className="tl-content tl-browse-view" key={section}>
+          {browseSection && (
+            <div
+              className="tl-content tl-browse-view"
+              key={browseSection}
+              hidden={!browsing}
+            >
               <header className="tl-page-heading">
                 <div>
                   <h1 ref={heading} tabIndex={-1}>
-                    {current.label}
+                    {
+                      navigation.find((item) => item.route === browseSection)
+                        ?.label
+                    }
                   </h1>
                   <p>
-                    {section === "#capture/review"
-                      ? "Inspect extracted knowledge and check its source."
-                      : section === "#capture/collections"
-                        ? "Group related documents in flat collections."
-                        : "Search and organize your saved documents."}
+                    {browseSection === "#capture/review"
+                      ? "Check extracted knowledge against its source and decide what to keep."
+                      : browseSection === "#capture/collections"
+                        ? "Keep related documents together."
+                        : "Find your saved notes by title, source text, collection or tag."}
                   </p>
                 </div>
-                {section === "#capture/library" && (
+                {browseSection === "#capture/library" && (
                   <button
                     className="tl-primary"
                     onClick={newCapture}
@@ -304,35 +329,40 @@ export function CaptureWorkspace({
                   </button>
                 )}
               </header>
-              {section === "#capture/collections" && (
-                <form
-                  className="tl-collection-create"
-                  onSubmit={(event) => void addCollection(event)}
-                >
-                  <input
-                    ref={collectionInput}
-                    aria-label="Collection name"
-                    placeholder="Collection name"
-                    value={collectionName}
-                    required
-                    maxLength={100}
-                    onChange={(event) => setCollectionName(event.target.value)}
-                  />
-                  <button disabled={creating || !collectionName.trim()}>
-                    {creating ? "Creating…" : "Create collection"}
-                  </button>
-                </form>
-              )}
               <Library
                 collections={organization.collections}
                 tags={organization.tags}
                 revision={capture.revision + reviewVersion}
-                reviewing={section === "#capture/review"}
-                organizing={section === "#capture/collections"}
+                visible={active && browsing}
+                reviewing={browseSection === "#capture/review"}
+                collectionCreate={
+                  browseSection === "#capture/collections" ? (
+                    <form
+                      className="tl-collection-create"
+                      onSubmit={(event) => void addCollection(event)}
+                    >
+                      <input
+                        ref={collectionInput}
+                        aria-label="Collection name"
+                        placeholder="Collection name"
+                        value={collectionName}
+                        readOnly={creating}
+                        required
+                        maxLength={100}
+                        onChange={(event) =>
+                          setCollectionName(event.target.value)
+                        }
+                      />
+                      <button disabled={creating || !collectionName.trim()}>
+                        {creating ? "Creating…" : "Create collection"}
+                      </button>
+                    </form>
+                  ) : undefined
+                }
                 selected={capture.saved?.id}
                 onCreate={newCapture}
                 onOpen={(item) => {
-                  if (section === "#capture/review")
+                  if (browseSection === "#capture/review")
                     location.hash = "#capture/review/" + item.id;
                   else openDocument(item.id);
                 }}
