@@ -17,7 +17,7 @@ type Draft = {
   conflict: CaptureDocument | null;
 };
 
-export function useCapture(unsavedReview: boolean) {
+export function useCapture(unsavedWorkspaceDraft: boolean) {
   const [saved, setSaved] = useState<CaptureDocument | null>(null);
   const [captureId, setCaptureId] = useState<string>(() => crypto.randomUUID());
   const [title, setTitle] = useState(""),
@@ -47,20 +47,20 @@ export function useCapture(unsavedReview: boolean) {
       tagsChanged
     : !!(title || body);
   const valid =
-    title.trim().length > 0 &&
     title.trim().length <= 300 &&
     body.trim().length > 0 &&
     body.length <= 20000;
   useEffect(() => {
     const prevent = (event: BeforeUnloadEvent) => {
-      if (dirty || drafts.current.size || unsavedReview) event.preventDefault();
+      if (dirty || drafts.current.size || unsavedWorkspaceDraft)
+        event.preventDefault();
     };
     window.addEventListener("beforeunload", prevent);
     return () => window.removeEventListener("beforeunload", prevent);
-  }, [dirty, unsavedReview]);
+  }, [dirty, unsavedWorkspaceDraft]);
   function allowLeave() {
     return (
-      !(dirty || drafts.current.size || unsavedReview) ||
+      !(dirty || drafts.current.size || unsavedWorkspaceDraft) ||
       window.confirm("Discard your unsaved workspace drafts?")
     );
   }
@@ -129,14 +129,18 @@ export function useCapture(unsavedReview: boolean) {
       try {
         const doc = saved
           ? await documents.update(saved.id, saved.version, {
-              title,
+              title: title.trim() || "Untitled brain dump",
               source_text: body,
               collection_id: collectionChanged ? collection || null : undefined,
               tags: tagsChanged ? tags : undefined,
             })
-          : await documents.create(captureId, title, body);
+          : await documents.create(
+              captureId,
+              title.trim() || "Untitled brain dump",
+              body,
+            );
         adopt(doc);
-        setNotice("Saved to your library");
+        setNotice("Saved brain dump");
         setRevision((value) => value + 1);
       } catch (e) {
         if (e instanceof ApiError && e.status === 409) {

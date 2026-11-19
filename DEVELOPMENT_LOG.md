@@ -313,3 +313,28 @@ Git 133c0f1 created the initial repository; 3f10439 initialized the productivity
   tags and collections, source evidence, and before/after visual checks. Passed
   browser regressions, typecheck, builds, frontend tests, API suites, Vite
   security tests, and package audit. The browser used isolated fixture schemas.
+
+## 2026-11-19 — Threadline Phase 5A
+
+- Reprioritized the roadmap around Action Planning. Brain Dump uses the
+  existing capture safety mechanisms and links to the new ActionPlan and
+  PlanAction views for manual and mock sources.
+- Added schema v2 prompt/validation and worker tuple checks. The worker
+  stores original proposals and exact excerpts atomically with run success.
+  Evidence validation and archive gates reject unsupported writes. Playback
+  displays the recorded schema marker while retaining legacy event ordering.
+- Migration 0006 stores plan fields separately and adapts the unique
+  action/task link to retain a receipt after normal task deletion. The
+  owner-scoped plan router serializes approval and conversion with the
+  document and block locks, and reuses the task store and slot allocator.
+  Shared Review excludes managed actions so its generic path cannot bypass
+  plan approval.
+- Linked task status and progress use the existing task API. Returning to
+  Focus City refreshes tasks and can open the existing editor at a linked
+  task. The planning UI keeps draft edits through navigation and presents
+  original uncertainty separately from confirmed scheduling.
+- Passed scoped API, migration, frontend and security checks, builds,
+  package audit, the complete Chromium flow, and the 0/1/5/20 City suite.
+  A CDP reload race was isolated to the browser harness polling transition.
+  Fixtures remained inside disposable schemas, and the Gemini live gate
+  remained closed.

@@ -447,6 +447,291 @@ try {
   assert.equal(persisted.source.revision, 2);
   assert.deepEqual(persisted.tags, ["planning", "team"]);
   assert.deepEqual((await (await request(blocks)).json()).blocks, [reopened]);
+  const { extract } = await import("./extraction/service");
+  const { processOne } = await import("./extraction/worker");
+  const plan = "/plans/" + id;
+  assert.equal((await request(plan, "GET", undefined, 1)).status, 404);
+  assert.equal(
+    (
+      await request("/extractions", "POST", {
+        ...extractionBody,
+        schema_version: 2,
+      })
+    ).status,
+    503,
+  );
+  const run = await extract(
+    users[0],
+    initial.source.id,
+    randomUUID(),
+    "mock",
+    2,
+  );
+  const quote = "Decide later.";
+  const start = [...body.source_text.slice(0, body.source_text.indexOf(quote))]
+    .length;
+  const proposal = {
+    kind: "action",
+    content: "Make a decision",
+    uncertainty_reason: "Date is unknown",
+    proposal: {
+      description: null,
+      category: "Planning",
+      deadline_phrase: "later",
+      suggested_priority: null,
+    },
+    evidence: [{ quote, start, end: start + quote.length }],
+  };
+  await processOne(
+    {
+      mode: "mock",
+      generate: async () =>
+        JSON.stringify({ schema_version: 2, blocks: [proposal] }),
+    },
+    run.id,
+  );
+  const {
+    actions: [action],
+  } = (await (await request(plan)).json()) as unknown as {
+    actions: {
+      id: string;
+      schedule: string;
+      due_date: string | null;
+      evidence: { quote: string }[];
+      task: unknown;
+    }[];
+  };
+  assert.equal(action.schedule, "unresolved");
+  assert.equal(action.due_date, null);
+  assert.equal(action.evidence[0].quote, quote);
+  assert.equal(action.task, null);
+  const actionPath = plan + "/" + action.id;
+  const convert = actionPath + "/convert";
+  const project = randomUUID(),
+    foreignProject = randomUUID();
+  await pool.query(
+    "INSERT INTO focus_projects(id,user_id,name) VALUES ($1,$2,'Planning'),($3,$4,'Foreign')",
+    [project, users[0], foreignProject, users[1]],
+  );
+  const approval = {
+    version: 1,
+    title: "Decide on meeting follow-up",
+    description: "Review the notes first.",
+    category: "Planning",
+    project_id: project,
+    priority: "medium",
+    schedule: "scheduled",
+    due_date: "2028-02-29",
+    state: "confirmed",
+  };
+  assert.equal((await request(actionPath, "PATCH", approval, 1)).status, 404);
+  assert.equal(
+    (
+      await request(actionPath, "PATCH", {
+        ...approval,
+        project_id: foreignProject,
+      })
+    ).status,
+    404,
+  );
+  assert.equal(
+    (
+      await request(actionPath, "PATCH", {
+        ...approval,
+        due_date: "2027-02-29",
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await request(actionPath, "PATCH", {
+        ...approval,
+        schedule: "unresolved",
+        due_date: null,
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await request(blocks + "/" + action.id, "PATCH", {
+        version: 1,
+        review_state: "confirmed",
+      })
+    ).status,
+    404,
+  );
+  assert.equal(
+    (await request(convert, "POST", { version: 1, confirm: true })).status,
+    409,
+  );
+  const edits = await Promise.all(
+    [approval, { ...approval, description: "Read the source." }].map(
+      (payload) => request(actionPath, "PATCH", payload),
+    ),
+  );
+  assert.deepEqual(edits.map((response) => response.status).sort(), [204, 409]);
+  assert.equal(
+    (await request(convert, "POST", { version: 1, confirm: true })).status,
+    409,
+  );
+  assert.equal(
+    (await request(convert, "POST", { version: 2, confirm: false })).status,
+    400,
+  );
+  assert.equal(
+    (await request(convert, "POST", { version: 2, confirm: true }, 1)).status,
+    404,
+  );
+
+  await pool.query(`CREATE FUNCTION reject_plan_link() RETURNS trigger LANGUAGE plpgsql AS $$
+    BEGIN RAISE EXCEPTION 'Injected fixture failure'; END $$;
+    CREATE TRIGGER reject_plan_link BEFORE INSERT ON threadline_action_task_links FOR EACH ROW EXECUTE FUNCTION reject_plan_link()`);
+  assert.equal(
+    (await request(convert, "POST", { version: 2, confirm: true })).status,
+    500,
+  );
+  assert.equal(
+    (await pool.query("SELECT count(*)::int AS n FROM focus_tasks")).rows[0].n,
+    0,
+  );
+  await pool.query(
+    "DROP TRIGGER reject_plan_link ON threadline_action_task_links",
+  );
+  const queuedBeforeArchive = await extract(
+    users[0],
+    initial.source.id,
+    randomUUID(),
+    "mock",
+    2,
+  );
+  const archive = { version: 6, archived: true };
+  assert.equal((await request(path, "PATCH", archive)).status, 200);
+  assert.equal(
+    (await request(plan, "POST", { id: randomUUID(), title: "Blocked draft" }))
+      .status,
+    409,
+  );
+  assert.equal(
+    (await request(convert, "POST", { version: 2, confirm: true })).status,
+    409,
+  );
+  let dispatched = false;
+  await processOne(
+    {
+      mode: "mock",
+      generate: async () => {
+        dispatched = true;
+        return "{}";
+      },
+    },
+    queuedBeforeArchive.id,
+  );
+  assert.equal(dispatched, false);
+  assert.equal(
+    (
+      await pool.query("SELECT error_code FROM threadline_runs WHERE id=$1", [
+        queuedBeforeArchive.id,
+      ])
+    ).rows[0].error_code,
+    "DOCUMENT_ARCHIVED",
+  );
+  await assert.rejects(
+    extract(users[0], initial.source.id, randomUUID(), "mock", 2),
+    { code: "DOCUMENT_ARCHIVED" },
+  );
+  assert.equal(
+    (await request(path, "PATCH", { version: 7, archived: false })).status,
+    200,
+  );
+  const converted = await Promise.all(
+    [1, 2].map(() => request(convert, "POST", { version: 2, confirm: true })),
+  );
+  assert.deepEqual(
+    converted.map((response) => response.status).sort(),
+    [200, 201],
+  );
+  const receipts = await Promise.all(
+    converted.map(
+      async (response) =>
+        (await response.json()) as unknown as { task_id: string },
+    ),
+  );
+  assert.equal(receipts[0].task_id, receipts[1].task_id);
+  const taskId = receipts[0].task_id;
+  assert.equal(
+    (
+      await pool.query(
+        "SELECT title,to_char(due_date,'YYYY-MM-DD') AS date FROM focus_tasks WHERE id=$1",
+        [taskId],
+      )
+    ).rows[0].date,
+    approval.due_date,
+  );
+  assert.equal(
+    (
+      await request(
+        "/tasks/" + taskId,
+        "PATCH",
+        { status: "done", title: "Foreign", priority: "low", version: 1 },
+        1,
+      )
+    ).status,
+    409,
+  );
+  assert.deepEqual(
+    await (await request("/tasks", "GET", undefined, 1)).json(),
+    [],
+  );
+  assert.equal((await request("/tasks/" + taskId, "DELETE")).status, 204);
+  assert.deepEqual(
+    await (
+      await request(convert, "POST", { version: 2, confirm: true })
+    ).json(),
+    { task_id: null, created: false },
+  );
+
+  const manual = { id: randomUUID(), title: "A manual next step" };
+  assert.equal((await request(plan, "POST", manual)).status, 201);
+  assert.equal((await request(plan, "POST", manual)).status, 200);
+  assert.equal(
+    (await request(plan, "POST", { id: randomUUID(), title: "Foreign" }, 1))
+      .status,
+    404,
+  );
+  const manualPath = plan + "/" + manual.id;
+  assert.equal(
+    (
+      await request(manualPath, "PATCH", {
+        ...approval,
+        title: manual.title,
+        schedule: "unscheduled",
+        due_date: null,
+      })
+    ).status,
+    204,
+  );
+  assert.equal(
+    (
+      await request(manualPath + "/convert", "POST", {
+        version: 2,
+        confirm: true,
+      })
+    ).status,
+    201,
+  );
+  assert.equal(
+    (
+      await pool.query(
+        "SELECT count(*)::int AS n FROM focus_tasks WHERE due_date IS NULL",
+      )
+    ).rows[0].n,
+    1,
+  );
+  console.log(
+    "PASS: grounded v2 and manual plans, explicit review, date validation, isolation, archive guards, concurrent retries, rollback and deletion receipts",
+  );
   console.log(
     "PASS: document persistence/restart, idempotent capture, owner isolation, input validation, concurrent edit conflicts, archive/restore, exact immutable source history, security headers/origin",
   );

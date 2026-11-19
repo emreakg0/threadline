@@ -1,12 +1,14 @@
 import { CaptureWorkspace } from "./CaptureWorkspace";
 import { api } from "./api";
-import { useEffect, useState, useMemo, type FormEvent } from "react";
+import { useEffect, useRef, useState, useMemo, type FormEvent } from "react";
 import type { Project, Task } from "./types";
 import CityView from "./city/CityView";
 import { ViewSwitch } from "./ViewSwitch";
 import { TaskSheet } from "./TaskSheet";
 export default function App() {
-  const [workspace, setWorkspace] = useState<"focus" | "capture">(location.hash.startsWith("#capture") ? "capture" : "focus");
+  const [hash, setHash] = useState(location.hash);
+  const workspace = hash.startsWith("#capture") ? "capture" : "focus";
+  const wasInThreadline = useRef(false);
   const [composerOpen, setComposerOpen] = useState(false),
     [notice, setNotice] = useState("");
   const [view, setView] = useState<"city" | "list">("city");
@@ -23,8 +25,9 @@ export default function App() {
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [editing, setEditing] = useState<Task | null>(null);
-  async function load() {
+  async function load(isCurrent = () => true) {
     const [p, t] = await Promise.all([api("/projects"), api("/tasks")]);
+    if (!isCurrent()) return [];
     setProjects(p);
     setTasks((previous) => {
       const byId = new Map(previous.map((task) => [task.id, task]));
@@ -37,6 +40,7 @@ export default function App() {
         ? (t.find((task: Task) => task.id === previous.id) ?? null)
         : null,
     );
+    return t as Task[];
   }
   async function initialize() {
     setInitializing(true);
@@ -130,11 +134,33 @@ export default function App() {
     [projects, project],
   );
   useEffect(() => {
-    const change = () => setWorkspace(location.hash.startsWith("#capture") ? "capture" : "focus");
+    const change = () => setHash(location.hash);
     window.addEventListener("hashchange", change);
     return () => window.removeEventListener("hashchange", change);
   }, []);
   const inThreadline = !!auth?.user && workspace === "capture";
+  useEffect(() => {
+    if (inThreadline) {
+      wasInThreadline.current = true;
+      return;
+    }
+    const taskId = /^#city\/task\/([a-f0-9-]{36})$/i.exec(hash)?.[1];
+    if (!auth?.user || initializing || (!wasInThreadline.current && !taskId)) return;
+    wasInThreadline.current = false;
+    let current = true;
+    void load(() => current).then((tasks) => {
+      if (!current || !taskId) return;
+      const target = tasks.find((task) => task.id === taskId);
+      if (!target) {
+        setError("Linked task not found.");
+        return;
+      }
+      setView("list");
+      setEditing(target);
+      setComposerOpen(true);
+    }).catch((cause: Error) => { if (current) setError(cause.message); });
+    return () => { current = false; };
+  }, [auth?.user, hash, initializing, inThreadline]);
   const focusWorkspace = !inThreadline && (
     <div className="shell">
       <aside aria-label="Workspace navigation">
@@ -578,6 +604,7 @@ export default function App() {
       {auth?.user && (
         <CaptureWorkspace
           name={auth.user.name}
+          projects={projects}
           active={inThreadline}
           onExit={() => { location.hash = "#city"; }}
         />

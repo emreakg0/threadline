@@ -82,10 +82,10 @@ export function CaptureEditor({
                 ))}
               <h1 ref={heading} tabIndex={-1}>
                 {saved?.archived_at
-                  ? "Archived document"
+                  ? "Archived brain dump"
                   : saved
                     ? "Document"
-                    : "New capture"}
+                    : "Brain dump"}
               </h1>
             </div>
             <div className="tl-save-controls">
@@ -104,7 +104,8 @@ export function CaptureEditor({
                 type="submit"
                 disabled={busy || !dirty || !valid || !!saved?.archived_at}
               >
-                {saved ? "Save changes" : "Save capture"} <kbd>⌘ / Ctrl ↵</kbd>
+                {saved ? "Save changes" : "Save brain dump"}{" "}
+                <kbd>⌘ / Ctrl ↵</kbd>
               </button>
             </div>
           </div>
@@ -130,9 +131,8 @@ export function CaptureEditor({
               onChange={(e) =>
                 setTitle(e.target.value.replace(/[\r\n]+/g, " "))
               }
-              placeholder="Untitled document"
+              placeholder="Untitled brain dump"
               maxLength={300}
-              required
               readOnly={busy || !!saved?.archived_at}
             />
             <label className="tl-sr-only" htmlFor="capture-source">
@@ -142,7 +142,7 @@ export function CaptureEditor({
               id="capture-source"
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              placeholder="Start writing or paste your notes…"
+              placeholder="What’s on your mind? Write down tasks, loose ideas, and deadlines as they come to you."
               maxLength={20000}
               required
               readOnly={busy || !!saved?.archived_at}
@@ -154,6 +154,21 @@ export function CaptureEditor({
               </span>
             </div>
           </div>
+          {!saved && (
+            <div className="tl-plan-availability">
+              <button
+                type="button"
+                className="tl-primary"
+                disabled
+                aria-describedby="tl-plan-availability"
+              >
+                Develop action plan
+              </button>
+              <p id="tl-plan-availability">
+                Live Gemini is disabled. Save your brain dump to plan manually.
+              </p>
+            </div>
+          )}
         </form>
         {error && (
           <div className="tl-error" role="alert">
@@ -260,6 +275,24 @@ export function CaptureEditor({
       </div>
       {saved && (
         <section className="tl-doc-rail" aria-label="Document tools">
+          <section className="tl-next-action" aria-label="Action planning">
+            <h2>Turn your thoughts into actions</h2>
+            <a className="tl-review-link" href={"#capture/plan/" + saved.id}>
+              <WorkspaceIcon name="review" />
+              <span>Open action plan</span>
+              <WorkspaceIcon name="arrow" />
+            </a>
+            <button
+              className="tl-primary"
+              disabled
+              aria-describedby="tl-plan-availability"
+            >
+              Develop action plan
+            </button>
+            <p className="tl-live-state" id="tl-plan-availability">
+              Live Gemini is disabled. You can plan manually.
+            </p>
+          </section>
           <ExtractionPanel
             key={saved.source.id}
             sourceId={saved.source.id}

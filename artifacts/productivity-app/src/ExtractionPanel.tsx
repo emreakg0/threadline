@@ -93,14 +93,16 @@ export function ExtractionPanel({
     }
   }
   return (
-    <section className="tl-next-action" aria-label="Knowledge actions">
-      <h2>Next step</h2>
+    <section
+      className="tl-next-action tl-extraction-tools"
+      aria-label="Knowledge actions"
+    >
+      <h2>Knowledge review</h2>
       <a className="tl-review-link" href={"#capture/review/" + documentId}>
         <WorkspaceIcon name="review" />
         <span>Review blocks{count !== null ? " (" + count + ")" : ""}</span>
         <WorkspaceIcon name="arrow" />
       </a>
-      <p className="tl-live-state">Live Gemini is disabled</p>
       <div className="tl-run-tools">
         <button
           className="tl-organize"

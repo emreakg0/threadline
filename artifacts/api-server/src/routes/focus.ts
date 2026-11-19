@@ -1,3 +1,4 @@
+import plans from "./plans";
 import { Router } from "express";
 import { randomBytes, randomUUID, createHash } from "node:crypto";
 import { pool } from "@workspace/db";
@@ -51,6 +52,7 @@ router.use(async(req,res,next)=>{
 });
 router.use("/documents", documents);
 router.use("/extractions", extractions);
+router.use("/plans", plans);
 router.post("/auth/logout",async(req,res)=>{await pool.query("DELETE FROM focus_sessions WHERE token_hash=$1",[hash(cookies(req.headers.cookie).focus_session)]);res.setHeader("Set-Cookie",cookie("focus_session","",0));res.sendStatus(204);});
 router.get("/projects",async(_req,res)=>{res.json((await pool.query("SELECT * FROM focus_projects WHERE user_id=$1 ORDER BY inbox DESC,name",[res.locals.userId])).rows);});
 router.post("/projects",async(req,res)=>{const name=String(req.body.name??"").trim();if(!name||name.length>100){res.status(400).json({error:"Project name must be 1–100 characters"});return;}res.status(201).json((await pool.query("INSERT INTO focus_projects(id,user_id,name) VALUES ($1,$2,$3) RETURNING *",[randomUUID(),res.locals.userId,name])).rows[0]);});

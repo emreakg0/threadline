@@ -329,3 +329,39 @@ Apply migrations before serving the new app. Older app versions can continue
 reading the expanded schema. For application rollback, leave the additive
 column in place to preserve edit provenance. No backfill is needed because
 earlier releases could not edit extracted blocks.
+
+## Phase 5A — Action Planning roadmap and contracts
+
+Action Planning takes precedence over the previously planned knowledge graph.
+The graph, backlinks, and relationship visualization stay on the deferred
+roadmap. Brain Dump, Knowledge, Collections, Review, and How It Works continue
+to use their established routes and data contracts. Open Action Plan at
+`/#capture/plan` and `/#capture/plan/<document UUID>`.
+
+A plan is scoped to a brain dump. Versioned knowledge blocks and the existing
+evidence tables carry action titles, review states, and excerpts. Migration
+0006 adds `threadline_plan_actions` for plan-specific fields, the pinned
+revision, and the original proposal. Manual actions have manual provenance
+and a source revision, with no generated quote. AI suggestions remain
+separate from the description, category, project, priority, and schedule that
+the user saves. The generic Review API continues to serve legacy blocks and
+summaries. Managed action approval belongs to the plan route.
+
+The owner-scoped `/api/plans/:document` reads the plan and creates manual
+drafts. `PATCH /:document/:action` requires the current block version. Approval
+requires an owned project, explicit priority, and either a valid calendar day
+or an explicit choice to leave the action unscheduled. Archive locks prevent
+writes, and both dispatch and persistence check that a v2 source is active.
+
+Conversion requires the approved version and an explicit confirmation flag.
+One transaction locks the document and block, checks ownership and review
+state, inserts the normal Focus City task, and creates the unique action/task
+link. Retry reads the receipt before attempting another write. If the owner
+deletes a linked task through Focus City, the receipt retains the action and
+clears the task reference. The slot allocator and task status API operate on
+the same task rows. Plan status and progress read those rows directly.
+
+Apply migration 0006 before starting the updated API. Migration and rollback
+testing use disposable schemas. For an application rollback, leave the
+additive table and deletion receipts in place and drain or cancel v2 queued
+runs before using a legacy worker. Older builds cannot manage v2 plans.

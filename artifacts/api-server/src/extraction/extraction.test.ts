@@ -25,6 +25,38 @@ for (const raw of [
   output({ ...block, extra: true }),
 ])
   assert.throws(() => validate(raw, source));
+const proposed = {
+  ...block,
+  kind: "action",
+  content: "Contact Sam",
+  proposal: {
+    description: null,
+    category: "Follow-ups",
+    suggested_priority: null,
+    deadline_phrase: "tomorrow",
+  },
+};
+const planOutput = (entry: object = proposed) =>
+  JSON.stringify({ schema_version: 2, blocks: [entry] });
+assert.equal(validate(planOutput(), source, 2)[0].content, "Contact Sam");
+assert.throws(() => validate(planOutput(), source)); // Version one never accepts v2.
+for (const entry of [
+  { ...proposed, content: "x".repeat(301) },
+  { ...proposed, proposal: { ...proposed.proposal, due_date: "2026-11-19" } },
+  {
+    ...proposed,
+    proposal: { ...proposed.proposal, deadline_phrase: "next week" },
+  },
+  {
+    ...proposed,
+    proposal: { ...proposed.proposal, suggested_priority: "highest" },
+  },
+  {
+    ...proposed,
+    evidence: [{ quote: "Call Sam tomorrow", start: 3, end: 20 }],
+  },
+])
+  assert.throws(() => validate(planOutput(entry), source, 2));
 await assert.rejects(
   gemini.generate(source),
   (e: ExtractionError) => e.code === "LIVE_DISABLED",

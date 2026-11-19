@@ -179,3 +179,27 @@ the originating run, source revision, exact excerpt and original extraction
 uncertainty. A user edit is identified separately from extraction provenance.
 Mock blocks retain the mock label. How It Works continues to read recorded
 events and replay them without starting processing. LIVE_AUTHORIZED=false.
+
+## Phase 5A — grounded plan schema v2, live disabled
+
+Action Planning requests pin schema version 2, pipeline `plan-1`, and prompt
+`grounded-plan-1`. Legacy runs keep schema 1, `2c-1`, and `extractive-1`.
+Worker dispatch validates the matching tuple and uses the corresponding
+response contract. Existing recorded stage keys retain their meaning. The
+recorded run identifies schema v2 in How It Works.
+
+Version 2 permits a concise draft summary and action titles, with the same
+exact source evidence requirements and Unicode code-point offsets. An action
+may suggest context, category and priority. A deadline phrase must be copied
+from its cited source, and the item stays unresolved until a human chooses a
+calendar day or leaves it unscheduled. Schema validation checks shape,
+bounds and literal excerpts. Semantic support for paraphrases requires human
+review. The prompt treats source as untrusted data, asks for uncertainty,
+and provides no tools.
+
+LIVE_AUTHORIZED=false. The normal Develop action plan control is disabled,
+and an HTTP request for live schema v2 returns LIVE_DISABLED without queuing
+work. Tests inject mock adapters into the durable worker in isolated
+PostgreSQL schemas. Mock outputs and v2 replay are visibly labeled. Manual
+planning uses no provider. The owner must separately verify genuine Free Tier
+eligibility and explicitly authorize the first non-sensitive live request.

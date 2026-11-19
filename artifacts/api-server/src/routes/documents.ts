@@ -61,7 +61,8 @@ router.get("/", async (req, res) => {
     `SELECT d.id,d.title,d.version,d.created_at,d.updated_at,d.archived_at,
       d.collection_id,c.name AS collection_name,${tagsForDocument} AS tags,
       (SELECT count(*)::int FROM threadline_knowledge_blocks b
-       WHERE b.document_id=d.id AND b.user_id=d.user_id AND b.review_state='needs_review') AS pending_review
+       WHERE b.document_id=d.id AND b.user_id=d.user_id AND b.review_state='needs_review'
+         AND NOT EXISTS (SELECT 1 FROM threadline_plan_actions p WHERE p.block_id=b.id)) AS pending_review
     FROM threadline_documents d
     LEFT JOIN threadline_collections c ON c.id=d.collection_id AND c.user_id=d.user_id
     WHERE d.user_id=$1 AND (d.archived_at IS NOT NULL)=$2
@@ -72,7 +73,8 @@ router.get("/", async (req, res) => {
       AND ($5::uuid IS NULL OR d.collection_id=$5)
       AND ($6='' OR $6=ANY(${tagsForDocument}))
       AND (NOT $7::boolean OR EXISTS(SELECT 1 FROM threadline_knowledge_blocks b
-        WHERE b.document_id=d.id AND b.user_id=d.user_id))
+        WHERE b.document_id=d.id AND b.user_id=d.user_id
+          AND NOT EXISTS (SELECT 1 FROM threadline_plan_actions p WHERE p.block_id=b.id)))
     ORDER BY d.updated_at DESC,d.id LIMIT 51 OFFSET $3`,
     [
       res.locals.userId,

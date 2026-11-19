@@ -5,6 +5,7 @@ export type Run = {
   status: string;
   provider: string;
   model: string;
+  schema_version?: number;
   source_revision_id: string;
   created_at: string;
   started_at: string | null;
@@ -71,6 +72,11 @@ export function run(v: unknown): Run {
     status: str(v.status),
     provider: str(v.provider),
     model: str(v.model),
+    ...(typeof v.schema_version === "number" &&
+    Number.isSafeInteger(v.schema_version) &&
+    v.schema_version > 0
+      ? { schema_version: v.schema_version }
+      : {}),
     source_revision_id: str(v.source_revision_id),
     created_at: time(v.created_at),
     started_at: nt(v.started_at),

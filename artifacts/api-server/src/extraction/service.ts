@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { MODEL, type Adapter } from "./gemini";
-import { ExtractionError } from "./validation";
+import { ExtractionError, formats, type SchemaVersion } from "./validation";
 import { transaction, appendEvent } from "./lifecycle";
 // Creation acknowledges only durable queued state. No provider work in the request.
 export async function extract(
@@ -8,6 +8,7 @@ export async function extract(
   sourceId: string,
   key: string,
   mode: Adapter["mode"] = "gemini",
+  version: SchemaVersion = 1,
 ) {
   return transaction(async (c) => {
     await c.query("SELECT pg_advisory_xact_lock(72810382)");
@@ -18,6 +19,15 @@ export async function extract(
       )
     ).rows[0];
     if (!source) throw new ExtractionError("SOURCE_NOT_FOUND", 404);
+    if (version === 2) {
+      const doc = (
+        await c.query(
+          "SELECT archived_at FROM threadline_documents WHERE id=$1 AND user_id=$2 FOR SHARE",
+          [source.document_id, user],
+        )
+      ).rows[0];
+      if (doc.archived_at) throw new ExtractionError("DOCUMENT_ARCHIVED", 409);
+    }
     if (source.source_text.length > 20000)
       throw new ExtractionError("SOURCE_TOO_LARGE");
     const prior = (
@@ -27,7 +37,11 @@ export async function extract(
       )
     ).rows[0];
     if (prior) {
-      if (prior.source_revision_id !== sourceId)
+      if (
+        prior.source_revision_id !== sourceId ||
+        prior.schema_version !== version ||
+        prior.provider !== mode
+      )
         throw new ExtractionError("IDEMPOTENCY_CONFLICT", 409);
       return prior;
     }
@@ -49,8 +63,19 @@ export async function extract(
       throw new ExtractionError("QUOTA_EXHAUSTED", 429);
     const run = (
       await c.query(
-        `INSERT INTO threadline_runs(id,user_id,source_revision_id,document_id,idempotency_key,pipeline_version,schema_version,provider,model,prompt_version) VALUES($1,$2,$3,$4,$5,'2c-1',1,$6,$7,'extractive-1') RETURNING *`,
-        [randomUUID(), user, sourceId, source.document_id, key, mode, MODEL],
+        `INSERT INTO threadline_runs(id,user_id,source_revision_id,document_id,idempotency_key,pipeline_version,schema_version,provider,model,prompt_version) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+        [
+          randomUUID(),
+          user,
+          sourceId,
+          source.document_id,
+          key,
+          formats[version].pipeline,
+          version,
+          mode,
+          MODEL,
+          formats[version].prompt,
+        ],
       )
     ).rows[0];
     await appendEvent(c, run.id, "queued", {

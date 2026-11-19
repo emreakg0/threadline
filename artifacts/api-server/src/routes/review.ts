@@ -47,6 +47,7 @@ router.get<"/", { id: string }>("/", async (req, res) => {
     LEFT JOIN threadline_source_revisions s ON s.id=r.source_revision_id AND s.user_id=r.user_id AND s.document_id=r.document_id
     WHERE b.document_id=$1 AND b.user_id=$2 AND ($3='' OR b.kind=$3) AND ($4='' OR b.review_state=$4)
       AND ($6::uuid IS NULL OR b.id=$6)
+      AND NOT EXISTS (SELECT 1 FROM threadline_plan_actions p WHERE p.block_id=b.id)
     ORDER BY b.created_at DESC,b.originating_run_id,b.position,b.id LIMIT 51 OFFSET $5`,
     [...scope, kind, state, start, block || null],
   );
@@ -94,6 +95,7 @@ router.patch<"/:block", { id: string; block: string }>(
         THEN 'needs_review' ELSE review_state END),
       version=version+1,updated_at=now()
     WHERE id=$1 AND document_id=$2 AND user_id=$3 AND version=$4
+      AND NOT EXISTS (SELECT 1 FROM threadline_plan_actions p WHERE p.block_id=$1)
     RETURNING version,content,review_state,edited_at`,
       [...scope, body.version, body.content ?? null, body.review_state ?? null],
     );
@@ -102,7 +104,7 @@ router.patch<"/:block", { id: string; block: string }>(
       return;
     }
     const owned = await pool.query(
-      "SELECT 1 FROM threadline_knowledge_blocks WHERE id=$1 AND document_id=$2 AND user_id=$3",
+      "SELECT 1 FROM threadline_knowledge_blocks WHERE id=$1 AND document_id=$2 AND user_id=$3 AND NOT EXISTS (SELECT 1 FROM threadline_plan_actions p WHERE p.block_id=$1)",
       scope,
     );
     res.status(owned.rowCount ? 409 : 404).json({

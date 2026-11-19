@@ -1,76 +1,86 @@
-# Threadline Phase 4.1 — Workspace refinement
+# Threadline Phase 5A — Brain Dump to Action Plan
 
-Open Threadline from Focus City or visit `/#capture` when signed in.
+Open Threadline from Focus City or visit `/#capture` while signed in. Save a
+brain dump, then choose **Open action plan**. Action Planning takes precedence
+over the previously planned knowledge graph. The graph, backlinks, and
+relationship visualization remain on the deferred roadmap.
 
-## Design improvements
+## Manual planning
 
-- Capture uses a document canvas with a wrapping title, readable source measure,
-  and a compact save bar. Saved documents have a tools rail for review, source
-  history, organization, and archive. On phones, the tools follow the document.
-- The palette groups Quick actions, Navigation, and Documents. Shared line icons,
-  selected-row feedback, and restrained floating material connect it to the shell.
-- Knowledge uses compact document rows with separate title, collection, tags,
-  date, and review status. Collections uses a dedicated navigator, with the same
-  document list and filters in a separate pane.
-- Review explains the workflow and disabled live processing when empty. Actual
-  review blocks distinguish pending, confirmed, and dismissed states. Original
-  quotations sit beside the block text on wider screens and stack below on phones.
-- Tablet and phone navigation use compact header rows. Focus, reduced motion,
-  contrast, and reduced transparency remain part of the scoped styles.
+Brain Dump supports optional titles and keeps immutable source revisions,
+save feedback, archive/restore, and draft and conflict protection. Each
+saved dump has a persistent action plan. Users can add, edit, dismiss,
+reopen, or approve manual actions. Approval requires an owned project, an
+explicit priority, and a scheduling decision. Users choose the calendar
+date themselves or leave the action unscheduled.
 
-## Functional changes
+The plan groups actual actions into Needs attention, Ready to act, Scheduled,
+Linked tasks, and Dismissed. After a user confirms task creation, one
+transaction creates the task and records the conversion. Replaying the
+request returns the same receipt. If the task is deleted, the receipt remains
+and records that the task was removed. Linked tasks use the existing Focus
+City task system and slot allocator. Status updates are visible in Plan
+progress and the linked Focus City editor.
 
-- Returning from a document to the last browse view retains its filters and
-  collection selection for the current session. The collection form is read-only
-  while saving, so a completed request cannot clear a second name being entered.
-- Source history focuses the panel on open and the launcher on close. Review has
-  a block jump control, and editing conflicts appear beside the affected draft.
-- The palette preserves keyboard search and document opening when trailing spaces
-  leave the query unchanged. Existing extraction requests are labeled as requests
-  and show the disabled live state.
-- The interface uses the existing APIs, persistence, worker, and replay engine.
-  There is no new migration or dependency.
+## Mock-tested AI planning
 
-## Visual verification
+The durable worker uses grounded planning schema v2 with pinned pipeline and
+prompt versions. It accepts draft paraphrases, a summary, suggested category
+and priority, and unresolved deadlines. Evidence quotes must match exact
+Unicode code-point offsets in the pinned revision. Model wording and
+uncertainty stay alongside evidence and user-approved values. Legacy schema 1
+still requires extractive quotes.
 
-Inspected the previous and final Chromium renders with isolated PostgreSQL
-fixtures. The final pass covered 1440px desktop, 820px tablet, 390px mobile,
-and 320px narrow navigation. It included long-document editing, multi-document
-Knowledge, three collections with assigned tags, command groups and search
-results, empty and populated Review, a confirmed edit beside its exact source
-excerpt, and recorded mock replay.
+In the isolated browser run, the sample brain dump produced four explicitly
+labeled mock proposals. The user selected a calendar date for the CS
+assignment and left Calc 2 unscheduled. Two approved tasks persisted after
+reload. Updating one to Done changed plan progress. Fixture checks also
+verified a malformed-evidence run failed and the versioned recorded replay
+used actual stored events.
 
-The checks surfaced clipped long titles, truncated palette helper text, and
-competing scrollbars on mobile. Final screenshots show the wrapped title and
-the palette's independent result scroll area. Focus outlines and page overflow
-were also checked. Images are in `/tmp/threadline-41-*.png`. Reproduce with Vite
-on 21646 and Chromium CDP on 9222, then run
+## Live AI availability
+
+LIVE_AUTHORIZED=false. Develop action plan is disabled and offers a route
+into manual planning after saving. The public schema v2 request returns
+LIVE_DISABLED without queueing work. Mock adapters were injected into the
+existing worker only inside disposable test schemas.
+
+## Verification
+
+- Workspace typecheck, frontend tests, frontend/API builds, Vite security
+  checks, package audit, migration tests, and the entire API suite passed.
+- PostgreSQL integration tested manual conversion, trusted dates, stale
+  versions and concurrent requests, project and session ownership, archive
+  guards before dispatch and conversion, task-creation rollback, and deletion
+  receipts. Invalid provider results remained off the plan.
+- Chromium verified the full flow, editing conflicts and draft recovery,
+  keyboard/focus movement, reduced motion, and desktop/mobile layouts. It
+  also exercised the existing Capture, Knowledge, Collections, Review,
+  replay, and Focus City/List View paths.
+- The separate Focus City browser harness passed 0, 1, 5, and 20 task
+  scenarios. Inspected desktop/mobile City frames and the Action Plan draft,
+  scheduling groups, and linked progress. Images are in
+  `/tmp/threadline-5a-*.png`.
+- Scoped Ponytail/code review checked version isolation, proposal ownership,
+  locking and rollback, link reuse and task deletion, and draft preservation
+  for personal-workspace use. Fixed a transient Chromium reload poll and
+  clarified the original uncertainty label after a user resolves scheduling.
+  Staged review and secret audit passed.
+
+Reproduce the main browser pass with Vite on 21646 and Chromium CDP on 9222,
+then run
 `pnpm --filter @workspace/api-server exec tsx ../../lib/db/scripts/capture-browser.mjs`.
 
-## Automated verification and review
+## Limits and next decision
 
-- Workspace typecheck, frontend tests, frontend/API production builds, Vite
-  security tests, and isolated API integration/extraction/durability tests passed.
-- Chromium passed save and retry, Ctrl+Enter, immutable history and focus return,
-  draft preservation, archive/restore, search and tags, return to collection,
-  command keyboard and focus controls, block navigation, evidence integrity,
-  review conflicts and persistence, replay, owner isolation, reduced motion,
-  narrow touch navigation, and the Focus City/List View round trip.
-- Actual LIVE_DISABLED outcomes and successful mock runs were verified with
-  isolated fixture data. The package audit reported no known vulnerabilities.
-- Scoped Ponytail and code review traced UI state, focus, write boundaries,
-  retained filters, and fixture coverage for personal-workspace usage. The
-  collection input race and narrow palette layout were resolved. Staged review
-  and the secret audit passed.
+Apply migration `0006_threadline_action_plans` before starting the updated
+API. Migration tests ran in disposable schemas. Validation proves quote
+integrity and structure. Humans must still verify the meaning of generated
+paraphrases. Projects and priorities are selected explicitly. Plan grouping
+is per saved brain dump, and unsaved edits are session-local.
 
-## Remaining limitations and owner review
-
-Collection totals are unavailable from the current API. Browse context is
-session-local. The existing city bundle-size advisory remains. Live Google
-consent, screen-reader use, and physical-device keyboard behavior were outside
-the browser run. Live Gemini remains disabled.
-
-Owner review should judge the reading measure, mobile tools placement, and
-preferable document density with real notes. The next decision is whether to
-accept the design and make Threadline the authenticated default. Work stops at
-Phase 4.1.
+Physical-device and screen-reader behavior and live OAuth consent were
+outside this verification. Live Gemini availability and Free Tier eligibility
+remain unverified. The next task is owner review of manual and mock-tested
+planning. Any first live inference requires separate eligibility verification
+and explicit owner authorization. Stop at Phase 5A.

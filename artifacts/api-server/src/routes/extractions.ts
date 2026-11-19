@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { pool } from "@workspace/db";
 import { cancel } from "../extraction/lifecycle";
+import { LIVE_AUTHORIZED } from "../extraction/gemini";
 import { extract } from "../extraction/service";
 import { ExtractionError } from "../extraction/validation";
 const router = Router();
@@ -10,7 +11,15 @@ router.post("/", async (req, res) => {
     !b ||
     typeof b !== "object" ||
     Array.isArray(b) ||
-    Object.keys(b).sort().join() !== "idempotency_key,source_revision_id" ||
+    Object.keys(b).some(
+      (key) =>
+        !["idempotency_key", "source_revision_id", "schema_version"].includes(
+          key,
+        ),
+    ) ||
+    (b.schema_version !== undefined &&
+      b.schema_version !== 1 &&
+      b.schema_version !== 2) ||
     typeof b.source_revision_id !== "string" ||
     !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
       b.source_revision_id,
@@ -21,6 +30,10 @@ router.post("/", async (req, res) => {
     res.status(400).json({ error: "Invalid extraction request" });
     return;
   }
+  if (b.schema_version === 2 && !LIVE_AUTHORIZED) {
+    res.status(503).json({ error: "LIVE_DISABLED" });
+    return;
+  }
   try {
     res
       .status(202)
@@ -29,6 +42,8 @@ router.post("/", async (req, res) => {
           res.locals.userId,
           b.source_revision_id,
           b.idempotency_key,
+          "gemini",
+          b.schema_version ?? 1,
         ),
       );
   } catch (e) {

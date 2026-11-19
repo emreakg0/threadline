@@ -3,6 +3,8 @@ import { HowItWorks } from "./HowItWorks";
 import { api } from "./api";
 import { documents } from "./documents-api";
 import { useCapture } from "./useCapture";
+import { ActionPlan } from "./ActionPlan";
+import type { Project } from "./types";
 import { CaptureEditor } from "./CaptureEditor";
 import { Library } from "./Library";
 import { ReviewPanel } from "./ReviewPanel";
@@ -11,7 +13,8 @@ import { WorkspaceIcon } from "./WorkspaceIcon";
 import "./capture.css";
 
 const navigation = [
-  { route: "#capture", label: "Capture", icon: "capture" },
+  { route: "#capture", label: "Brain dump", icon: "capture" },
+  { route: "#capture/plan", label: "Action Plan", icon: "review" },
   {
     route: "#capture/library",
     label: "Knowledge",
@@ -38,14 +41,20 @@ export function CaptureWorkspace({
   name,
   onExit,
   active,
+  projects,
 }: {
   name: string;
   onExit: () => void;
   active: boolean;
+  projects: Project[];
 }) {
   const [unsavedReviews, setUnsavedReviews] = useState<string[]>([]);
-  const capture = useCapture(unsavedReviews.length > 0);
+  const [unsavedPlans, setUnsavedPlans] = useState<string[]>([]);
+  const capture = useCapture(
+    unsavedReviews.length > 0 || unsavedPlans.length > 0,
+  );
   const [route, setRoute] = useState(location.hash);
+  const [lastPlan, setLastPlan] = useState<string | null>(null);
   const [lastBrowse, setLastBrowse] = useState<string | null>(null);
   const [organization, setOrganization] = useState<
     Awaited<ReturnType<typeof documents.organization>>
@@ -75,12 +84,20 @@ export function CaptureWorkspace({
   const routedReviewId = route.startsWith("#capture/review/")
     ? route.slice("#capture/review/".length)
     : null;
+  const planId = route.startsWith("#capture/plan/")
+    ? route.slice("#capture/plan/".length)
+    : null;
+  const mountedPlan = planId || lastPlan;
+  useEffect(() => {
+    if (planId) setLastPlan(planId);
+  }, [planId]);
   const { open, fresh, busy } = capture;
   const documentReady = !documentId || documentId === capture.saved?.id;
   const browsing =
     section === "#capture/library" ||
     section === "#capture/collections" ||
-    (section === "#capture/review" && !routedReviewId);
+    (section === "#capture/review" && !routedReviewId) ||
+    (section === "#capture/plan" && !planId);
   const browseSection = browsing ? section : lastBrowse;
 
   useEffect(() => {
@@ -103,6 +120,12 @@ export function CaptureWorkspace({
   }, [active, documentId, busy, open]);
   const trackReviewDraft = useCallback((id: string, dirty: boolean) => {
     setUnsavedReviews((ids) => {
+      if (dirty) return ids.includes(id) ? ids : [...ids, id];
+      return ids.includes(id) ? ids.filter((entry) => entry !== id) : ids;
+    });
+  }, []);
+  const trackPlanDraft = useCallback((id: string, dirty: boolean) => {
+    setUnsavedPlans((ids) => {
       if (dirty) return ids.includes(id) ? ids : [...ids, id];
       return ids.includes(id) ? ids.filter((entry) => entry !== id) : ids;
     });
@@ -178,7 +201,7 @@ export function CaptureWorkspace({
           <button className="tl-new" disabled={busy} onClick={newCapture}>
             <WorkspaceIcon name="plus" />
             <span className="tl-new-label">
-              {capture.hasNewDraft ? "Resume capture" : "New capture"}
+              {capture.hasNewDraft ? "Resume dump" : "New brain dump"}
             </span>
           </button>
           <nav aria-label="Workspace">
@@ -232,9 +255,9 @@ export function CaptureWorkspace({
                   {
                     id: "new",
                     label: capture.hasNewDraft
-                      ? "Resume capture"
-                      : "Create a capture",
-                    detail: "Write or paste notes",
+                      ? "Resume brain dump"
+                      : "Write a brain dump",
+                    detail: "Put what’s on your mind into words",
                     group: "Quick actions",
                     icon: "plus",
                     action: newCapture,
@@ -312,11 +335,13 @@ export function CaptureWorkspace({
                     }
                   </h1>
                   <p>
-                    {browseSection === "#capture/review"
-                      ? "Check extracted knowledge against its source and decide what to keep."
-                      : browseSection === "#capture/collections"
-                        ? "Keep related documents together."
-                        : "Find your saved notes by title, source text, collection or tag."}
+                    {browseSection === "#capture/plan"
+                      ? "Choose a brain dump to open its plan."
+                      : browseSection === "#capture/review"
+                        ? "Check extracted knowledge against its source and decide what to keep."
+                        : browseSection === "#capture/collections"
+                          ? "Keep related documents together."
+                          : "Find your saved notes by title, source text, collection or tag."}
                   </p>
                 </div>
                 {browseSection === "#capture/library" && (
@@ -362,7 +387,9 @@ export function CaptureWorkspace({
                 selected={capture.saved?.id}
                 onCreate={newCapture}
                 onOpen={(item) => {
-                  if (browseSection === "#capture/review")
+                  if (browseSection === "#capture/plan")
+                    location.hash = "#capture/plan/" + item.id;
+                  else if (browseSection === "#capture/review")
                     location.hash = "#capture/review/" + item.id;
                   else openDocument(item.id);
                 }}
@@ -385,6 +412,20 @@ export function CaptureWorkspace({
                 }}
                 onChange={() => refreshReview((value) => value + 1)}
                 onDraftChange={trackReviewDraft}
+              />
+            </div>
+          ))}
+          {[
+            ...new Set(
+              mountedPlan ? [...unsavedPlans, mountedPlan] : unsavedPlans,
+            ),
+          ].map((id) => (
+            <div key={id} hidden={id !== planId}>
+              <ActionPlan
+                id={id}
+                visible={active && id === planId}
+                projects={projects}
+                onDraftChange={trackPlanDraft}
               />
             </div>
           ))}

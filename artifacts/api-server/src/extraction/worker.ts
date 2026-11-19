@@ -10,6 +10,17 @@ import {
 } from "./lifecycle";
 import { claim, heartbeat, owned, type Claim } from "./claims";
 export { claim, heartbeat } from "./claims";
+async function requireActivePlanSource(c: Client, r: Claim) {
+  if (r.schema_version !== 2) return;
+  const document = (
+    await c.query(
+      "SELECT archived_at FROM threadline_documents WHERE id=$1 AND user_id=$2 FOR SHARE",
+      [r.document_id, r.user_id],
+    )
+  ).rows[0];
+  if (!document || document.archived_at)
+    throw new ExtractionError("DOCUMENT_ARCHIVED", 409);
+}
 async function endStep(c: Client, r: Claim, status: string, code?: string) {
   const updated = await c.query(
     `UPDATE threadline_execution_steps SET status=$2,completed_at=clock_timestamp(),duration_ms=GREATEST(0,extract(epoch FROM(clock_timestamp()-started_at))*1000)::bigint,error_code=$3 WHERE id=$1 AND status='running' RETURNING step_key`,
@@ -38,6 +49,7 @@ async function startStep(r: Claim, key: string) {
 export async function finish(r: Claim, blocks: Block[]) {
   return transaction(async (c) => {
     if (!(await owned(c, r))) return false;
+    await requireActivePlanSource(c, r);
     const step = r.step;
     for (const [position, b] of blocks.entries()) {
       const id = randomUUID();
@@ -54,6 +66,19 @@ export async function finish(r: Claim, blocks: Block[]) {
           b.uncertainty_reason,
         ],
       );
+      if (b.proposal)
+        await c.query(
+          `INSERT INTO threadline_plan_actions(block_id,document_id,user_id,source_revision_id,proposal,schedule)
+           VALUES($1,$2,$3,$4,$5,$6)`,
+          [
+            id,
+            r.document_id,
+            r.user_id,
+            r.source_revision_id,
+            { title: b.content, ...b.proposal },
+            b.proposal.deadline_phrase ? "unresolved" : "unscheduled",
+          ],
+        );
       for (const e of b.evidence)
         await c.query(
           `INSERT INTO threadline_block_evidence(id,user_id,block_id,document_id,source_revision_id,quote,start_offset,end_offset) VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,
@@ -123,8 +148,10 @@ export async function processOne(adapter: Adapter = gemini, id?: string) {
   const timeout = setTimeout(() => controller.abort(), 12000);
   let abortListener: () => void = () => {};
   try {
-    if (adapter === gemini && !LIVE_AUTHORIZED)
+    if (adapter.mode === "gemini" && !LIVE_AUTHORIZED)
       throw new ExtractionError("LIVE_DISABLED", 503);
+    if (r.schema_version === 2)
+      await transaction((c) => requireActivePlanSource(c, r));
     const aborted = new Promise<never>((_, reject) => {
       abortListener = () =>
         reject(new ExtractionError("PROVIDER_TIMEOUT", 504));
@@ -133,7 +160,7 @@ export async function processOne(adapter: Adapter = gemini, id?: string) {
       });
     });
     const raw = await Promise.race([
-      adapter.generate(r.source, controller.signal),
+      adapter.generate(r.source, controller.signal, r.schema_version),
       aborted,
     ]);
     await transaction(async (c) => {
@@ -141,7 +168,7 @@ export async function processOne(adapter: Adapter = gemini, id?: string) {
       await endStep(c, r, "succeeded");
     });
     await startStep(r, "validate_output");
-    const blocks = validate(raw, r.source);
+    const blocks = validate(raw, r.source, r.schema_version);
     await transaction(async (c) => {
       if (!(await owned(c, r))) throw new ExtractionError("STALE_LEASE");
       await endStep(c, r, "succeeded");

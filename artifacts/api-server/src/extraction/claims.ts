@@ -2,9 +2,11 @@ import { randomUUID } from "node:crypto";
 import { pool } from "@workspace/db";
 import { MODEL, type Adapter } from "./gemini";
 import { transaction, appendEvent, reconcile, type Client } from "./lifecycle";
+import { formats, type SchemaVersion } from "./validation";
 export const LEASE_MS = 30000;
 export type Claim = {
   id: string;
+  schema_version: SchemaVersion;
   user_id: string;
   source_revision_id: string;
   document_id: string;
@@ -75,13 +77,14 @@ export async function claim(
         [r.user_id],
       )
     ).rows[0];
+    const format = formats[r.schema_version as SchemaVersion];
     const blocked =
       dispatch.total >= 20 || dispatch.own >= 6
         ? "DAILY_QUOTA"
         : r.model !== MODEL ||
-            r.schema_version !== 1 ||
-            r.pipeline_version !== "2c-1" ||
-            r.prompt_version !== "extractive-1"
+            !format ||
+            r.pipeline_version !== format.pipeline ||
+            r.prompt_version !== format.prompt
           ? "MODEL_CONFIG_CHANGED"
           : null;
     if (blocked) {

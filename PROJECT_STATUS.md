@@ -1,6 +1,6 @@
 # Focus City project status
 
-Last inspection: 2026-11-19 (UTC). See the Phase 4.1 section below for current verification and the next task.
+Last inspection: 2026-11-19 (UTC). See the Phase 5A section below for current verification and the next task.
 
 ## Version control and backup
 
@@ -257,3 +257,25 @@ limitations and the visual evidence. Live Gemini is disabled.
 
 The next unfinished task is owner design acceptance of Phase 4.1 and a decision
 on the authenticated default entry. Stop at Phase 4.1.
+
+## 2026-11-19 — Threadline Phase 5A Action Planning
+
+Action Planning takes precedence over the previously planned knowledge graph.
+Backlinks, the graph, and relationship visualization stay deferred.
+
+Brain Dump links to a persistent per-document Action Plan. Manual editing,
+explicit scheduling and approval, and transactional conversion now use the
+existing knowledge blocks, task system, and unique conversion links. Schema
+v2 permits draft paraphrases with exact evidence while schema v1 and its
+recorded history retain their contracts. LIVE_AUTHORIZED=false.
+
+Typechecks, frontend tests, API suites, builds, migration and security checks,
+package audit, and Chromium passed. Chromium verified manual planning, a
+mock v2 plan from the sample dump, calendar confirmation, two linked tasks,
+progress persistence, conflicts, and another owner's denial. Focus City
+passed its 0, 1, 5, and 20 task browser cases. See RESULT.md for screenshots,
+coverage, and remaining limitations. Migration 0006 was tested in disposable
+schemas and is required before starting the updated API.
+
+The exact next task is owner review of Phase 5A. Live inference requires
+separate Free Tier verification and explicit first-call authorization.

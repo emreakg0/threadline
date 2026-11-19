@@ -613,7 +613,7 @@
     border-right: 0;
     border-bottom: 1px solid var(--tl-line);
   }
-  .threadline .tl-sidebar nav { grid-column: 1 / -1; grid-row: 2; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 3px; }
+  .threadline .tl-sidebar nav { grid-column: 1 / -1; grid-row: 2; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 3px; }
   .threadline .tl-sidebar nav a { justify-content: center; gap: 5px; padding-inline: 4px; text-align: center; font-size: 0.75rem; }
   .tl-sidebar nav a::before { inset: auto 12px 0; width: auto; height: 2px; transform: scaleX(0.3); }
   .tl-nav-label { display: none; }

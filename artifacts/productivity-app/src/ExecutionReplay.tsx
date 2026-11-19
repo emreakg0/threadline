@@ -120,7 +120,10 @@ export function ExecutionReplay({ trace }: { trace: Trace }) {
           {trace.run.status}
           {trace.run.error_code ? " · " + trace.run.error_code : ""}
         </strong>
-        <span>{trace.run.model}</span>
+        <span>
+          {trace.run.schema_version === 2 && "Action planning · schema v2 · "}
+          {trace.run.model}
+        </span>
       </div>
       {trace.warnings.map((w) => (
         <p className="tl-error" role="status" key={w}>

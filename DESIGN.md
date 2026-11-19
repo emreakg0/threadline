@@ -109,3 +109,19 @@ grouped command palette. The palette uses lighter backdrop blur and has one
 scrolling results area with a fixed search field and footer. The shell uses a
 compact tablet and phone header, with an icon-only capture button at the
 narrowest widths. Motion remains short and respects reduced-motion preferences.
+
+## Threadline Phase 5A — Brain Dump and Action Plan
+
+Brain Dump keeps the graphite writing canvas and supports saving with an
+optional title. The saved document highlights its Action Plan and shows the
+disabled development action next to manual availability. Knowledge tools sit
+below that planning entry point.
+
+Action Plan uses rows grouped by persisted review, schedule, and conversion
+states. An expanded row places exact source evidence and draft suggestions
+beside user-editable fields on wide screens, with the evidence above the
+fields on phones. Amber marks unresolved date phrases. After approval,
+Create task becomes the primary action and asks for confirmation. Linked
+tasks expose their current status and an entry into the existing Focus City
+editor. Progress comes from real linked tasks. The view respects the
+workspace focus, touch, and reduced-motion styles.
