@@ -312,3 +312,7 @@ The v2 provider contract under `grounded-plan-4` accepts one to eight verbatim s
 The worker records `QUOTE_NOT_FOUND`, `AMBIGUOUS_QUOTE`, `EMPTY_EVIDENCE`, `INVALID_EVIDENCE`, or `UNSUPPORTED_DEADLINE` for the corresponding failures. The whole output must pass before the persistence transaction starts. Quotation presence alone cannot establish that a paraphrase faithfully reflects intent.
 
 Schema v1 keeps its original offset contract. Historical v2 evidence and execution records are read as stored. The existing claim guard rejects queued jobs pinned to obsolete prompt versions. Pipeline identity remains stable for per-revision deduplication. Offline mock and browser checks passed with both ordinary live gates closed.
+
+## Phase 5B.5 — Third authorized live pilot
+
+The third authorized pilot used one standard v1beta generateContent request with `gemini-3.5-flash-lite` and `grounded-plan-4`. HTTP 200 supplied four actions with four unique verbatim quotations. The ordinary authenticated API returned four saved review proposals and eleven execution events. Neither relative deadline became a date, no priority was approved and no tasks were created. Exact assignment deadline wording and email tentativeness were inconclusive in the sanitized semantic checks. The isolated allowance is spent, fixtures were removed and ordinary inference is closed.

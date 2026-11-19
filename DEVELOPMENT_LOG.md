@@ -409,3 +409,7 @@ Ran the production planning adapter and durable worker in isolation with the app
 ## Phase 5B.4 — Reliable source evidence grounding
 
 Updated the planning request fixture, prompt, validator and processing error messages. New v2 runs derive unique exact source spans in Unicode code points. Added tests for ambiguous overlaps, Unicode, invalid evidence, deadlines, persistence and historical replay. Desktop/mobile Chromium exercised the complete workflow in a disposable schema. Typecheck, builds, PostgreSQL regressions, frontend security and package audit passed. Zero provider requests; both authorization gates remain closed.
+
+## Phase 5B.5 — Third authorized live pilot
+
+Used the committed quote-only adapter and durable worker in a disposable schema with an eight-minute atomic allowance. One HTTP 200 response produced four valid actions and four verified exact spans. Read the committed plan and execution events through authenticated API routes before cleanup. Documented the limits of the deadline wording and tentativeness checks in RESULT.md. Confirmed LIVE_DISABLED, zero pending jobs and removal of pilot resources. Only sanitized documentation was retained.

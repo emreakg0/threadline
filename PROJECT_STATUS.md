@@ -350,3 +350,7 @@ The revised request received HTTP 200 in the second authorized pilot. Four expec
 ## Phase 5B.4 — Reliable source evidence grounding
 
 The isolated Chromium workflow saved four mock actions from the exact pilot brain dump with server-grounded evidence. Invalid evidence rejected the entire plan. Historical v1/v2 replay, security checks and integration tests passed. The remaining question is whether Gemini reliably returns unique verbatim quotes under the new prompt. Any live evaluation requires separate authorization.
+
+## Phase 5B.5 — Third authorized live pilot
+
+Verified one live end-to-end run through PostgreSQL persistence and authenticated Action Plan review. All four expected topics had unique exact source evidence. Eleven events recorded the completed run. The two deadline-bearing actions remained unresolved and no tasks were created. The remaining open question is consistent semantic fidelity, including tentative wording. Stop for owner review; no live requests remain authorized.

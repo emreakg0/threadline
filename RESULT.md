@@ -1,4 +1,25 @@
-# Threadline Phase 5B.4 — Server-grounded source evidence
+# Threadline Phase 5B.5 — Live Action Plan pilot
+
+**One real request produced four persisted, reviewable proposals.** Google returned HTTP 200 and structured JSON to the isolated worker using `gemini-3.5-flash-lite`, v1beta `generateContent`, schema v2 and `grounded-plan-4`. The only source was the approved fictional brain dump, in new revision `17753c1e-6416-423b-92f3-4a6f18061746`. The server key matched the owner-confirmed suffix for the verified Free Tier project.
+
+| Generated topic | Persisted scheduling | Suggested priority |
+| --- | --- | --- |
+| Programming assignment | Unresolved source deadline | High |
+| Calculus review | Unscheduled | Medium |
+| Portfolio website | Unresolved “this weekend” | Medium |
+| Email project teammate | Unscheduled | Medium |
+
+**Evidence and review.** All four quotations occurred exactly once. After commit, each stored Unicode code-point span reproduced its quotation from the pinned revision. Zero quotations were missing or ambiguous. The authenticated Action Plan API returned all four proposals in `needs_review`. No calendar dates or priorities were approved and zero tasks were created.
+
+**Meaning checks.** The assignment had a grounded deadline phrase and stayed unresolved. The sanitized check did not capture its exact wording as “Thursday”. The teammate email remained a review proposal. The wording check did not establish whether the generated paraphrase preserved “should probably”. Human approval was never exercised in the pilot.
+
+**Execution and closure.** The How It Works API returned 11 ordered events, through successful source validation, extraction, output validation, persistence and completion. An eight-minute, revision-, key-, worker- and model-bound allowance was consumed atomically before dispatch. Exactly one request was sent, with zero retries or fallbacks. The queue was empty at cleanup. The isolated schema and temporary worker were removed after the authenticated read. The ordinary API returned `enabled: false` and `LIVE_DISABLED`; `LIVE_AUTHORIZED=false` and `freeTierApproval() === null` remain in effect.
+
+Focused extraction checks, the PostgreSQL API and worker suites, frontend tests, workspace typecheck, both production builds and the secret audit passed.
+
+This verifies the live path for one synthetic document. It does not establish consistent interpretation across inputs. Further inference requires fresh owner authorization.
+
+## Threadline Phase 5B.4 — Server-grounded source evidence
 
 New planning requests use `grounded-plan-4`. Gemini supplies verbatim quotations as strings. For each quotation, the worker searches the exact immutable source revision and requires exactly one occurrence, including overlapping matches. The server counts Unicode code points before the match and within the quotation to derive a zero-based start and exclusive end. For example, the Chromium fixture persisted “programming assignment due Thursday” at [9, 44).
 
