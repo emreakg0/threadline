@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
@@ -9,6 +10,7 @@ import {
   planningRequest,
   readPlanningResponse,
   ProviderQuotaError,
+  ProviderRequestError,
   tokenReservation,
 } from "./gemini";
 const source = "🧵 Call Sam tomorrow";
@@ -79,9 +81,110 @@ assert.deepEqual(Object.keys(request).sort(), [
 assert.equal(request.contents[0].parts[0].text, source);
 assert.equal(request.generationConfig.responseMimeType, "application/json");
 assert.equal(
-  request.generationConfig.responseJsonSchema.properties.schema_version.minimum,
-  2,
+  JSON.stringify(request),
+  readFileSync(
+    new URL("./fixtures/planning-request.json", import.meta.url),
+    "utf8",
+  ).trimEnd(),
 );
+assert.equal(request.generationConfig.maxOutputTokens, 4096);
+assert.deepEqual(
+  request.generationConfig.responseJsonSchema.properties.schema_version.enum,
+  [2],
+);
+assert.doesNotMatch(
+  JSON.stringify(request.generationConfig.responseJsonSchema),
+  /"(?:minItems|maxItems|maxLength)":/,
+);
+for (const blocks of [
+  Array(25).fill(proposed),
+  [{ ...proposed, evidence: Array(9).fill(proposed.evidence[0]) }],
+  [{ ...proposed, evidence: [] }],
+  [
+    {
+      ...proposed,
+      proposal: { ...proposed.proposal, description: "x".repeat(1201) },
+    },
+  ],
+])
+  assert.throws(() =>
+    validate(JSON.stringify({ schema_version: 2, blocks }), source, 2),
+  );
+
+const secretEcho = "untrusted echoed source";
+const badRequest = Response.json(
+  {
+    error: {
+      status: "INVALID_ARGUMENT",
+      message: secretEcho,
+      details: [
+        {
+          "@type": "type.googleapis.com/google.rpc.BadRequest",
+          fieldViolations: [
+            {
+              field:
+                "generation_config.response_json_schema.properties." +
+                secretEcho,
+              description: secretEcho,
+            },
+            { field: secretEcho },
+            { field: "contents[0].parts[0].text" },
+          ],
+        },
+      ],
+    },
+  },
+  { status: 400 },
+);
+for (const [response, expected] of [
+  [
+    badRequest,
+    {
+      httpStatus: 400,
+      googleStatus: "INVALID_ARGUMENT",
+      fields: ["generationConfig.responseJsonSchema", "contents"],
+    },
+  ],
+  [
+    Response.json(
+      {
+        error: {
+          status: secretEcho,
+          details: [{ fieldViolations: [{ field: "contents" }] }],
+        },
+      },
+      { status: 400 },
+    ),
+    { httpStatus: 400 },
+  ],
+  [new Response("{", { status: 400 }), { httpStatus: 400 }],
+  [
+    Response.json(
+      { error: { status: "INVALID_ARGUMENT", message: "x".repeat(9000) } },
+      { status: 400 },
+    ),
+    { httpStatus: 400 },
+  ],
+  [
+    new Response(
+      new ReadableStream({
+        start(controller) {
+          controller.error(Error(secretEcho));
+        },
+      }),
+      { status: 400 },
+    ),
+    { httpStatus: 400 },
+  ],
+  [new Response(new ReadableStream(), { status: 400 }), { httpStatus: 400 }],
+] as const)
+  await assert.rejects(readPlanningResponse(response), (error) => {
+    assert.ok(error instanceof ProviderRequestError);
+    assert.equal(error.code, "PROVIDER_REJECTED");
+    assert.deepEqual(error.diagnostic, expected);
+    assert.ok(!JSON.stringify(error).includes(secretEcho));
+    return true;
+  });
 assert.ok(tokenReservation("🧵") > tokenReservation("x"));
 const providerResult = Response.json({
   candidates: [

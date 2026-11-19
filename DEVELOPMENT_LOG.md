@@ -397,3 +397,7 @@ Git 133c0f1 created the initial repository; 3f10439 initialized the productivity
   fixtures. Normal live inference remained disabled. Focused extraction and
   document integration checks passed. Only this sanitized report was retained
   in Git.
+
+## Phase 5B.2 — Offline HTTP 400 investigation
+
+Simplified the v2 provider schema, pinned its serialized request, and added bounded, allowlisted HTTP 400 diagnostics in the adapter and worker. The local validator and v1 schema were preserved. Simulated response tests, PostgreSQL integration, worker recovery, replay, typecheck, builds, frontend security and package audit passed. Zero provider requests. Both live gates remain closed.

@@ -1,4 +1,13 @@
-# Threadline Phase 5B — Gemini 3.5 Flash-Lite
+# Threadline Phase 5B.2 — Offline diagnosis of Gemini HTTP 400
+
+The pilot established that Google returned HTTP 400. Its response body was discarded, so the cause remains unknown. This investigation sent **zero provider requests**. Both live gates are closed (`LIVE_AUTHORIZED=false`, `freeTierApproval() === null`).
+
+- **Plausible cause.** The pilot schema bounded two nested arrays at 24 blocks and eight evidence excerpts per block. Google documents that nested bounds can make a schema too complex to serve. Another request validation error or project precondition is possible. The historical trace has no detail that distinguishes these explanations. [Google structured-output guide](https://aistudio.google.com/docs/structured-output#simplifying-complex-schemas)
+- **Request changes.** The provider schema now describes those limits in words and omits string-length constraints. The local v2 validator still enforces counts, lengths, required fields, priorities, grounded deadlines and exact Unicode evidence. The serialized request matches the documented v1beta JSON request shape, including JSON MIME type, nullable properties and the output token setting. [Gemini REST reference](https://aistudio.google.com/api-reference/generate-content)
+- **Diagnostics.** For future HTTP 400s, server logs can identify an allowlisted Google status and affected request fields. Raw text, unknown fields and provider messages are discarded. The run history and user-facing API keep the generic rejection code.
+- **Verification.** The exact serialized request fixture, simulated provider responses, PostgreSQL persistence and worker recovery, historical replay, workspace typecheck, frontend/API builds, frontend security tests and package audit passed. Runtime acceptance of the revised schema and quality of live proposals remain unverified. Further inference requires fresh owner authorization.
+
+## Earlier milestones
 
 The Phase 5B.1 pilot sent its one authorized Gemini request. Google returned
 HTTP 400, recorded as `PROVIDER_REJECTED`. The run stopped at extraction.

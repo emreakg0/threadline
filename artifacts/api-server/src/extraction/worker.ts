@@ -1,6 +1,13 @@
+import { logger } from "../lib/logger";
 import { randomUUID } from "node:crypto";
 import { pool } from "@workspace/db";
-import { gemini, liveAccess, ProviderQuotaError, type Adapter } from "./gemini";
+import {
+  gemini,
+  liveAccess,
+  ProviderRequestError,
+  ProviderQuotaError,
+  type Adapter,
+} from "./gemini";
 import { validate, ExtractionError, type Block } from "./validation";
 import {
   transaction,
@@ -202,6 +209,11 @@ export async function processOne(adapter: Adapter = gemini, id?: string) {
     await startStep(r, "persist");
     await finish(r, blocks);
   } catch (e) {
+    if (e instanceof ProviderRequestError)
+      logger.warn(
+        { runId: r.id, diagnostic: e.diagnostic },
+        "Gemini request rejected",
+      );
     await fail(r, e);
   } finally {
     clearInterval(timer);

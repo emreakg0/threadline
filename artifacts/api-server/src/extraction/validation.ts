@@ -9,7 +9,7 @@ export const kinds = [
 ] as const;
 export const formats = {
   1: { pipeline: "2c-1", prompt: "extractive-1" },
-  2: { pipeline: "plan-2", prompt: "grounded-plan-2" },
+  2: { pipeline: "plan-2", prompt: "grounded-plan-3" },
 } as const;
 export type SchemaVersion = keyof typeof formats;
 export type Proposal = {
@@ -63,21 +63,38 @@ export const responseSchema = {
     },
   },
 };
+// Array and string limits are enforced by validate() after generation. Nested
+// array bounds multiply the size of Gemini's constrained-decoding grammar.
+const nullableString = { type: ["string", "null"] };
 export const planSchema = {
-  ...responseSchema,
+  type: "object",
+  additionalProperties: false,
+  required: ["schema_version", "blocks"],
   properties: {
-    schema_version: { type: "integer", minimum: 2, maximum: 2 },
+    schema_version: { type: "integer", enum: [2] },
     blocks: {
-      ...responseSchema.properties.blocks,
+      type: "array",
+      description: "At most 24 blocks.",
       items: {
-        ...responseSchema.properties.blocks.items,
+        type: "object",
+        additionalProperties: false,
         required: [
-          ...responseSchema.properties.blocks.items.required,
+          "kind",
+          "content",
+          "uncertainty_reason",
+          "evidence",
           "proposal",
         ],
         properties: {
-          ...responseSchema.properties.blocks.items.properties,
           kind: { type: "string", enum: ["summary", "action"] },
+          content: string,
+          uncertainty_reason: nullableString,
+          evidence: {
+            type: "array",
+            description: "One to eight exact excerpts.",
+            items:
+              responseSchema.properties.blocks.items.properties.evidence.items,
+          },
           proposal: {
             type: ["object", "null"],
             additionalProperties: false,
@@ -88,13 +105,13 @@ export const planSchema = {
               "deadline_phrase",
             ],
             properties: {
-              description: { type: ["string", "null"], maxLength: 1200 },
-              category: { type: ["string", "null"], maxLength: 100 },
+              description: nullableString,
+              category: nullableString,
               suggested_priority: {
-                type: ["string", "null"],
+                ...nullableString,
                 description: "low, medium, high, or null",
               },
-              deadline_phrase: { type: ["string", "null"], maxLength: 160 },
+              deadline_phrase: nullableString,
             },
           },
         },

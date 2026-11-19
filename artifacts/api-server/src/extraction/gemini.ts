@@ -76,6 +76,99 @@ export class ProviderQuotaError extends ExtractionError {
   }
 }
 
+const googleStatuses = new Set([
+  "INVALID_ARGUMENT",
+  "FAILED_PRECONDITION",
+  "OUT_OF_RANGE",
+  "PERMISSION_DENIED",
+]);
+const requestFields = [
+  [
+    "generationConfig.responseJsonSchema",
+    "generation_config.response_json_schema",
+  ],
+  ["generationConfig.responseMimeType", "generation_config.response_mime_type"],
+  ["generationConfig.maxOutputTokens", "generation_config.max_output_tokens"],
+  ["generationConfig.temperature", "generation_config.temperature"],
+  ["systemInstruction", "system_instruction"],
+  ["contents", "contents"],
+] as const;
+
+type Diagnostic = { httpStatus: 400; googleStatus?: string; fields?: string[] };
+
+export class ProviderRequestError extends ExtractionError {
+  constructor(readonly diagnostic: Diagnostic) {
+    super("PROVIDER_REJECTED", 502);
+  }
+}
+
+async function requestDiagnostic(response: Response): Promise<Diagnostic> {
+  const diagnostic: Diagnostic = { httpStatus: 400 };
+  if (!response.body || response.body.locked) return diagnostic;
+  const reader = response.body.getReader();
+  const cancel = () => {
+    void reader.cancel().catch(() => {});
+  };
+  let expired = false;
+  const timer = setTimeout(() => {
+    expired = true;
+    cancel();
+  }, 500);
+  try {
+    const bytes = new Uint8Array(8192);
+    let size = 0;
+    for (let chunks = 0; chunks < 128; chunks++) {
+      const { done, value } = await reader.read();
+      if (expired) break;
+      if (done) {
+        const error = JSON.parse(
+          new TextDecoder().decode(bytes.subarray(0, size)),
+        )?.error;
+        if (googleStatuses.has(error?.status))
+          diagnostic.googleStatus = error.status;
+        const fields = new Set<string>();
+        if (Array.isArray(error?.details)) {
+          for (const detail of error.details) {
+            if (
+              detail?.["@type"] !==
+                "type.googleapis.com/google.rpc.BadRequest" ||
+              !Array.isArray(detail.fieldViolations)
+            )
+              continue;
+            for (const violation of detail.fieldViolations) {
+              const path = violation?.field;
+              if (typeof path !== "string") continue;
+              for (const aliases of requestFields) {
+                if (
+                  aliases.some(
+                    (name) =>
+                      path === name ||
+                      path.startsWith(name + ".") ||
+                      path.startsWith(name + "["),
+                  )
+                )
+                  fields.add(aliases[0]);
+              }
+            }
+          }
+        }
+        if (fields.size) diagnostic.fields = [...fields];
+        break;
+      }
+      if (size + value.byteLength > bytes.length) break;
+      bytes.set(value, size);
+      size += value.byteLength;
+    }
+  } catch {
+    // Diagnostics are best effort. Never propagate parser or stream messages.
+  } finally {
+    clearTimeout(timer);
+    cancel();
+    reader.releaseLock();
+  }
+  return diagnostic;
+}
+
 export async function readPlanningResponse(
   response: Response,
   now = Date.now(),
@@ -91,6 +184,8 @@ export async function readPlanningResponse(
         : 0,
     );
   }
+  if (response.status === 400)
+    throw new ProviderRequestError(await requestDiagnostic(response));
   if (!response.ok)
     throw new ExtractionError(
       response.status === 401 || response.status === 403

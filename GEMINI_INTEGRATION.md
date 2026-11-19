@@ -215,7 +215,7 @@ model, quotas, and retry policies.
 - The request uses `generationConfig.responseMimeType: application/json`,
   `responseJsonSchema`, and a maximum of 4,096 output tokens. No tools,
   grounding, batching, priority tier, or paid provider features are requested.
-  Schema version 2, pipeline `plan-2`, and prompt `grounded-plan-2` are pinned
+  Schema version 2, pipeline `plan-2`, and prompt `grounded-plan-3` are pinned
   per new run. Schema v1 rows, results, and replay remain readable. The live
   endpoint creates v2 jobs only.
 - Google's [model card](https://aistudio.google.com/docs/models/gemini-3.5-flash-lite)
@@ -290,3 +290,13 @@ recorded source validation and failed extraction, with no output validation,
 proposals, or tasks. The one-shot allowance was consumed and revoked. The
 ordinary adapter and API gates remain closed. Any new live request requires
 fresh owner authorization.
+
+### Phase 5B.2 offline contract review
+
+The wire fixture pins the serialized `planningRequest()` for a synthetic source. The request uses text parts in `systemInstruction` and `contents`, with `responseMimeType: application/json` and `responseJsonSchema` in `generationConfig`. Nullable types are documented, and the 4,096-token cap is within the model's 65,536-token output limit. Neither observation establishes why the pilot failed. [GenerateContent reference](https://aistudio.google.com/api-reference/generate-content) · [Model limits](https://aistudio.google.com/docs/models/gemini-3.5-flash-lite)
+
+Nested array bounds increase the grammar size and can trigger HTTP 400. The revised provider schema removes array bounds and string-length keywords, pins version 2 with a single-value enum and retains the same required fields and nullable proposal. The local validator enforces all original limits and evidence checks before persistence. New runs record `grounded-plan-3`; earlier runs retain their recorded versions. A pending run pinned to an older v2 prompt fails the existing configuration check. [Structured-output guide](https://aistudio.google.com/docs/structured-output#simplifying-complex-schemas)
+
+On HTTP 400 the worker logs the run ID, HTTP status, and recognized Google status or canonical request fields when present. Only allowlisted field names from structured BadRequest violations can reach the log. Messages and arbitrary path suffixes are discarded. Diagnostic reads are capped at 8 KiB, 128 reads and 500 ms. An unreadable body still yields an ordinary provider rejection. Only the generic code reaches the run history and client.
+
+Zero provider requests were sent during this investigation. Both authorization gates are closed. The pilot response cannot be reconstructed, and offline checks cannot establish project-specific acceptance.

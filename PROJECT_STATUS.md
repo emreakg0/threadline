@@ -338,3 +338,7 @@ The pilot allowance was revoked and its disposable schema removed. The
 normal API verified both gates remain closed. The next step before any
 general availability decision is to diagnose the provider rejection.
 Any further live request requires fresh owner authorization.
+
+## Phase 5B.2 — Offline HTTP 400 investigation
+
+Offline verification passed for the revised Gemini request schema, safe HTTP 400 diagnostics, Action Plan persistence and historical replay. The original rejection remains unexplained. Live inference is closed. The next unresolved question is whether Google accepts the revised request under this project; checking that requires separate owner authorization.
