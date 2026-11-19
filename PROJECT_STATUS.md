@@ -295,3 +295,18 @@ was outside this verification. The private origin is `emreakg0/threadline`.
 The next task is owner review of the standalone transition. Legacy City
 source and dependency removal require a separate cleanup milestone.
 LIVE_AUTHORIZED=false.
+
+## Threadline Phase 5B — Gemini 3.5 Flash-Lite
+
+The Gemini Developer API adapter now pins `gemini-3.5-flash-lite` and planning
+schema v2. Durable PostgreSQL scheduling enforces shared project capacity,
+owner ceilings, Pacific daily reset, revision deduplication, and a provider
+429 cooldown. Brain Dump surfaces availability and Free Tier data-use terms.
+A resumable processing page reads the run's actual recorded stages.
+
+Isolated API, database and Chromium checks exercised scheduling, recoveries,
+mock planning, review, task conversion, and legacy replay. The checked-in
+`LIVE_AUTHORIZED=false` gate remains closed. Migration 0007 was exercised only
+in disposable schemas. The next task is an explicit owner decision on one
+synthetic first call. Project/key access and actual structured response quality
+still require that separate bounded verification.

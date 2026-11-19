@@ -365,3 +365,28 @@ Apply migration 0006 before starting the updated API. Migration and rollback
 testing use disposable schemas. For an application rollback, leave the
 additive table and deletion receipts in place and drain or cancel v2 queued
 runs before using a legacy worker. Older builds cannot manage v2 plans.
+
+## Phase 5B — planning dispatch and processing view
+
+Migration 0007 adds nullable dispatch reservations to execution steps, a
+provider cooldown to runs, and a partial uniqueness index for new live planning
+revisions. No historical rows are rewritten. The existing advisory transaction
+lock serializes enqueue and claim across processes. A claim records its
+reservation and the extract step together. The reservation counts toward the
+budget even on failure, worker loss, or cancellation. An observed Google 429
+records the provider cooldown even if the user has already cancelled the run.
+See GEMINI_INTEGRATION.md for the model, thresholds, and gate.
+
+The authenticated `/api/extractions/availability` reports the code gate and
+Free Tier authorization state. Run creation accepts the existing idempotency
+key and creates schema v2 live jobs. Older records retain their originally
+recorded metadata. The owner-scoped `/api/extractions/:id/progress` returns
+the v2 run status and the current recorded stage from the most recent event.
+`/#capture/processing/<id>` polls that summary while active, preserves access
+after navigation and reload, and links to the Action Plan and existing replay.
+Ready requires a committed successful run. Processing never creates tasks.
+
+Apply the additive migration before starting the new API. For application
+rollback, disable live, drain or cancel pending live jobs and stop the new
+workers before restarting older code. Keep the migration and records in place.
+Neither authorization nor migration was applied to a live environment.

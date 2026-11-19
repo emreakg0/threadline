@@ -1,8 +1,16 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { HowItWorks } from "./HowItWorks";
 import { api } from "./api";
 import { documents } from "./documents-api";
 import { useCapture } from "./useCapture";
+import { PlanProcessing } from "./PlanProcessing";
+import { processingRoute } from "./ExtractionPanel";
 import { ActionPlan } from "./ActionPlan";
 import type { Project } from "./types";
 import { CaptureEditor } from "./CaptureEditor";
@@ -68,13 +76,18 @@ export function CaptureWorkspace({
   const heading = useRef<HTMLHeadingElement>(null);
   const captureHeading = useRef<HTMLHeadingElement>(null);
   const attemptedDocument = useRef<string | null>(null);
-  const section = route.startsWith("#capture/run")
-    ? "#capture/runs"
-    : (navigation.find(
-        (item) =>
-          item.route !== "#capture" &&
-          (route === item.route || route.startsWith(item.route + "/")),
-      )?.route ?? "#capture");
+  const processingId = route.startsWith(processingRoute)
+    ? route.slice(processingRoute.length)
+    : null;
+  const section = processingId
+    ? "#capture/plan"
+    : route.startsWith("#capture/run")
+      ? "#capture/runs"
+      : (navigation.find(
+          (item) =>
+            item.route !== "#capture" &&
+            (route === item.route || route.startsWith(item.route + "/")),
+        )?.route ?? "#capture");
   const traceId = route.startsWith("#capture/run/")
     ? route.slice("#capture/run/".length)
     : null;
@@ -97,7 +110,7 @@ export function CaptureWorkspace({
     section === "#capture/library" ||
     section === "#capture/collections" ||
     (section === "#capture/review" && !routedReviewId) ||
-    (section === "#capture/plan" && !planId);
+    (section === "#capture/plan" && !planId && !processingId);
   const browseSection = browsing ? section : lastBrowse;
 
   useEffect(() => {
@@ -296,6 +309,7 @@ export function CaptureWorkspace({
                 collections={organization.collections}
                 heading={captureHeading}
                 backToCollections={lastBrowse === "#capture/collections"}
+                visible={section === "#capture" && documentReady}
               />
             </div>
           </div>
@@ -408,6 +422,9 @@ export function CaptureWorkspace({
               />
             </div>
           ))}
+          {processingId && (
+            <PlanProcessing key={processingId} id={processingId} />
+          )}
           {section === "#capture/runs" && <HowItWorks runId={traceId} />}
         </main>
       </div>

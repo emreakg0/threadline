@@ -92,8 +92,7 @@ export function HowItWorks({ runId }: { runId: string | null }) {
           {historyLoading && <p role="status">Reading saved run history…</p>}
           {!historyLoading && !historyError && !runs.length && (
             <p>
-              No saved runs. Organize a saved capture to record a run; live
-              Gemini remains disabled.
+              No saved runs. Processing a saved brain dump creates a record here.
             </p>
           )}
           <div className="execution-run-list">

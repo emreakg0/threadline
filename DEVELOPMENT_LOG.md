@@ -354,3 +354,21 @@ Git 133c0f1 created the initial repository; 3f10439 initialized the productivity
   verify that the existing task count stays constant before user conversion.
   Chromium, API and frontend tests, typechecks, builds, and security checks
   passed. No real Google consent or Gemini inference was exercised.
+
+## Threadline Phase 5B — Gemini 3.5 Flash-Lite
+
+- Pinned the exact model and revised the schema v2 planning prompt around
+  distinct actions, concise evidence, and preserved uncertainty. Historical
+  schema/version metadata and replay retain their existing meaning.
+- Added additive migration 0007 and PostgreSQL quota accounting to the durable
+  queue. Verified revision deduplication, dispatcher serialization, rolling and
+  Pacific daily limits, owner queue exhaustion, and a project cooldown after an
+  observed 429. Live rejection, timeout, and interruption do not trigger resends.
+- Replaced the legacy extraction trigger with availability-aware Action Planning
+  and a resumable progress page driven by stored events. Kept manual planning,
+  review, task conversion, and replay available. Fixed stale run discovery when
+  returning to a previously opened brain dump, and scoped the outbound timeout
+  to provider work so storage errors keep their own failure category.
+- Passed isolated API/PostgreSQL and Chromium checks, workspace typecheck,
+  frontend tests, builds, security and package checks. Inspected desktop and
+  mobile views. No live calls, key access, or billing changes.

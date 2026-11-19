@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { pool } from "@workspace/db";
 import { cancel } from "../extraction/lifecycle";
-import { LIVE_AUTHORIZED } from "../extraction/gemini";
+import { liveAccess } from "../extraction/gemini";
 import { extract } from "../extraction/service";
 import { ExtractionError } from "../extraction/validation";
 const router = Router();
@@ -30,11 +30,10 @@ router.post("/", async (req, res) => {
     res.status(400).json({ error: "Invalid extraction request" });
     return;
   }
-  if (b.schema_version === 2 && !LIVE_AUTHORIZED) {
-    res.status(503).json({ error: "LIVE_DISABLED" });
-    return;
-  }
   try {
+    liveAccess(b.source_revision_id);
+    if (b.schema_version === 1)
+      throw new ExtractionError("PLANNING_SCHEMA_REQUIRED", 400);
     res
       .status(202)
       .json(
@@ -43,7 +42,7 @@ router.post("/", async (req, res) => {
           b.source_revision_id,
           b.idempotency_key,
           "gemini",
-          b.schema_version ?? 1,
+          2,
         ),
       );
   } catch (e) {
@@ -57,6 +56,42 @@ router.post("/", async (req, res) => {
 const validId = (id: unknown) =>
   typeof id === "string" &&
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+router.get("/availability", (req, res) => {
+  if (
+    req.query.source_revision_id !== undefined &&
+    !validId(req.query.source_revision_id)
+  ) {
+    res.status(400).json({ error: "Invalid source revision ID" });
+    return;
+  }
+  try {
+    liveAccess(req.query.source_revision_id as string | undefined);
+    res.json({ enabled: true });
+  } catch (e) {
+    if (!(e instanceof ExtractionError)) throw e;
+    res.json({ enabled: false, reason: e.code });
+  }
+});
+router.get("/:id/progress", async (req, res) => {
+  if (!validId(req.params.id)) {
+    res.status(400).json({ error: "Invalid run ID" });
+    return;
+  }
+  const result = await pool.query(
+    `SELECT r.status,r.provider,r.error_code,r.document_id,r.schema_version,
+      CASE WHEN r.status='running' AND e.event_type='step_started' THEN e.payload->>'key' END AS stage
+     FROM threadline_runs r
+     LEFT JOIN LATERAL (SELECT event_type,payload FROM threadline_execution_events
+       WHERE run_id=r.id AND user_id=r.user_id ORDER BY sequence DESC LIMIT 1) e ON true
+     WHERE r.id=$1 AND r.user_id=$2 AND r.schema_version=2`,
+    [req.params.id, res.locals.userId],
+  );
+  if (!result.rowCount) {
+    res.status(404).json({ error: "Run not found" });
+    return;
+  }
+  res.json(result.rows[0]);
+});
 function cursor(v: unknown) {
   if (v === undefined) return 0;
   if (

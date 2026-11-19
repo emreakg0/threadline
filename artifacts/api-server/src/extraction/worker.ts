@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { pool } from "@workspace/db";
-import { gemini, LIVE_AUTHORIZED, type Adapter } from "./gemini";
+import { gemini, liveAccess, ProviderQuotaError, type Adapter } from "./gemini";
 import { validate, ExtractionError, type Block } from "./validation";
 import {
   transaction,
@@ -9,6 +9,7 @@ import {
   type Client,
 } from "./lifecycle";
 import { claim, heartbeat, owned, type Claim } from "./claims";
+import { nextPacificMidnight } from "./quota";
 export { claim, heartbeat } from "./claims";
 async function requireActivePlanSource(c: Client, r: Claim) {
   if (r.schema_version !== 2) return;
@@ -115,13 +116,24 @@ export async function finish(r: Claim, blocks: Block[]) {
 }
 export async function fail(r: Claim, error: unknown) {
   return transaction(async (c) => {
+    if (r.provider === "gemini" && error instanceof ProviderQuotaError) {
+      // A provider refusal applies to the project even if this run was cancelled.
+      await c.query("SELECT pg_advisory_xact_lock(72810382)");
+      await c.query(
+        `UPDATE threadline_runs SET provider_blocked_until=GREATEST(
+          provider_blocked_until, ${nextPacificMidnight},
+          clock_timestamp()+$2::int * interval '1 second') WHERE id=$1`,
+        [r.id, error.retryAfterSeconds],
+      );
+    }
     if (!(await owned(c, r))) return false;
     const code =
       error instanceof ExtractionError
         ? error.code
         : "STORAGE_OR_PROCESSING_FAILURE";
     await endStep(c, r, "failed", code);
-    const retry = code === "PROVIDER_TRANSIENT" && r.attempt < 2;
+    const retry =
+      r.provider === "mock" && code === "PROVIDER_TRANSIENT" && r.attempt < 2;
     await c.query(
       `UPDATE threadline_runs SET status=$2,error_code=$3,completed_at=CASE WHEN $2='queued' THEN NULL ELSE now() END,lease_token=NULL,lease_expires_at=CASE WHEN $2='queued' THEN now()+interval '1 second' ELSE NULL END WHERE id=$1`,
       [r.id, retry ? "queued" : "failed", code],
@@ -135,7 +147,11 @@ export async function fail(r: Claim, error: unknown) {
   });
 }
 export async function processOne(adapter: Adapter = gemini, id?: string) {
-  const r = await claim(adapter.mode, id);
+  const r = await claim(
+    adapter.mode,
+    id,
+    adapter.mode === "gemini" ? liveAccess : undefined,
+  );
   if (!r) return false;
   const controller = new AbortController();
   const timer = setInterval(() => {
@@ -145,13 +161,15 @@ export async function processOne(adapter: Adapter = gemini, id?: string) {
       })
       .catch(() => controller.abort());
   }, 5000);
-  const timeout = setTimeout(() => controller.abort(), 12000);
+  let timeout: ReturnType<typeof setTimeout> | undefined;
   let abortListener: () => void = () => {};
   try {
-    if (adapter.mode === "gemini" && !LIVE_AUTHORIZED)
-      throw new ExtractionError("LIVE_DISABLED", 503);
-    if (r.schema_version === 2)
-      await transaction((c) => requireActivePlanSource(c, r));
+    if (adapter.mode === "gemini") liveAccess(r.source_revision_id);
+    await transaction(async (c) => {
+      if (!(await owned(c, r))) throw new ExtractionError("STALE_LEASE");
+      await requireActivePlanSource(c, r);
+    });
+    controller.signal.throwIfAborted();
     const aborted = new Promise<never>((_, reject) => {
       abortListener = () =>
         reject(new ExtractionError("PROVIDER_TIMEOUT", 504));
@@ -159,10 +177,18 @@ export async function processOne(adapter: Adapter = gemini, id?: string) {
         once: true,
       });
     });
+    timeout = setTimeout(() => controller.abort(), 12000);
     const raw = await Promise.race([
-      adapter.generate(r.source, controller.signal, r.schema_version),
+      adapter.generate(
+        r.source,
+        controller.signal,
+        r.schema_version,
+        r.source_revision_id,
+      ),
       aborted,
     ]);
+    clearTimeout(timeout);
+    controller.signal.removeEventListener("abort", abortListener);
     await transaction(async (c) => {
       if (!(await owned(c, r))) throw new ExtractionError("STALE_LEASE");
       await endStep(c, r, "succeeded");

@@ -203,3 +203,68 @@ work. Tests inject mock adapters into the durable worker in isolated
 PostgreSQL schemas. Mock outputs and v2 replay are visibly labeled. Manual
 planning uses no provider. The owner must separately verify genuine Free Tier
 eligibility and explicitly authorize the first non-sensitive live request.
+
+## Phase 5B — Gemini 3.5 Flash-Lite, live gate closed
+
+This is the current configuration. Earlier phases describe their historical
+model, quotas, and retry policies.
+
+- Exact model ID: `gemini-3.5-flash-lite`.
+- Standard text Developer API endpoint:
+  `POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent`.
+- The request uses `generationConfig.responseMimeType: application/json`,
+  `responseJsonSchema`, and a maximum of 4,096 output tokens. No tools,
+  grounding, batching, priority tier, or paid provider features are requested.
+  Schema version 2, pipeline `plan-2`, and prompt `grounded-plan-2` are pinned
+  per new run. Schema v1 rows, results, and replay remain readable. The live
+  endpoint creates v2 jobs only.
+- Google's [model card](https://aistudio.google.com/docs/models/gemini-3.5-flash-lite)
+  lists structured output. The [GenerateContent reference](https://aistudio.google.com/api-reference/generate-content)
+  describes the two JSON response fields. Google [lists free standard text
+  input and output](https://aistudio.google.com/docs/pricing#gemini-3.5-flash-lite)
+  for eligible Free Tier projects. Local tests verify the exact request shape
+  and response handling. An actual response to this schema under the
+  Threadline project key remains unverified. String lengths and evidence
+  grounding are enforced locally independently of the provider schema.
+- The owner identified `threadline-gemini` as a Free Tier project with no paid
+  billing and observed 15 RPM, 250,000 TPM, and 500 RPD. Those settings can
+  change. [Google applies limits to the whole project and resets RPD at
+  midnight Pacific](https://aistudio.google.com/docs/rate-limits). App accounting
+  covers dispatches from workers sharing one Threadline PostgreSQL database.
+  Other keys, clients, and installations are outside that accounting.
+- The app reserves serialized UTF-8 request bytes, the full output ceiling,
+  and additional framing headroom. It accepts at most 10 reservations and
+  180,000 estimated tokens in a rolling minute, at least six seconds apart,
+  with one active dispatch. It admits up to 240 project and 20 owner attempts
+  per Pacific day, counting queued work at admission, and limits waiting
+  requests to 40 project-wide and four per owner. A 429 writes a shared
+  cooldown until the later of the next Pacific midnight and a valid
+  `Retry-After` HTTP header. New sources may be submitted after the cooldown.
+- Production live dispatch has no automatic resend. A revision maps to one
+  run for the pinned model and pipeline even when different request keys are
+  used, including after failure or interruption. Temporary queue limits
+  reject before creating a run. Cancellation and timeout fence out late
+  results and retain the reservation. Google may still finish a request
+  after the local HTTP connection closes.
+- Before submitting, the Brain Dump UI tells users Google may use Free Tier
+  input and output to improve its products. Avoid sensitive notes and check
+  the [Gemini API terms](https://aistudio.google.com/docs/terms) for the project
+  and region. Users must confirm suggested actions before any tasks can be
+  created.
+
+### Separate first-call authorization
+
+Leave `LIVE_AUTHORIZED=false` and the code-side Free Tier approval empty
+until the owner explicitly authorizes the one-request pilot. The authorization
+must be short-lived and bound to the verified server-side key fingerprint and
+the UUID of one isolated, synthetic, non-sensitive source revision. Keep the
+actual key in Replit Secrets. Reconfirm the model, controls, project's
+unpaid tier and absence of paid billing immediately before the test. The
+GenerateContent API cannot certify billing status. If any check is uncertain,
+keep the gate closed.
+
+In the separate test, submit that one revision and verify actual provider
+access, schema acceptance, grounded evidence, reviewable persisted proposals,
+and recorded execution. Close the gate again after the result or failure.
+A malformed response, unavailable model, or 429 ends the attempt. Any wider
+enablement requires a separate owner decision.

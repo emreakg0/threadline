@@ -340,7 +340,7 @@ export function ReviewPanel({
           <p>
             {kind || state
               ? "Change the filters or review another document."
-              : "Blocks appear after a saved document is processed. Live Gemini is disabled."}
+              : "Extracted blocks appear here after a saved document is processed."}
           </p>
           {!kind && !state && (
             <a className="tl-text-link" href={"#capture/document/" + id}>

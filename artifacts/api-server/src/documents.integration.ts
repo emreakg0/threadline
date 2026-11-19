@@ -21,6 +21,7 @@ const headers = (owner = 0) => ({
   "Content-Type": "application/json",
 });
 type TestJson = {
+  status: string;
   events: unknown[];
   runs: { id: string }[];
   source_text: string;
@@ -379,26 +380,30 @@ try {
     (await (await request("/documents?review=true")).json()).documents[0].id,
     id,
   );
+  const { extract } = await import("./extraction/service");
   const extractionBody = {
     source_revision_id: initial.source.id,
     idempotency_key: randomUUID(),
   };
+  assert.deepEqual(await (await request("/extractions/availability")).json(), {
+    enabled: false,
+    reason: "LIVE_DISABLED",
+  });
   assert.equal(
-    (await request("/extractions", "POST", extractionBody, 1)).status,
-    404,
+    (await request("/extractions", "POST", extractionBody)).status,
+    503,
   );
-  const extractionResponse = await request(
-    "/extractions",
-    "POST",
-    extractionBody,
+  const recorded = await extract(
+    users[0],
+    initial.source.id,
+    extractionBody.idempotency_key,
+    "mock",
   );
-  assert.equal(extractionResponse.status, 202);
-  const recorded = await extractionResponse.json();
   assert.equal(
     (await request("/extractions/" + recorded.id, "GET", undefined, 1)).status,
     404,
   );
-  for (const suffix of ["/events", "/steps"])
+  for (const suffix of ["/events", "/steps", "/progress"])
     assert.equal(
       (
         await request(
@@ -447,7 +452,6 @@ try {
   assert.equal(persisted.source.revision, 2);
   assert.deepEqual(persisted.tags, ["planning", "team"]);
   assert.deepEqual((await (await request(blocks)).json()).blocks, [reopened]);
-  const { extract } = await import("./extraction/service");
   const { processOne } = await import("./extraction/worker");
   const plan = "/plans/" + id;
   assert.equal((await request(plan, "GET", undefined, 1)).status, 404);
@@ -466,6 +470,16 @@ try {
     randomUUID(),
     "mock",
     2,
+  );
+  assert.equal(
+    (await (await request("/extractions/" + run.id + "/progress")).json())
+      .status,
+    "queued",
+  );
+  assert.equal(
+    (await request("/extractions/" + run.id + "/progress", "GET", undefined, 1))
+      .status,
+    404,
   );
   const quote = "Decide later.";
   const start = [...body.source_text.slice(0, body.source_text.indexOf(quote))]

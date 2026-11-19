@@ -2,7 +2,15 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { validate, ExtractionError } from "./validation";
-import { gemini } from "./gemini";
+import {
+  ENDPOINT,
+  MODEL,
+  gemini,
+  planningRequest,
+  readPlanningResponse,
+  ProviderQuotaError,
+  tokenReservation,
+} from "./gemini";
 const source = "🧵 Call Sam tomorrow";
 const block = {
   kind: "deadline",
@@ -57,6 +65,66 @@ for (const entry of [
   },
 ])
   assert.throws(() => validate(planOutput(entry), source, 2));
+const request = planningRequest(source);
+assert.equal(MODEL, "gemini-3.5-flash-lite");
+assert.equal(
+  ENDPOINT,
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent",
+);
+assert.deepEqual(Object.keys(request).sort(), [
+  "contents",
+  "generationConfig",
+  "systemInstruction",
+]);
+assert.equal(request.contents[0].parts[0].text, source);
+assert.equal(request.generationConfig.responseMimeType, "application/json");
+assert.equal(
+  request.generationConfig.responseJsonSchema.properties.schema_version.minimum,
+  2,
+);
+assert.ok(tokenReservation("🧵") > tokenReservation("x"));
+const providerResult = Response.json({
+  candidates: [
+    {
+      finishReason: "STOP",
+      content: {
+        parts: [{ thought: true, text: "private" }, { text: planOutput() }],
+      },
+    },
+  ],
+});
+assert.equal(
+  validate(await readPlanningResponse(providerResult), source, 2)[0].content,
+  "Contact Sam",
+);
+for (const [response, code] of [
+  [new Response("private", { status: 404 }), "MODEL_UNAVAILABLE"],
+  [new Response("private", { status: 403 }), "PROVIDER_AUTH"],
+  [new Response("private", { status: 503 }), "PROVIDER_TRANSIENT"],
+  [new Response("{"), "INVALID_JSON"],
+  [
+    Response.json({ promptFeedback: { blockReason: "SAFETY" } }),
+    "PROVIDER_SAFETY_OR_TRUNCATION",
+  ],
+  [
+    Response.json({ candidates: [{ finishReason: "MAX_TOKENS" }] }),
+    "PROVIDER_SAFETY_OR_TRUNCATION",
+  ],
+  [
+    Response.json({
+      candidates: [{ finishReason: "STOP", content: { parts: {} } }],
+    }),
+    "INVALID_OUTPUT",
+  ],
+] as const)
+  await assert.rejects(readPlanningResponse(response), { code });
+await assert.rejects(
+  readPlanningResponse(
+    new Response(null, { status: 429, headers: { "retry-after": "120" } }),
+  ),
+  (error) =>
+    error instanceof ProviderQuotaError && error.retryAfterSeconds === 120,
+);
 await assert.rejects(
   gemini.generate(source),
   (e: ExtractionError) => e.code === "LIVE_DISABLED",

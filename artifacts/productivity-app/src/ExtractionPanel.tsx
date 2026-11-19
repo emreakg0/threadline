@@ -1,155 +1,165 @@
-import { useEffect, useState } from "react";
-import { api, ApiError } from "./api";
+import { useEffect, useRef, useState } from "react";
+import { api } from "./api";
 import { WorkspaceIcon } from "./WorkspaceIcon";
+
+export const processingRoute = "#capture/processing/";
+
+const messages: Record<string, string> = {
+  LIVE_DISABLED: "Live Gemini is disabled.",
+  FREE_TIER_UNVERIFIED: "The Free Tier authorization could not be verified.",
+  SOURCE_NOT_AUTHORIZED: "This revision is outside the authorized test.",
+  DAILY_QUOTA:
+    "The daily planning limit has been reached. Limits reset at midnight Pacific time.",
+  QUOTA_EXHAUSTED:
+    "Google declined the request due to quota. AI requests are paused until at least midnight Pacific time.",
+  QUEUE_FULL: "The planning queue is full. Try again after it has cleared.",
+  MODEL_UNAVAILABLE: "Google did not make this model available to Threadline.",
+  PROVIDER_AUTH: "Google declined access to the model.",
+  PROVIDER_REJECTED: "Google rejected the structured planning request.",
+  PROVIDER_SAFETY_OR_TRUNCATION:
+    "Google returned a blocked or incomplete response.",
+  PROVIDER_TIMEOUT: "The request timed out. Google may have received it.",
+  PROVIDER_NETWORK: "The connection to Google ended before a response arrived.",
+  PROVIDER_TRANSIENT: "Google returned a service error.",
+  INVALID_JSON: "The response was not valid JSON.",
+  INVALID_OUTPUT: "The response did not match the planning format.",
+  INVALID_PROPOSAL: "The response contained an invalid proposal.",
+  EVIDENCE_MISMATCH: "A quote did not match the saved brain dump.",
+  STORAGE_OR_PROCESSING_FAILURE: "Threadline could not save the result.",
+  OUTCOME_UNCERTAIN: "The worker stopped before it could record the outcome.",
+  DOCUMENT_ARCHIVED: "This brain dump was archived.",
+  SOURCE_TOO_LARGE: "This brain dump exceeds the planning input limit.",
+  MODEL_CONFIG_CHANGED: "This run used an older model or format.",
+};
+export function planningMessage(code: string) {
+  return messages[code];
+}
+
 export function ExtractionPanel({
   sourceId,
   documentId,
   disabled,
+  visible,
 }: {
   sourceId: string;
   documentId: string;
   disabled: boolean;
+  visible: boolean;
 }) {
-  const [runId, setRunId] = useState<string | null>(null),
-    [version, setVersion] = useState(0);
-  const [pending, setPending] = useState(false),
-    [message, setMessage] = useState("");
-  const [key] = useState(() => crypto.randomUUID());
-  const [count, setCount] = useState<number | null>(null);
+  const [runId, setRunId] = useState<string>();
+  const [availability, setAvailability] = useState<{
+    enabled: boolean;
+    reason?: string;
+  }>();
+  const [pending, setPending] = useState(false);
+  const [message, setMessage] = useState("");
+  const key = useRef<string>(undefined);
+  const active = useRef(false);
   useEffect(() => {
-    let cancelled = false;
-    api("/extractions?source_revision_id=" + sourceId)
-      .then((p) => {
-        if (!cancelled && p.runs?.[0])
-          setRunId((current) => current ?? p.runs[0].id);
+    if (!visible) return;
+    active.current = true;
+    const filter = "?source_revision_id=" + sourceId;
+    void api("/extractions/availability" + filter)
+      .then((result) => {
+        if (active.current) setAvailability(result);
       })
       .catch(() => {
-        if (!cancelled)
-          setMessage("Run history unavailable. Your source is unchanged.");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [sourceId]);
-  useEffect(() => {
-    if (!runId) return;
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout>;
-    let polls = 0;
-    async function poll() {
-      try {
-        const result = await api("/extractions/" + runId);
-        if (cancelled) return;
-        const run = result.run;
-        if (
-          !run ||
-          typeof run.status !== "string" ||
-          !Array.isArray(result.blocks)
-        )
-          throw Error("Invalid run");
-        setMessage(
-          `${run.provider === "mock" ? "MOCK TEST — not Gemini. " : ""}Run ${run.status}${run.error_code ? " · " + run.error_code : ""}. Source revision is pinned. Live Gemini remains disabled.`,
-        );
-        const active = ["queued", "running"].includes(run.status);
-        setPending(active);
-        setCount(run.status === "succeeded" ? result.blocks.length : null);
-        if (active && ++polls < 60) timer = setTimeout(() => void poll(), 2000);
-        else if (active)
+        if (active.current) {
+          setAvailability({ enabled: false });
           setMessage(
-            "Run still pending. Automatic polling paused; refresh status when ready. No provider success is claimed.",
-          );
-      } catch {
-        if (!cancelled) {
-          setPending(false);
-          setMessage(
-            "Cannot read run status. Work may still be queued or running. Refresh status; do not resubmit with a new key.",
+            "AI availability could not be checked. You can plan manually.",
           );
         }
-      }
-    }
-    void poll();
+      });
+    void api("/extractions" + filter)
+      .then(({ runs }) => {
+        const plan = runs.find(
+          (run: { schema_version?: number }) => run.schema_version === 2,
+        );
+        if (active.current && plan) setRunId((current) => current ?? plan.id);
+      })
+      .catch(() => {});
     return () => {
-      cancelled = true;
-      clearTimeout(timer);
+      active.current = false;
     };
-  }, [runId, version]);
-  async function organize() {
+  }, [sourceId, visible]);
+
+  async function develop() {
+    const originRoute = location.hash;
     setPending(true);
-    setMessage("Saving a queued request for this immutable revision…");
+    setMessage("");
     try {
       const run = await api("/extractions", "POST", {
+        schema_version: 2,
         source_revision_id: sourceId,
-        idempotency_key: key,
+        idempotency_key: (key.current ??= crypto.randomUUID()),
       });
-      setRunId(run.id);
-      setVersion((v) => v + 1);
+      if (active.current) {
+        setRunId(run.id);
+        // A slow acknowledgement should never pull the user out of another view.
+        if (location.hash === originRoute)
+          location.hash = processingRoute + run.id;
+      }
     } catch (error) {
+      if (active.current) {
+        const code =
+          error instanceof Error
+            ? (error.message.split(": ").at(-1) ?? "")
+            : "";
+        setMessage(
+          planningMessage(code) ??
+            "The request could not be confirmed. Trying again uses the same request key.",
+        );
+      }
+    } finally {
       setPending(false);
-      setMessage(
-        error instanceof ApiError && error.status === 429
-          ? "Quota reached; no automatic upgrade. Your source is unchanged."
-          : "Request status uncertain or unavailable. Retry uses the same key and cannot duplicate the request.",
-      );
     }
   }
   return (
-    <section
-      className="tl-next-action tl-extraction-tools"
-      aria-label="Knowledge actions"
-    >
-      <h2>Knowledge review</h2>
-      <a className="tl-review-link" href={"#capture/review/" + documentId}>
-        <WorkspaceIcon name="review" />
-        <span>Review blocks{count !== null ? " (" + count + ")" : ""}</span>
-        <WorkspaceIcon name="arrow" />
-      </a>
-      <div className="tl-run-tools">
+    <section className="tl-next-action" aria-label="Action planning">
+      <h2>Turn your thoughts into actions</h2>
+      {runId ? (
+        <a className="tl-review-link" href={processingRoute + runId}>
+          <WorkspaceIcon name="trace" /> <span>Open processing status</span>{" "}
+          <WorkspaceIcon name="arrow" />
+        </a>
+      ) : (
         <button
-          className="tl-organize"
-          disabled={disabled || pending}
-          onClick={() => void organize()}
+          className="tl-primary"
+          disabled={disabled || pending || !availability?.enabled}
+          aria-describedby="tl-plan-availability"
+          onClick={() => void develop()}
         >
-          {pending ? "Run pending…" : "Request extraction"}
+          {pending ? "Saving request…" : "Develop action plan"}
         </button>
-        {runId && (
+      )}
+      <p id="tl-plan-availability" className="tl-live-state">
+        {availability?.enabled
+          ? "AI sends this saved revision to Google. Google may use Free Tier inputs and outputs to improve its products. Avoid sensitive notes."
+          : availability
+            ? (planningMessage(availability.reason ?? "") ??
+              "AI planning is unavailable.")
+            : "Checking AI availability…"}
+        {availability?.enabled && (
           <>
-            <button onClick={() => setVersion((v) => v + 1)}>
-              Refresh status
-            </button>
-            <button
-              disabled={!pending}
-              onClick={() =>
-                void api("/extractions/" + runId + "/cancel", "POST", {})
-                  .then(() => setVersion((v) => v + 1))
-                  .catch(() =>
-                    setMessage("Cancellation not confirmed. Refresh status."),
-                  )
-              }
+            {" "}
+            <a
+              href="https://ai.google.dev/gemini-api/terms"
+              target="_blank"
+              rel="noreferrer"
             >
-              Cancel run
-            </button>
+              Free Tier terms
+            </a>
           </>
         )}
-      </div>
-      {message && (
-        <p className="tl-run-message" role="status">
-          {message}
-        </p>
-      )}
-      <details className="tl-processing">
-        <summary>Processing details</summary>
-        <p>
-          Gemini Free Tier may use inputs and outputs to improve Google
-          products. Avoid sensitive notes. A queued request does not mean a
-          provider call occurred.
-        </p>
-      </details>
-      <a
-        className="tl-run-link"
-        href={runId ? "#capture/run/" + runId : "#capture/runs"}
-      >
-        <WorkspaceIcon name="trace" />{" "}
-        {runId ? "Inspect recorded run" : "How It Works"}
+      </p>
+      {message && <p role="alert">{message}</p>}
+      <a className="tl-review-link" href={"#capture/plan/" + documentId}>
+        <WorkspaceIcon name="review" /> <span>Open action plan</span>{" "}
+        <WorkspaceIcon name="arrow" />
+      </a>
+      <a className="tl-run-link" href={"#capture/review/" + documentId}>
+        <WorkspaceIcon name="review" /> Review knowledge blocks
       </a>
     </section>
   );

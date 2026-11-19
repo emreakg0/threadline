@@ -9,11 +9,13 @@ export function CaptureEditor({
   collections,
   heading,
   backToCollections,
+  visible,
 }: {
   capture: ReturnType<typeof useCapture>;
   collections: Collection[];
   heading: Ref<HTMLHeadingElement>;
   backToCollections: boolean;
+  visible: boolean;
 }) {
   const [tagDraft, setTagDraft] = useState({ id: "", text: "" });
   const {
@@ -165,7 +167,8 @@ export function CaptureEditor({
                 Develop action plan
               </button>
               <p id="tl-plan-availability">
-                Live Gemini is disabled. Save your brain dump to plan manually.
+                Save your brain dump first. Manual planning is available even
+                when AI is disabled.
               </p>
             </div>
           )}
@@ -275,27 +278,10 @@ export function CaptureEditor({
       </div>
       {saved && (
         <section className="tl-doc-rail" aria-label="Document tools">
-          <section className="tl-next-action" aria-label="Action planning">
-            <h2>Turn your thoughts into actions</h2>
-            <a className="tl-review-link" href={"#capture/plan/" + saved.id}>
-              <WorkspaceIcon name="review" />
-              <span>Open action plan</span>
-              <WorkspaceIcon name="arrow" />
-            </a>
-            <button
-              className="tl-primary"
-              disabled
-              aria-describedby="tl-plan-availability"
-            >
-              Develop action plan
-            </button>
-            <p className="tl-live-state" id="tl-plan-availability">
-              Live Gemini is disabled. You can plan manually.
-            </p>
-          </section>
           <ExtractionPanel
             key={saved.source.id}
             sourceId={saved.source.id}
+            visible={visible}
             documentId={saved.id}
             disabled={busy || dirty || !!saved.archived_at}
           />

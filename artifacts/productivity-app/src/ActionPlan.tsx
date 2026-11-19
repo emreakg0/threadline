@@ -252,7 +252,7 @@ export function ActionPlan({
                 Start with one thing you can do. Add the details, approve the
                 action, then create a task when you’re ready.
               </p>
-              <p>Live Gemini is disabled. Manual planning is available.</p>
+              <p>Add actions manually, or return to the brain dump to check AI availability.</p>
             </div>
           )}
           {groups

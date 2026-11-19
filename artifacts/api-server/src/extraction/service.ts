@@ -2,6 +2,13 @@ import { randomUUID } from "node:crypto";
 import { MODEL, type Adapter } from "./gemini";
 import { ExtractionError, formats, type SchemaVersion } from "./validation";
 import { transaction, appendEvent } from "./lifecycle";
+import {
+  geminiUsage,
+  projectDaily,
+  userDaily,
+  projectQueue,
+  userQueue,
+} from "./quota";
 // Creation acknowledges only durable queued state. No provider work in the request.
 export async function extract(
   user: string,
@@ -45,22 +52,34 @@ export async function extract(
         throw new ExtractionError("IDEMPOTENCY_CONFLICT", 409);
       return prior;
     }
-    const counts = (
-      await c.query(
-        `SELECT count(*)::int total,count(*) FILTER(WHERE user_id=$1)::int own FROM threadline_runs WHERE created_at >= (date_trunc('day',now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')`,
-        [user],
-      )
-    ).rows[0];
-    if (counts.total >= 10 || counts.own >= 3)
-      throw new ExtractionError("DAILY_QUOTA", 429);
-    if (
-      (
+    if (mode === "gemini") {
+      // A revision is submitted once, including failed or interrupted outcomes.
+      const existing = (
         await c.query(
-          "SELECT 1 FROM threadline_runs WHERE error_code='QUOTA_EXHAUSTED' AND completed_at>now()-interval '24 hours' LIMIT 1",
+          `SELECT * FROM threadline_runs WHERE user_id=$1 AND source_revision_id=$2
+            AND provider=$3 AND model=$4 AND pipeline_version=$5 AND schema_version=$6 ORDER BY created_at,id LIMIT 1`,
+          [user, sourceId, mode, MODEL, formats[version].pipeline, version],
         )
-      ).rowCount
-    )
-      throw new ExtractionError("QUOTA_EXHAUSTED", 429);
+      ).rows[0];
+      if (existing) return existing;
+
+      const usage = await geminiUsage(c, user);
+      if (usage.blocked) throw new ExtractionError("QUOTA_EXHAUSTED", 429);
+      const queued = (
+        await c.query(
+          `SELECT count(*)::int total,count(*) FILTER(WHERE user_id=$1)::int own
+            FROM threadline_runs WHERE provider='gemini' AND model=$2 AND status='queued'`,
+          [user, MODEL],
+        )
+      ).rows[0];
+      if (
+        usage.daily + queued.total >= projectDaily ||
+        usage.user_daily + queued.own >= userDaily
+      )
+        throw new ExtractionError("DAILY_QUOTA", 429);
+      if (queued.total >= projectQueue || queued.own >= userQueue)
+        throw new ExtractionError("QUEUE_FULL", 429);
+    }
     const run = (
       await c.query(
         `INSERT INTO threadline_runs(id,user_id,source_revision_id,document_id,idempotency_key,pipeline_version,schema_version,provider,model,prompt_version) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,

@@ -1,12 +1,20 @@
 import { randomUUID } from "node:crypto";
 import { pool } from "@workspace/db";
-import { MODEL, type Adapter } from "./gemini";
+import { MODEL, tokenReservation, type Adapter } from "./gemini";
 import { transaction, appendEvent, reconcile, type Client } from "./lifecycle";
-import { formats, type SchemaVersion } from "./validation";
+import { ExtractionError, formats, type SchemaVersion } from "./validation";
+import {
+  geminiUsage,
+  projectDaily,
+  userDaily,
+  requestsPerMinute,
+  tokensPerMinute,
+} from "./quota";
 export const LEASE_MS = 30000;
 export type Claim = {
   id: string;
   schema_version: SchemaVersion;
+  provider: Adapter["mode"];
   user_id: string;
   source_revision_id: string;
   document_id: string;
@@ -26,6 +34,7 @@ export async function owned(c: Client, r: Claim) {
 export async function claim(
   mode: Adapter["mode"],
   id?: string,
+  authorize?: (sourceId: string) => void,
 ): Promise<Claim | null> {
   return transaction(async (c) => {
     await c.query("SELECT pg_advisory_xact_lock(72810382)");
@@ -54,46 +63,43 @@ export async function claim(
           )
         ).rows[0].n,
       ) + 1;
+    const stop = async (code: string) => {
+      await c.query(
+        "UPDATE threadline_runs SET status='failed',completed_at=clock_timestamp(),error_code=$2 WHERE id=$1",
+        [r.id, code],
+      );
+      await appendEvent(c, r.id, "failed", { code });
+      return null;
+    };
+    const format = formats[r.schema_version as SchemaVersion];
     if (
-      attempt > 2 ||
+      r.model !== MODEL ||
+      !format ||
+      r.pipeline_version !== format.pipeline ||
+      r.prompt_version !== format.prompt ||
+      (mode === "gemini" && r.schema_version !== 2)
+    )
+      return stop("MODEL_CONFIG_CHANGED");
+    if (attempt > (mode === "gemini" ? 1 : 2))
+      return stop("ATTEMPTS_EXHAUSTED");
+    if (
+      mode === "mock" &&
       (
         await c.query(
-          "SELECT 1 FROM threadline_runs WHERE error_code='QUOTA_EXHAUSTED' AND completed_at>now()-interval '24 hours' LIMIT 1",
+          "SELECT 1 FROM threadline_runs WHERE provider='mock' AND error_code='QUOTA_EXHAUSTED' AND completed_at>now()-interval '24 hours' LIMIT 1",
         )
       ).rowCount
-    ) {
-      await c.query(
-        "UPDATE threadline_runs SET status='failed',completed_at=clock_timestamp(),error_code=$2 WHERE id=$1",
-        [r.id, attempt > 2 ? "ATTEMPTS_EXHAUSTED" : "QUOTA_EXHAUSTED"],
-      );
-      await appendEvent(c, r.id, "failed", {
-        code: attempt > 2 ? "ATTEMPTS_EXHAUSTED" : "QUOTA_EXHAUSTED",
-      });
-      return null;
-    }
-    const dispatch = (
-      await c.query(
-        `SELECT count(*)::int total,count(*) FILTER(WHERE user_id=$1)::int own FROM threadline_execution_steps WHERE step_key='extract' AND started_at >= (date_trunc('day',now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')`,
-        [r.user_id],
-      )
-    ).rows[0];
-    const format = formats[r.schema_version as SchemaVersion];
-    const blocked =
-      dispatch.total >= 20 || dispatch.own >= 6
-        ? "DAILY_QUOTA"
-        : r.model !== MODEL ||
-            !format ||
-            r.pipeline_version !== format.pipeline ||
-            r.prompt_version !== format.prompt
-          ? "MODEL_CONFIG_CHANGED"
-          : null;
-    if (blocked) {
-      await c.query(
-        "UPDATE threadline_runs SET status='failed',completed_at=clock_timestamp(),error_code=$2 WHERE id=$1",
-        [r.id, blocked],
-      );
-      await appendEvent(c, r.id, "failed", { code: blocked });
-      return null;
+    )
+      return stop("QUOTA_EXHAUSTED");
+
+    if (r.schema_version === 2) {
+      const document = (
+        await c.query(
+          "SELECT archived_at FROM threadline_documents WHERE id=$1 AND user_id=$2 FOR SHARE",
+          [r.document_id, r.user_id],
+        )
+      ).rows[0];
+      if (!document || document.archived_at) return stop("DOCUMENT_ARCHIVED");
     }
     const sourceStarted = (await c.query("SELECT clock_timestamp() AS started"))
       .rows[0].started;
@@ -103,6 +109,27 @@ export async function claim(
         [r.source_revision_id, r.user_id],
       )
     ).rows[0];
+    try {
+      authorize?.(r.source_revision_id);
+    } catch (error) {
+      if (error instanceof ExtractionError) return stop(error.code);
+      throw error;
+    }
+    let reservation: number | null = null;
+    if (mode === "gemini") {
+      reservation = tokenReservation(source.source_text);
+      if (reservation > tokensPerMinute) return stop("SOURCE_TOO_LARGE");
+      const usage = await geminiUsage(c, r.user_id);
+      if (usage.blocked) return stop("QUOTA_EXHAUSTED");
+      if (usage.daily >= projectDaily || usage.user_daily >= userDaily)
+        return stop("DAILY_QUOTA");
+      if (
+        !usage.spaced ||
+        usage.rpm >= requestsPerMinute ||
+        usage.tpm + reservation > tokensPerMinute
+      )
+        return null;
+    }
     const token = randomUUID(),
       step = randomUUID();
     await c.query(
@@ -130,8 +157,8 @@ export async function claim(
       validationStep,
     );
     await c.query(
-      "INSERT INTO threadline_execution_steps(id,user_id,run_id,step_key,attempt,status,started_at,input_summary) VALUES($1,$2,$3,'extract',$4,'running',clock_timestamp(),'Pinned source only')",
-      [step, r.user_id, r.id, attempt],
+      "INSERT INTO threadline_execution_steps(id,user_id,run_id,step_key,attempt,status,started_at,input_summary,reserved_tokens) VALUES($1,$2,$3,'extract',$4,'running',clock_timestamp(),'Pinned source only',$5)",
+      [step, r.user_id, r.id, attempt, reservation],
     );
     await appendEvent(
       c,

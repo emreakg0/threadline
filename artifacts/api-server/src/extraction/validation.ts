@@ -9,7 +9,7 @@ export const kinds = [
 ] as const;
 export const formats = {
   1: { pipeline: "2c-1", prompt: "extractive-1" },
-  2: { pipeline: "plan-1", prompt: "grounded-plan-1" },
+  2: { pipeline: "plan-2", prompt: "grounded-plan-2" },
 } as const;
 export type SchemaVersion = keyof typeof formats;
 export type Proposal = {
@@ -66,7 +66,7 @@ export const responseSchema = {
 export const planSchema = {
   ...responseSchema,
   properties: {
-    schema_version: { type: "integer", enum: [2] },
+    schema_version: { type: "integer", minimum: 2, maximum: 2 },
     blocks: {
       ...responseSchema.properties.blocks,
       items: {
@@ -92,7 +92,7 @@ export const planSchema = {
               category: { type: ["string", "null"], maxLength: 100 },
               suggested_priority: {
                 type: ["string", "null"],
-                enum: ["low", "medium", "high", null],
+                description: "low, medium, high, or null",
               },
               deadline_phrase: { type: ["string", "null"], maxLength: 160 },
             },
