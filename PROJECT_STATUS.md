@@ -342,3 +342,7 @@ Any further live request requires fresh owner authorization.
 ## Phase 5B.2 — Offline HTTP 400 investigation
 
 Offline verification passed for the revised Gemini request schema, safe HTTP 400 diagnostics, Action Plan persistence and historical replay. The original rejection remains unexplained. Live inference is closed. The next unresolved question is whether Google accepts the revised request under this project; checking that requires separate owner authorization.
+
+## Phase 5B.3 — Second authorized pilot
+
+The revised request received HTTP 200 in the second authorized pilot. Four expected action topics appeared. Local exact-evidence validation failed, so no proposals, dates or tasks were saved. The next open issue is reliable source evidence grounding. General inference is closed and further live requests require fresh authorization.

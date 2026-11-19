@@ -1,4 +1,16 @@
-# Threadline Phase 5B.2 — Offline diagnosis of Gemini HTTP 400
+# Threadline Phase 5B.3 — Second single-request pilot
+
+**Google accepted the revised structured-output request (HTTP 200). Threadline rejected the generated plan during local evidence validation.** Exactly one Gemini Developer API v1beta `generateContent` request went to `gemini-3.5-flash-lite`, using schema v2 and prompt `grounded-plan-3`. There was no retry or fallback. Google error status and request-field violations are inapplicable to this successful HTTP response.
+
+- **Input and authorization.** The isolated worker used the approved fictional brain dump from new revision `bf3659c6-c5ad-4d3b-8c85-dddce648d02a`. Preflight checked the server key against the owner-verified project key suffix. A ten-minute PostgreSQL allowance bound the revision, model and key. Its atomic consumption committed before the outbound request.
+- **Generated output.** The response contained parseable JSON with four action titles. Each expected topic appeared once: the programming assignment, calculus review, portfolio website and teammate email. This topic check did not establish the accuracy of every field or whether the email retained its tentative wording.
+- **Validation and persistence.** Exact Unicode code-point evidence validation failed with `EVIDENCE_MISMATCH`. That category covers invalid excerpts, invalid ranges and quotes that differ from the indexed source slice. The specific offending excerpt is unknown. Local validation stopped at that point. Zero proposals, confirmed deadlines, approved priorities or tasks were saved. The relative dates remain unconfirmed.
+- **How It Works.** Nine ordered events recorded queueing, startup, successful source validation and extraction, failed output validation and terminal failure. The persistence stage never started.
+- **Closure.** The worker counted one outbound request. The allowance was empty, the queue had zero pending jobs, and the disposable schema and temporary worker were removed. The ordinary application retained `LIVE_AUTHORIZED=false` and `freeTierApproval() === null`. The ordinary API regression verified the disabled availability response and HTTP 503 on submission. Focused extraction checks, PostgreSQL API and worker suites, replay tests, workspace typecheck, frontend/API builds and secret audit passed.
+
+The revised request has now been accepted once by the provider. A live, evidence-valid persisted plan remains unverified. The authorization is spent.
+
+## Threadline Phase 5B.2 — Offline diagnosis of Gemini HTTP 400
 
 The pilot established that Google returned HTTP 400. Its response body was discarded, so the cause remains unknown. This investigation sent **zero provider requests**. Both live gates are closed (`LIVE_AUTHORIZED=false`, `freeTierApproval() === null`).
 

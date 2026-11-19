@@ -401,3 +401,7 @@ Git 133c0f1 created the initial repository; 3f10439 initialized the productivity
 ## Phase 5B.2 — Offline HTTP 400 investigation
 
 Simplified the v2 provider schema, pinned its serialized request, and added bounded, allowlisted HTTP 400 diagnostics in the adapter and worker. The local validator and v1 schema were preserved. Simulated response tests, PostgreSQL integration, worker recovery, replay, typecheck, builds, frontend security and package audit passed. Zero provider requests. Both live gates remain closed.
+
+## Phase 5B.3 — Second authorized pilot
+
+Ran the production planning adapter and durable worker in isolation with the approved source and a key-, model- and revision-bound ten-minute allowance. Committed atomic consumption preceded the sole outbound request. HTTP 200 returned four action topics. The worker recorded EVIDENCE_MISMATCH during output validation and skipped persistence. Verified nine trace events, zero tasks and zero pending jobs, then removed the isolated schema and worker. Only sanitized documentation was retained.

@@ -300,3 +300,7 @@ Nested array bounds increase the grammar size and can trigger HTTP 400. The revi
 On HTTP 400 the worker logs the run ID, HTTP status, and recognized Google status or canonical request fields when present. Only allowlisted field names from structured BadRequest violations can reach the log. Messages and arbitrary path suffixes are discarded. Diagnostic reads are capped at 8 KiB, 128 reads and 500 ms. An unreadable body still yields an ordinary provider rejection. Only the generic code reaches the run history and client.
 
 Zero provider requests were sent during this investigation. Both authorization gates are closed. The pilot response cannot be reconstructed, and offline checks cannot establish project-specific acceptance.
+
+## Phase 5B.3 — Second authorized pilot
+
+A single authorized v1beta generateContent request to `gemini-3.5-flash-lite` with `grounded-plan-3` received HTTP 200 and parseable JSON. Four action titles matched the four expected topics. The strict validator rejected at least one evidence entry with `EVIDENCE_MISMATCH`. The trace ended at output validation with zero persisted proposals or tasks. This confirms provider acceptance for this request only. It does not establish the cause of the earlier 400. The temporary allowance was consumed before dispatch and removed with the isolated fixtures. Both ordinary gates remain closed.
