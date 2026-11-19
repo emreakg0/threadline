@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { HowItWorks } from "./HowItWorks";
 import { api } from "./api";
 import { documents } from "./documents-api";
@@ -15,6 +15,7 @@ import "./capture.css";
 const navigation = [
   { route: "#capture", label: "Brain dump", icon: "capture" },
   { route: "#capture/plan", label: "Action Plan", icon: "review" },
+  { route: "#capture/tasks", label: "Tasks", icon: "tasks" },
   {
     route: "#capture/library",
     label: "Knowledge",
@@ -39,13 +40,13 @@ const navigation = [
 
 export function CaptureWorkspace({
   name,
-  onExit,
-  active,
+  route,
+  tasks,
   projects,
 }: {
   name: string;
-  onExit: () => void;
-  active: boolean;
+  route: string;
+  tasks: ReactNode;
   projects: Project[];
 }) {
   const [unsavedReviews, setUnsavedReviews] = useState<string[]>([]);
@@ -53,7 +54,6 @@ export function CaptureWorkspace({
   const capture = useCapture(
     unsavedReviews.length > 0 || unsavedPlans.length > 0,
   );
-  const [route, setRoute] = useState(location.hash);
   const [lastPlan, setLastPlan] = useState<string | null>(null);
   const [lastBrowse, setLastBrowse] = useState<string | null>(null);
   const [organization, setOrganization] = useState<
@@ -101,23 +101,18 @@ export function CaptureWorkspace({
   const browseSection = browsing ? section : lastBrowse;
 
   useEffect(() => {
-    if (active && browsing) setLastBrowse(section);
-  }, [active, browsing, section]);
+    if (browsing) setLastBrowse(section);
+  }, [browsing, section]);
 
   useEffect(() => {
-    const change = () => setRoute(location.hash);
-    window.addEventListener("hashchange", change);
-    return () => window.removeEventListener("hashchange", change);
-  }, []);
-  useEffect(() => {
-    if (!active || !documentId) {
+    if (!documentId) {
       attemptedDocument.current = null;
       return;
     }
     if (busy || attemptedDocument.current === documentId) return;
     attemptedDocument.current = documentId;
     void open(documentId);
-  }, [active, documentId, busy, open]);
+  }, [documentId, busy, open]);
   const trackReviewDraft = useCallback((id: string, dirty: boolean) => {
     setUnsavedReviews((ids) => {
       if (dirty) return ids.includes(id) ? ids : [...ids, id];
@@ -131,7 +126,6 @@ export function CaptureWorkspace({
     });
   }, []);
   useEffect(() => {
-    if (!active) return;
     let current = true;
     documents
       .organization()
@@ -147,22 +141,18 @@ export function CaptureWorkspace({
     return () => {
       current = false;
     };
-  }, [active, capture.revision, orgRefresh]);
+  }, [capture.revision, orgRefresh]);
   useEffect(() => {
-    if (!active) return;
     if (section === "#capture") {
       if (documentReady) captureHeading.current?.focus();
     } else heading.current?.focus();
-  }, [active, section, documentId, documentReady]);
+  }, [section, documentId, documentReady]);
 
   function newCapture() {
     if (busy) return;
     fresh();
     location.hash = "#capture";
     requestAnimationFrame(() => capture.titleInput.current?.focus());
-  }
-  function exit() {
-    if (!busy) onExit();
   }
   async function addCollection(event: React.FormEvent) {
     event.preventDefault();
@@ -189,7 +179,7 @@ export function CaptureWorkspace({
 
   const current = navigation.find((item) => item.route === section)!;
   return (
-    <div hidden={!active}>
+    <div>
       <div className="threadline" data-testid="capture-workspace">
         <aside className="tl-sidebar" aria-label="Threadline navigation">
           <a href="#capture" className="tl-brand">
@@ -218,9 +208,6 @@ export function CaptureWorkspace({
             ))}
           </nav>
           <div className="tl-sidebar-end">
-            <button onClick={exit} disabled={busy}>
-              <WorkspaceIcon name="city" /> <span>Focus City</span>
-            </button>
             <details className="tl-profile">
               <summary aria-label={name + " account"}>
                 <span className="tl-avatar" aria-hidden="true">
@@ -249,40 +236,32 @@ export function CaptureWorkspace({
               <WorkspaceIcon name={current.icon} />
               <strong>{current.label}</strong>
             </span>
-            {active && (
-              <CommandPalette
-                commands={[
-                  {
-                    id: "new",
-                    label: capture.hasNewDraft
-                      ? "Resume brain dump"
-                      : "Write a brain dump",
-                    detail: "Put what’s on your mind into words",
-                    group: "Quick actions",
-                    icon: "plus",
-                    action: newCapture,
+            <CommandPalette
+              commands={[
+                {
+                  id: "new",
+                  label: capture.hasNewDraft
+                    ? "Resume brain dump"
+                    : "Write a brain dump",
+                  detail: "Put what’s on your mind into words",
+                  group: "Quick actions",
+                  icon: "plus",
+                  action: newCapture,
+                },
+                ...navigation.map((item) => ({
+                  id: item.route,
+                  label: "Open " + item.label,
+                  group: "Navigation" as const,
+                  icon: item.icon,
+                  action: () => {
+                    location.hash = item.route;
                   },
-                  ...navigation.map((item) => ({
-                    id: item.route,
-                    label: "Open " + item.label,
-                    group: "Navigation" as const,
-                    icon: item.icon,
-                    action: () => {
-                      location.hash = item.route;
-                    },
-                  })),
-                  {
-                    id: "city",
-                    label: "Open Focus City",
-                    group: "Navigation",
-                    icon: "city",
-                    action: exit,
-                  },
-                ]}
-                onOpen={(item) => openDocument(item.id)}
-              />
-            )}
+                })),
+              ]}
+              onOpen={(item) => openDocument(item.id)}
+            />
           </header>
+          {tasks}
           {(orgError || (capture.error && section !== "#capture")) && (
             <div className="tl-global-error" role="alert">
               {orgError || capture.error}
@@ -358,7 +337,7 @@ export function CaptureWorkspace({
                 collections={organization.collections}
                 tags={organization.tags}
                 revision={capture.revision + reviewVersion}
-                visible={active && browsing}
+                visible={browsing}
                 reviewing={browseSection === "#capture/review"}
                 collectionCreate={
                   browseSection === "#capture/collections" ? (
@@ -406,7 +385,7 @@ export function CaptureWorkspace({
             <div key={id} hidden={id !== routedReviewId}>
               <ReviewPanel
                 id={id}
-                visible={active && id === routedReviewId}
+                visible={id === routedReviewId}
                 onBack={() => {
                   location.hash = "#capture/review";
                 }}
@@ -423,7 +402,7 @@ export function CaptureWorkspace({
             <div key={id} hidden={id !== planId}>
               <ActionPlan
                 id={id}
-                visible={active && id === planId}
+                visible={id === planId}
                 projects={projects}
                 onDraftChange={trackPlanDraft}
               />

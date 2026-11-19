@@ -312,8 +312,8 @@ export function PlanAction({
                     ))}
                   </select>
                 </label>
-                <a className="tl-text-link" href={"#city/task/" + task.id}>
-                  Open linked task in Focus City <WorkspaceIcon name="arrow" />
+                <a className="tl-text-link" href={"#capture/tasks/task/" + task.id}>
+                  Open linked task <WorkspaceIcon name="arrow" />
                 </a>
               </div>
             ) : (

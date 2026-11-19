@@ -279,3 +279,19 @@ schemas and is required before starting the updated API.
 
 The exact next task is owner review of Phase 5A. Live inference requires
 separate Free Tier verification and explicit first-call authorization.
+
+## Threadline standalone transition
+
+Threadline is the default at `/`. The existing Google OAuth callback
+redirects there, and Tasks now lives in the workspace and command palette.
+Task creation, editing, completion, project filters, and Action Plan links
+use the existing owner-scoped API. Older task links resolve to Tasks as well.
+
+Chromium verified root entry, mobile task workflows, and Action Plan links
+in isolated schemas. The existing task and authentication integrations,
+workspace checks, builds, and security checks passed. Live Google consent
+was outside this verification. The private origin is `emreakg0/threadline`.
+
+The next task is owner review of the standalone transition. Legacy City
+source and dependency removal require a separate cleanup milestone.
+LIVE_AUTHORIZED=false.

@@ -1,6 +1,6 @@
-# Focus City GitHub backup and recovery
+# Threadline GitHub backup and recovery
 
-Private source repository: https://github.com/emreakg0/focus-city
+Private source repository: https://github.com/emreakg0/threadline
 
 `origin` is the GitHub repository. `main` is the project branch. The existing `gitsafe-backup` remote is retained. Existing Git history, including recovery checkpoint `1a3834e`, is preserved. Repository creation is a source backup, not an application deployment.
 
@@ -10,7 +10,7 @@ Private source repository: https://github.com/emreakg0/focus-city
 2. Implement and run applicable tests/builds. Update project status, append the development log and record the exact next task.
 3. Review `git diff` and `git status --short`. Stage intended files explicitly, then review `git diff --cached` and run `git diff --cached --check`.
 4. Run `python3 scripts/secret-audit.py`. It scans reachable Git blobs and current tracked files for credential patterns and values of sensitive environment settings; output shows locations/categories only. Also inspect file content for sensitive user data, which pattern checks cannot reliably identify. Ignoring a file does not untrack an already committed file.
-5. Confirm privacy using `gh repo view emreakg0/focus-city --json isPrivate`. Commit with a meaningful message and push using `git push origin main`.
+5. Confirm privacy using `gh repo view emreakg0/threadline --json isPrivate`. Commit with a meaningful message and push using `git push origin main`.
 6. Verify that `git rev-parse HEAD` equals the hash from `git ls-remote origin refs/heads/main`, and confirm a clean working tree. Report failures; never force-push.
 
 Future Codex sessions are authorized to commit and push completed milestones automatically. This instruction does not create a background scheduler: local changes become a GitHub backup after a successful push.
@@ -20,8 +20,8 @@ Future Codex sessions are authorized to commit and push completed milestones aut
 Authenticate GitHub CLI privately, then:
 
 ```sh
-gh repo clone emreakg0/focus-city
-cd focus-city
+gh repo clone emreakg0/threadline
+cd threadline
 git status
 ```
 

@@ -7,6 +7,7 @@ const paths = {
     "M2 6a1 1 0 0 1 1-1h5l2 2h7a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z",
   trace: "M4 4h4v4H4z m8 8h4v4h-4z M6 8v6h6",
   plus: "M10 4v12M4 10h12",
+  tasks: "M3 5l1 1 2-2m-3 6 1 1 2-2m-3 6 1 1 2-2M9 5h8M9 10h8m-8 5h8",
   city: "M2 16h16M4 16V7h4v9m0 0V3h4v13m0 0v-6h4v6",
   search: "M13.5 8.5a5 5 0 1 1-10 0 5 5 0 0 1 10 0Zm-1.5 3.5 4 4",
   arrow: "M8 5l5 5-5 5",

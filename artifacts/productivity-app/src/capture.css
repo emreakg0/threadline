@@ -613,7 +613,7 @@
     border-right: 0;
     border-bottom: 1px solid var(--tl-line);
   }
-  .threadline .tl-sidebar nav { grid-column: 1 / -1; grid-row: 2; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 3px; }
+  .threadline .tl-sidebar nav { grid-column: 1 / -1; grid-row: 2; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
   .threadline .tl-sidebar nav a { justify-content: center; gap: 5px; padding-inline: 4px; text-align: center; font-size: 0.75rem; }
   .tl-sidebar nav a::before { inset: auto 12px 0; width: auto; height: 2px; transform: scaleX(0.3); }
   .tl-nav-label { display: none; }
@@ -676,4 +676,34 @@
 @media (prefers-reduced-transparency: reduce) {
   .threadline .tl-command { background: var(--tl-surface); }
   .tl-command::backdrop { background: #07090d; backdrop-filter: none; }
+}
+
+/* Existing task controls inside the Threadline workspace. */
+.threadline.tl-sign-in { display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; }
+.tl-sign-in .tl-content { width: min(100%, 620px); }
+.tl-sign-in .welcome { background: var(--tl-paper); border: 1px solid var(--tl-line); padding: clamp(22px, 6vw, 48px); margin-top: 12px; }
+.tl-sign-in .welcome p { color: var(--tl-muted); margin: 12px 0 22px; }
+.tl-sign-in a.tl-primary { display: inline-flex; min-height: 44px; align-items: center; border-radius: 7px; padding: 8px 14px; text-decoration: none; }
+.tl-tasks .tools { padding: 0; margin: 0 0 12px; max-width: none; flex-wrap: wrap; }
+.tl-tasks .tools input { flex: 1 1 12rem; }
+.tl-tasks .tools select { width: auto; max-width: 100%; }
+.threadline .tl-task-secondary { border-color: var(--tl-line); }
+.tl-tasks .panel, .tl-tasks .task-sheet { background: var(--tl-paper); border-color: var(--tl-line); }
+.threadline .tl-tasks .task-title { min-width: 0; padding-inline: 0; overflow-wrap: anywhere; }
+.threadline .tl-tasks .check { width: 36px; padding: 0; border-color: var(--tl-line); }
+.threadline .tl-tasks .check::before { inset: 0; }
+.threadline .tl-tasks .checked, .threadline .tl-tasks .checked:hover:not(:disabled) { background: var(--tl-mint); color: #152e28; }
+.tl-tasks .empty { margin-bottom: 0; }
+
+@media (max-width: 620px) {
+  .threadline .tl-tasks .check { width: 44px; }
+  .tl-tasks .task, .tl-tasks .panel-title { padding-inline: 12px; }
+  .tl-tasks .task { gap: 6px; }
+}
+
+@media (max-width: 405px) {
+  .threadline .tl-sidebar nav { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .tl-tasks .tools input { flex-basis: 0; }
+  .tl-tasks .workspace-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tl-tasks .workspace-filters input { grid-column: 1 / -1; grid-row: 1; }
 }

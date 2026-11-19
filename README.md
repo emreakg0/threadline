@@ -1,14 +1,14 @@
-# Focus City
+# Threadline
 
-A private task workspace where real tasks become a miniature 3D city and projects become neighborhoods.
+A private workspace for turning brain dumps into action plans and tracking tasks. Open Threadline at `/` and use **Tasks** to manage projects and tasks.
 
 Start each development session by reading [AGENTS.md](AGENTS.md), [PROJECT_STATUS.md](PROJECT_STATUS.md) and [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md). Configuration and OAuth setup are in [FOCUS_CITY_SETUP.md](FOCUS_CITY_SETUP.md). Never commit local environment files.
 
-Private source backup: [emreakg0/focus-city](https://github.com/emreakg0/focus-city). See [GITHUB_BACKUP.md](GITHUB_BACKUP.md) for milestone pushes, credential checks and recovery; database contents and runtime secrets are excluded.
+Private source backup: [emreakg0/threadline](https://github.com/emreakg0/threadline). See [GITHUB_BACKUP.md](GITHUB_BACKUP.md) for milestone pushes, credential checks and recovery; database contents and runtime secrets are excluded.
 
 ## Architecture
 
-- `artifacts/productivity-app`: React, TypeScript, Vite and Tailwind dashboard; lazy React Three Fiber / Three.js city in `src/city`.
+- `artifacts/productivity-app`: React, TypeScript, Vite and Tailwind workspace. The retired city renderer remains in `src/city`.
 - `artifacts/api-server`: Express API; Google OAuth, hashed PostgreSQL sessions, ownership-scoped projects and task CRUD.
 - `lib/db`: PostgreSQL pool, additive migrations and isolated browser QA harness. Persistent slots keep buildings stable across edits and refreshes.
 - `lib/api-spec`, `lib/api-client-react`, `lib/api-zod`: starter health contracts; task/auth contract generation remains unfinished.

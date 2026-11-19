@@ -338,3 +338,19 @@ Git 133c0f1 created the initial repository; 3f10439 initialized the productivity
   A CDP reload race was isolated to the browser harness polling transition.
   Fixtures remained inside disposable schemas, and the Gemini live gate
   remained closed.
+
+## Threadline standalone transition
+
+- Made `App.tsx` render Threadline at the root and preserve its workspace
+  state across Tasks navigation. Removed the legacy City entry and view
+  switch from the active shell and applied Threadline branding to sign-in
+  and browser chrome.
+- Reused the existing task list and TaskSheet with project creation and
+  filtering. Action Plans link directly to task editing, with compatibility
+  for previous task hashes. The task API, tables, migrations and City
+  source and packages retain their existing contracts.
+- Extended the isolated Chromium regression for root routing, mobile task
+  management, and both task link forms. Replay and planning assertions now
+  verify that the existing task count stays constant before user conversion.
+  Chromium, API and frontend tests, typechecks, builds, and security checks
+  passed. No real Google consent or Gemini inference was exercised.

@@ -1,18 +1,23 @@
 import { CaptureWorkspace } from "./CaptureWorkspace";
 import { api } from "./api";
-import { useEffect, useRef, useState, useMemo, type FormEvent } from "react";
+import { useEffect, useState, useMemo, type FormEvent } from "react";
 import type { Project, Task } from "./types";
-import CityView from "./city/CityView";
-import { ViewSwitch } from "./ViewSwitch";
+import { WorkspaceIcon } from "./WorkspaceIcon";
 import { TaskSheet } from "./TaskSheet";
+const tasksRoute = "#capture/tasks";
+
+function currentRoute() {
+  // Keep task links shared before the standalone transition working.
+  return location.hash.replace(/^#city(?=\/|$)/, tasksRoute);
+}
+
 export default function App() {
-  const [hash, setHash] = useState(location.hash);
-  const workspace = hash.startsWith("#capture") ? "capture" : "focus";
-  const wasInThreadline = useRef(false);
+  const [route, setRoute] = useState(currentRoute);
+  const inTasks = route === tasksRoute || route.startsWith(tasksRoute + "/");
   const [composerOpen, setComposerOpen] = useState(false),
     [notice, setNotice] = useState("");
-  const [view, setView] = useState<"city" | "list">("city");
   const [initializing, setInitializing] = useState(true);
+  const [tasksLoading, setTasksLoading] = useState(false);
   const [auth, setAuth] = useState<{
       user: { name: string } | null;
       configured: boolean;
@@ -35,11 +40,6 @@ export default function App() {
         byId.get(task.id)?.version === task.version ? byId.get(task.id)! : task,
       );
     });
-    setEditing((previous) =>
-      previous
-        ? (t.find((task: Task) => task.id === previous.id) ?? null)
-        : null,
-    );
     return t as Task[];
   }
   async function initialize() {
@@ -91,16 +91,16 @@ export default function App() {
   useEffect(() => {
     function shortcut(e: KeyboardEvent) {
       const target = e.target as HTMLElement;
-      if (e.key === "Escape" && !composerOpen) {
-        setComposerOpen(false);
-        setEditing(null);
-      }
       if (
         e.key.toLowerCase() === "n" &&
         !e.metaKey &&
         !e.ctrlKey &&
         !["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) &&
-        workspace === "focus" &&
+        inTasks &&
+        !composerOpen &&
+        !initializing &&
+        !tasksLoading &&
+        !document.querySelector("dialog[open]") &&
         auth?.user &&
         !target.isContentEditable &&
         !e.altKey &&
@@ -113,7 +113,7 @@ export default function App() {
     }
     window.addEventListener("keydown", shortcut);
     return () => window.removeEventListener("keydown", shortcut);
-  }, [auth, composerOpen, workspace]);
+  }, [auth, composerOpen, inTasks, initializing, tasksLoading]);
   useEffect(() => {
     if (!notice) return;
     const timer = setTimeout(() => setNotice(""), 3000);
@@ -129,223 +129,161 @@ export default function App() {
       ),
     [tasks, project, filter, query],
   );
-  const cityProjects = useMemo(
-    () => (project ? projects.filter((p) => p.id === project) : projects),
-    [projects, project],
-  );
   useEffect(() => {
-    const change = () => setHash(location.hash);
+    const change = () => setRoute(currentRoute());
     window.addEventListener("hashchange", change);
     return () => window.removeEventListener("hashchange", change);
   }, []);
-  const inThreadline = !!auth?.user && workspace === "capture";
+
   useEffect(() => {
-    if (inThreadline) {
-      wasInThreadline.current = true;
-      return;
-    }
-    const taskId = /^#city\/task\/([a-f0-9-]{36})$/i.exec(hash)?.[1];
-    if (!auth?.user || initializing || (!wasInThreadline.current && !taskId)) return;
-    wasInThreadline.current = false;
+    setComposerOpen(false);
+    if (!auth?.user || initializing || !inTasks) return;
+    const taskId = /^#capture\/tasks\/task\/([a-f0-9-]{36})$/i.exec(route)?.[1];
     let current = true;
-    void load(() => current).then((tasks) => {
-      if (!current || !taskId) return;
-      const target = tasks.find((task) => task.id === taskId);
-      if (!target) {
-        setError("Linked task not found.");
-        return;
-      }
-      setView("list");
-      setEditing(target);
-      setComposerOpen(true);
-    }).catch((cause: Error) => { if (current) setError(cause.message); });
-    return () => { current = false; };
-  }, [auth?.user, hash, initializing, inThreadline]);
-  const focusWorkspace = !inThreadline && (
-    <div className="shell">
-      <aside aria-label="Workspace navigation">
-        <a className="brand" href="/">
-          ◈{" "}
-          <span>
-            FOCUS CITY<small>YOUR PERSONAL WORKSPACE</small>
-          </span>
-        </a>
-        {auth?.user && <button className="threadline-entry" onClick={() => { location.hash = "#capture"; }}>Threadline ↗</button>}
-        <div className="side-label">YOUR WORKSPACE</div>
+    setError("");
+    setTasksLoading(true);
+    void load(() => current)
+      .then((latest) => {
+        if (!current || !taskId) return;
+        const target = latest.find((task) => task.id === taskId);
+        if (!target) {
+          setError("Linked task not found.");
+          return;
+        }
+        setEditing(target);
+        setComposerOpen(true);
+      })
+      .catch((cause: Error) => {
+        if (current) setError(cause.message);
+      })
+      .finally(() => {
+        if (current) setTasksLoading(false);
+      });
+    return () => {
+      current = false;
+    };
+  }, [auth?.user, initializing, inTasks, route]);
+
+  const taskWorkspace = inTasks && (
+    <section className="tl-content tl-tasks">
+      <div className="tl-page-heading">
+        <div>
+          <h1>Tasks</h1>
+          <p>
+            {tasks.filter((task) => task.status === "done").length} of{" "}
+            {tasks.length} complete
+          </p>
+        </div>
         <button
-          aria-current={!project ? "page" : undefined}
-          className={!project ? "active" : ""}
-          onClick={() => setProject("")}
+          className="tl-primary"
+          disabled={initializing || tasksLoading || busy}
+          onClick={() => {
+            setEditing(null);
+            setError("");
+            setComposerOpen(true);
+          }}
         >
-          ▦ &nbsp; All neighborhoods <span>{tasks.length}</span>
+          + New task <kbd>N</kbd>
         </button>
-        {projects.map((p) => (
+      </div>
+      {error && (
+        <div role="alert" className="error">
+          {error}
+        </div>
+      )}
+      <form
+        className="tools"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const form = event.currentTarget;
+          const name = new FormData(form).get("name");
+          void act(async () => {
+            await api("/projects", "POST", { name });
+            form.reset();
+          });
+        }}
+      >
+        <input
+          name="name"
+          aria-label="New project name"
+          placeholder="New project name"
+          required
+          maxLength={100}
+        />
+        <button
+          className="tl-task-secondary"
+          disabled={initializing || tasksLoading || busy}
+        >
+          Create project
+        </button>
+      </form>
+      <div
+        className="tools workspace-filters"
+        role="search"
+        aria-label="Filter tasks"
+      >
+        <select
+          aria-label="Filter project"
+          value={project}
+          onChange={(event) => setProject(event.target.value)}
+        >
+          <option value="">All projects</option>
+          {projects.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.name}
+            </option>
+          ))}
+        </select>
+        <input
+          aria-label="Search tasks"
+          placeholder="Search your tasks…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        <select
+          aria-label="Filter status"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+        >
+          <option value="all">All statuses</option>
+          <option value="todo">To do</option>
+          <option value="in_progress">In progress</option>
+          <option value="done">Done</option>
+        </select>
+        {(query || filter !== "all") && (
           <button
-            key={p.id}
-            aria-current={project === p.id ? "page" : undefined}
-            className={project === p.id ? "active" : ""}
-            onClick={() => setProject(p.id)}
-          >
-            ◇ &nbsp; {p.name}
-            <span>{tasks.filter((t) => t.project_id === p.id).length}</span>
-          </button>
-        ))}
-        {auth?.user && (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              const f = e.currentTarget;
-              const name = new FormData(f).get("name");
-              void act(async () => {
-                await api("/projects", "POST", { name });
-                f.reset();
-              });
+            className="clear-filters"
+            onClick={() => {
+              setQuery("");
+              setFilter("all");
             }}
           >
-            <input
-              name="name"
-              aria-label="New neighborhood name"
-              placeholder="+ New neighborhood"
-              required
-              maxLength={100}
-            />
-            <button disabled={busy}>Create neighborhood</button>
-          </form>
+            Clear filters
+          </button>
         )}
-        <div className="side-footer">
-          <i /> PRIVATE WORKSPACE<small>Built around your focus.</small>
-        </div>
-      </aside>
-      <main>
-        <header>
-          <span>
-            WORKSPACE /{" "}
-            <b>{projects.find((p) => p.id === project)?.name ?? "OVERVIEW"}</b>
-          </span>
-          {auth?.user ? (
-            <button
-              onClick={() =>
-                void api("/auth/logout", "POST")
-                  .then(() => location.reload())
-                  .catch((e) => setError(e.message))
-              }
-            >
-              Sign out · {auth.user.name}
-            </button>
-          ) : (
-            <span>YOUR NEXT CHAPTER STARTS HERE</span>
-          )}
-        </header>
-        <section className="intro">
-          <div>
-            <div className="eyebrow">YOUR WORK, TAKING SHAPE</div>
-            <h1>
-              {projects.find((p) => p.id === project)?.name ??
-                "Your focus, in perspective"}
-              <span>.</span>
-            </h1>
-            <p>A little progress. A city of possibilities.</p>
+      </div>
+      <div className="workspace">
+        <section className="panel">
+          <div className="panel-title">
+            <h2>Tasks</h2>
+            <span>
+              {visible.length} of{" "}
+              {tasks.filter((t) => !project || t.project_id === project).length}{" "}
+              tasks
+            </span>
           </div>
-          {auth?.user && (
-            <button
-              className="primary"
-              onClick={() => {
-                setEditing(null);
-                setComposerOpen(true);
-              }}
-            >
-              ＋ New task <kbd>N</kbd>
-            </button>
-          )}
-        </section>
-        {error && (
-          <div role="alert" className="error">
-            {error}
-          </div>
-        )}
-        {!auth?.user ? (
-          <section className="welcome">
-            <div className="emblem">◈</div>
-            <h2>Your city starts with a single task.</h2>
-            <p>
-              A private workspace for your projects, priorities, and everything
-              you want to move forward.
+          {initializing || tasksLoading ? (
+            <p className="empty" role="status">
+              Loading tasks…
             </p>
-            {auth?.configured ? (
-              <a className="primary" href="/api/auth/google">
-                Sign in with Google ↗
-              </a>
-            ) : (
-              <div className="setup">
-                {initializing
-                  ? "Connecting to your workspace…"
-                  : auth
-                    ? "Google sign-in is not configured in the API process. Check Replit Secrets and restart the API Server workflow."
-                    : "Unable to connect to your workspace."}
-                {!initializing && (
-                  <button className="primary" onClick={() => void initialize()}>
-                    Retry connection
-                  </button>
-                )}
-              </div>
-            )}
-            <div className="preview-grid">
-              <span>
-                01 / ORGANIZE
-                <br />
-                <b>A place for every project</b>
-              </span>
-              <span>
-                02 / PRIORITIZE
-                <br />
-                <b>Clarity on what comes next</b>
-              </span>
-              <span>
-                03 / PROGRESS
-                <br />
-                <b>Small steps. Real momentum.</b>
-              </span>
-            </div>
-          </section>
-        ) : (
-          <>
-            <div className="stats" aria-label="Workspace progress">
-              {[
-                ["OPEN TASKS", tasks.filter((t) => t.status !== "done").length],
-                ["COMPLETED", tasks.filter((t) => t.status === "done").length],
-                ["NEIGHBORHOODS", projects.length],
-              ].map(([l, n]) => (
-                <div key={l}>
-                  <small>{l}</small>
-                  <strong>{n}</strong>
-                </div>
-              ))}
-            </div>
-            <ViewSwitch view={view} onChange={setView}>
-              {tasks.filter((t) => t.status === "done").length} of{" "}
-              {tasks.length} tasks complete
-            </ViewSwitch>
-            <div
-              className="tools workspace-filters"
-              role="search"
-              aria-label="Filter workspace tasks"
-            >
-              <input
-                aria-label="Search tasks"
-                placeholder="Search your tasks…"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-              <select
-                aria-label="Filter status"
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-              >
-                <option value="all">All statuses</option>
-                <option value="todo">To do</option>
-                <option value="in_progress">In progress</option>
-                <option value="done">Done</option>
-              </select>
+          ) : visible.length === 0 ? (
+            <div className="empty">
+              <h3>No tasks to show</h3>
+              <p>
+                {query || filter !== "all"
+                  ? "No tasks match these filters."
+                  : "Create a task or convert an approved action from a plan."}
+              </p>
               {(query || filter !== "all") && (
                 <button
                   className="clear-filters"
@@ -358,258 +296,231 @@ export default function App() {
                 </button>
               )}
             </div>
-            {view === "city" && (
-              <CityView
-                filtered={Boolean(query || filter !== "all")}
-                projects={cityProjects}
-                tasks={visible}
-                selected={visible.find((t) => t.id === editing?.id) ?? null}
-                onSelect={setEditing}
-                onList={() => setView("list")}
-                busy={busy}
-                onEdit={() => setComposerOpen(true)}
-                onComplete={(task) =>
-                  void act(() =>
-                    api("/tasks/" + task.id, "PATCH", {
-                      ...task,
-                      status: task.status === "done" ? "todo" : "done",
-                    }),
-                  )
-                }
-              />
-            )}
-            <div
-              className={
-                "workspace " + (view === "city" ? "city-workspace" : "")
-              }
-            >
-              <section className="panel">
-                <div className="panel-title">
-                  <h2>Tasks</h2>
-                  <span>
-                    {visible.length} of{" "}
-                    {
-                      tasks.filter((t) => !project || t.project_id === project)
-                        .length
-                    }{" "}
-                    tasks
-                  </span>
-                </div>
-                {visible.length === 0 ? (
-                  <div className="empty">
-                    ◇<h3>Room for your next idea.</h3>
-                    <p>
-                      {query || filter !== "all"
-                        ? "No tasks match these filters."
-                        : "Create a task to give your next step a place."}
-                    </p>
-                    {(query || filter !== "all") && (
-                      <button
-                        className="clear-filters"
-                        onClick={() => {
-                          setQuery("");
-                          setFilter("all");
-                        }}
-                      >
-                        Clear filters
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  visible.map((t) => (
-                    <article className="task" key={t.id}>
-                      <button
-                        disabled={busy}
-                        aria-label={
-                          t.status === "done" ? "Reopen task" : "Complete task"
-                        }
-                        className={
-                          "check " + (t.status === "done" ? "checked" : "")
-                        }
-                        onClick={() =>
-                          void act(() =>
-                            api("/tasks/" + t.id, "PATCH", {
-                              ...t,
-                              status: t.status === "done" ? "todo" : "done",
-                            }),
-                          )
-                        }
-                      >
-                        {t.status === "done" ? "✓" : ""}
-                      </button>
-                      <button
-                        className="task-title"
-                        onClick={() => {
-                          setEditing(t);
-                          setComposerOpen(true);
-                        }}
-                      >
-                        <b>{t.title}</b>
-                        <small>
-                          {projects.find((p) => p.id === t.project_id)?.name}{" "}
-                          <span className="task-status">
-                            {" "}
-                            · {t.status.replace("_", " ")}
-                          </span>
-                          {t.due_date && (
-                            <time dateTime={t.due_date}>
-                              {" "}
-                              ·{" "}
-                              {new Intl.DateTimeFormat(undefined, {
-                                month: "short",
-                                day: "numeric",
-                              }).format(
-                                new Date(t.due_date.slice(0, 10) + "T12:00:00"),
-                              )}
-                            </time>
-                          )}
-                        </small>
-                      </button>
-                      <span className={"priority " + t.priority}>
-                        {t.priority}
-                      </span>
-                      <button
-                        disabled={busy}
-                        aria-label={"Delete " + t.title}
-                        onClick={() => {
-                          if (confirm("Delete this task?"))
-                            void act(() => api("/tasks/" + t.id, "DELETE"));
-                        }}
-                      >
-                        ×
-                      </button>
-                    </article>
-                  ))
-                )}
-              </section>
-              <TaskSheet
-                open={composerOpen}
-                onClose={() => setComposerOpen(false)}
-              >
-                <section
-                  className="panel composer"
-                  id="task-details"
+          ) : (
+            visible.map((t) => (
+              <article className="task" key={t.id}>
+                <button
+                  disabled={busy}
                   aria-label={
-                    editing ? `Task details: ${editing.title}` : "Create task"
+                    t.status === "done" ? "Reopen task" : "Complete task"
+                  }
+                  className={"check " + (t.status === "done" ? "checked" : "")}
+                  onClick={() =>
+                    void act(() =>
+                      api("/tasks/" + t.id, "PATCH", {
+                        ...t,
+                        status: t.status === "done" ? "todo" : "done",
+                      }),
+                    )
                   }
                 >
-                  <div className="panel-title">
-                    <h2>{editing ? "Edit task" : "New task"}</h2>
-                    <button
-                      type="button"
-                      aria-label="Close task editor"
-                      onClick={() => setComposerOpen(false)}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                  {error && (
-                    <div className="editor-error" role="alert">
-                      {error}
-                    </div>
-                  )}
-                  <form key={editing?.id ?? "new"} onSubmit={save}>
-                    <label>
-                      Task name
-                      <input
-                        autoComplete="off"
-                        name="title"
-                        placeholder="What needs your focus?"
-                        required
-                        maxLength={300}
-                        defaultValue={editing?.title}
-                      />
-                    </label>
-                    <label>
-                      Details
-                      <textarea
-                        name="description"
-                        placeholder="Notes, links, or a next step…"
-                        defaultValue={editing?.description}
-                      />
-                    </label>
-                    {!editing && (
-                      <label>
-                        Neighborhood
-                        <select
-                          name="project_id"
-                          defaultValue={project || projects[0]?.id}
-                        >
-                          {projects.map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.name}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
+                  {t.status === "done" ? "✓" : ""}
+                </button>
+                <button
+                  className="task-title"
+                  onClick={() => {
+                    setError("");
+                    setEditing(t);
+                    setComposerOpen(true);
+                  }}
+                >
+                  <b>{t.title}</b>
+                  <small>
+                    {projects.find((p) => p.id === t.project_id)?.name}{" "}
+                    <span className="task-status">
+                      {" "}
+                      · {t.status.replace("_", " ")}
+                    </span>
+                    {t.due_date && (
+                      <time dateTime={t.due_date}>
+                        {" "}
+                        ·{" "}
+                        {new Intl.DateTimeFormat(undefined, {
+                          month: "short",
+                          day: "numeric",
+                        }).format(
+                          new Date(t.due_date.slice(0, 10) + "T12:00:00"),
+                        )}
+                      </time>
                     )}
-                    <div className="form-row">
-                      <label>
-                        Priority
-                        <select
-                          name="priority"
-                          defaultValue={editing?.priority ?? "medium"}
-                        >
-                          <option>low</option>
-                          <option>medium</option>
-                          <option>high</option>
-                        </select>
-                      </label>
-                      <label>
-                        Deadline
-                        <input
-                          type="date"
-                          name="due_date"
-                          defaultValue={editing?.due_date?.slice(0, 10) ?? ""}
-                        />
-                      </label>
-                    </div>
-                    {editing && (
-                      <label>
-                        Status
-                        <select name="status" defaultValue={editing.status}>
-                          <option value="todo">To do</option>
-                          <option value="in_progress">In progress</option>
-                          <option value="done">Done</option>
-                        </select>
-                      </label>
-                    )}
-                    <button
-                      className="primary"
-                      disabled={busy || (!editing && projects.length === 0)}
-                    >
-                      {busy
-                        ? "Saving…"
-                        : editing
-                          ? "Save changes"
-                          : "Create task"}
-                    </button>
-                  </form>
-                </section>
-              </TaskSheet>
+                  </small>
+                </button>
+                <span className={"priority " + t.priority}>{t.priority}</span>
+                <button
+                  disabled={busy}
+                  aria-label={"Delete " + t.title}
+                  onClick={() => {
+                    if (confirm("Delete this task?"))
+                      void act(() => api("/tasks/" + t.id, "DELETE"));
+                  }}
+                >
+                  ×
+                </button>
+              </article>
+            ))
+          )}
+        </section>
+        <TaskSheet open={composerOpen} onClose={() => setComposerOpen(false)}>
+          <section
+            className="panel composer"
+            id="task-details"
+            aria-label={
+              editing ? `Task details: ${editing.title}` : "Create task"
+            }
+          >
+            <div className="panel-title">
+              <h2>{editing ? "Edit task" : "New task"}</h2>
+              <button
+                type="button"
+                aria-label="Close task editor"
+                onClick={() => setComposerOpen(false)}
+              >
+                ✕
+              </button>
             </div>
-          </>
-        )}
-        <div className="save-notice" role="status">
-          {notice}
+            {error && (
+              <div className="editor-error" role="alert">
+                {error}
+              </div>
+            )}
+            <form key={editing?.id ?? "new"} onSubmit={save}>
+              <label>
+                Task name
+                <input
+                  autoComplete="off"
+                  name="title"
+                  placeholder="What needs your focus?"
+                  required
+                  maxLength={300}
+                  defaultValue={editing?.title}
+                />
+              </label>
+              <label>
+                Details
+                <textarea
+                  name="description"
+                  placeholder="Notes, links, or a next step…"
+                  defaultValue={editing?.description}
+                />
+              </label>
+              {!editing && (
+                <label>
+                  Project
+                  <select
+                    name="project_id"
+                    defaultValue={project || projects[0]?.id}
+                  >
+                    {projects.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <div className="form-row">
+                <label>
+                  Priority
+                  <select
+                    name="priority"
+                    defaultValue={editing?.priority ?? "medium"}
+                  >
+                    <option>low</option>
+                    <option>medium</option>
+                    <option>high</option>
+                  </select>
+                </label>
+                <label>
+                  Deadline
+                  <input
+                    type="date"
+                    name="due_date"
+                    defaultValue={editing?.due_date?.slice(0, 10) ?? ""}
+                  />
+                </label>
+              </div>
+              {editing && (
+                <label>
+                  Status
+                  <select name="status" defaultValue={editing.status}>
+                    <option value="todo">To do</option>
+                    <option value="in_progress">In progress</option>
+                    <option value="done">Done</option>
+                  </select>
+                </label>
+              )}
+              <button
+                className="tl-primary"
+                disabled={busy || (!editing && projects.length === 0)}
+              >
+                {busy ? "Saving…" : editing ? "Save changes" : "Create task"}
+              </button>
+            </form>
+          </section>
+        </TaskSheet>
+      </div>
+      <div className="save-notice" role="status">
+        {notice}
+      </div>
+    </section>
+  );
+
+  if (auth?.user) {
+    return (
+      <CaptureWorkspace
+        name={auth.user.name}
+        projects={projects}
+        route={route}
+        tasks={taskWorkspace}
+      />
+    );
+  }
+
+  return (
+    <div className="threadline tl-sign-in">
+      <main className="tl-content">
+        <div className="tl-brand">
+          <span className="tl-mark" aria-hidden="true">
+            <WorkspaceIcon name="mark" />
+          </span>
+          Threadline
         </div>
-        <footer>
-          FOCUS CITY <span>A quieter place to do meaningful work.</span>
-        </footer>
+        <section className="welcome">
+          <h1>From brain dump to action plan</h1>
+          <p>
+            Capture what’s on your mind, organize your notes, and track what
+            comes next.
+          </p>
+          {error && (
+            <div role="alert" className="error">
+              {error}
+            </div>
+          )}
+          {auth?.configured ? (
+            <a className="tl-primary" href="/api/auth/google">
+              Sign in with Google
+            </a>
+          ) : (
+            <div className="setup">
+              <p>
+                {initializing
+                  ? "Connecting to your workspace…"
+                  : auth
+                    ? "Google sign-in is unavailable."
+                    : "Unable to connect to your workspace."}
+              </p>
+              {!initializing && (
+                <button
+                  className="tl-primary"
+                  onClick={() => void initialize()}
+                >
+                  Retry connection
+                </button>
+              )}
+            </div>
+          )}
+        </section>
       </main>
     </div>
-  );
-  return (
-    <>
-      {auth?.user && (
-        <CaptureWorkspace
-          name={auth.user.name}
-          projects={projects}
-          active={inThreadline}
-          onExit={() => { location.hash = "#city"; }}
-        />
-      )}
-      {focusWorkspace}
-    </>
   );
 }
