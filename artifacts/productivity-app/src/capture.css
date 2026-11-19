@@ -315,6 +315,8 @@
   font-size: 0.78rem;
 }
 .tl-next-action { display: grid; gap: 7px; }
+.tl-plan-consent { display: flex; align-items: start; gap: 8px; padding-block: 5px; font-size: .83rem; cursor: pointer; }
+.tl-plan-consent input { flex: none; width: 1rem; height: 1rem; accent-color: var(--tl-accent); }
 .threadline .tl-review-link {
   min-height: 41px;
   display: flex;

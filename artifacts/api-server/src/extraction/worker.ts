@@ -191,6 +191,7 @@ export async function processOne(adapter: Adapter = gemini, id?: string) {
         controller.signal,
         r.schema_version,
         r.source_revision_id,
+        r,
       ),
       aborted,
     ]);

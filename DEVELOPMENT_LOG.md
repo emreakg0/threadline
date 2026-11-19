@@ -413,3 +413,7 @@ Updated the planning request fixture, prompt, validator and processing error mes
 ## Phase 5B.5 — Third authorized live pilot
 
 Used the committed quote-only adapter and durable worker in a disposable schema with an eight-minute atomic allowance. One HTTP 200 response produced four valid actions and four verified exact spans. Read the committed plan and execution events through authenticated API routes before cleanup. Documented the limits of the deadline wording and tentativeness checks in RESULT.md. Confirmed LIVE_DISABLED, zero pending jobs and removal of pilot resources. Only sanitized documentation was retained.
+
+## Phase 5C — Controlled personal beta readiness
+
+Added migration 0008 and server-side checks tying consent, the authenticated owner, grant budget and worker lease to a single dispatch. Added a revision-specific consent checkbox, source-first review and safe beta error messages. Regression fixtures exercise personal-beta admission with a simulated provider, conditional and observation-only notes, expiry, revocation, budget exhaustion, concurrent spending, and desktop/mobile approval-to-task progress. No application grant, deployment, billing change or live request.

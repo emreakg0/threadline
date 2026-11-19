@@ -5,6 +5,12 @@ import { WorkspaceIcon } from "./WorkspaceIcon";
 export const processingRoute = "#capture/processing/";
 
 const messages: Record<string, string> = {
+  BETA_UNAVAILABLE:
+    "Personal beta access is unavailable. You can plan manually.",
+  BETA_LIMIT:
+    "Your approved beta request allowance has been used. You can still plan manually.",
+  CONSENT_REQUIRED:
+    "Confirm that you want to send this saved revision to Google.",
   LIVE_DISABLED: "Live Gemini is disabled.",
   FREE_TIER_UNVERIFIED: "The Free Tier authorization could not be verified.",
   SOURCE_NOT_AUTHORIZED: "This revision is outside the authorized test.",
@@ -57,6 +63,7 @@ export function ExtractionPanel({
     enabled: boolean;
     reason?: string;
   }>();
+  const [consented, setConsented] = useState(false);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
   const key = useRef<string>(undefined);
@@ -91,12 +98,14 @@ export function ExtractionPanel({
   }, [sourceId, visible]);
 
   async function develop() {
+    if (!consented || disabled || !availability?.enabled || pending) return;
     const originRoute = location.hash;
     setPending(true);
     setMessage("");
     try {
       const run = await api("/extractions", "POST", {
         schema_version: 2,
+        consent: true,
         source_revision_id: sourceId,
         idempotency_key: (key.current ??= crypto.randomUUID()),
       });
@@ -124,21 +133,6 @@ export function ExtractionPanel({
   return (
     <section className="tl-next-action" aria-label="Action planning">
       <h2>Turn your thoughts into actions</h2>
-      {runId ? (
-        <a className="tl-review-link" href={processingRoute + runId}>
-          <WorkspaceIcon name="trace" /> <span>Open processing status</span>{" "}
-          <WorkspaceIcon name="arrow" />
-        </a>
-      ) : (
-        <button
-          className="tl-primary"
-          disabled={disabled || pending || !availability?.enabled}
-          aria-describedby="tl-plan-availability"
-          onClick={() => void develop()}
-        >
-          {pending ? "Saving request…" : "Develop action plan"}
-        </button>
-      )}
       <p id="tl-plan-availability" className="tl-live-state">
         {availability?.enabled
           ? "AI sends this saved revision to Google. Google may use Free Tier inputs and outputs to improve its products. Avoid sensitive notes."
@@ -159,6 +153,32 @@ export function ExtractionPanel({
           </>
         )}
       </p>
+      {availability?.enabled && !runId && (
+        <label className="tl-plan-consent">
+          <input
+            aria-describedby="tl-plan-availability"
+            type="checkbox"
+            checked={consented}
+            onChange={(e) => setConsented(e.target.checked)}
+          />
+          I agree to send this saved revision to Google for action planning.
+        </label>
+      )}
+      {runId ? (
+        <a className="tl-review-link" href={processingRoute + runId}>
+          <WorkspaceIcon name="trace" /> <span>Open processing status</span>{" "}
+          <WorkspaceIcon name="arrow" />
+        </a>
+      ) : (
+        <button
+          className="tl-primary"
+          disabled={disabled || pending || !consented || !availability?.enabled}
+          aria-describedby="tl-plan-availability"
+          onClick={() => void develop()}
+        >
+          {pending ? "Saving request…" : "Develop action plan"}
+        </button>
+      )}
       {message && <p role="alert">{message}</p>}
       <a className="tl-review-link" href={"#capture/plan/" + documentId}>
         <WorkspaceIcon name="review" /> <span>Open action plan</span>{" "}

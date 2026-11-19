@@ -1,4 +1,16 @@
-# Threadline Phase 5B.5 — Live Action Plan pilot
+# Threadline Phase 5C — Controlled personal beta readiness
+
+**Prepared for owner review; live inference is disabled.** No owner was enrolled, no grant was issued in the application database, and no provider request was sent. The normal application retains `LIVE_AUTHORIZED=false` and `freeTierApproval() === null`. The new migration was exercised only in disposable test schemas.
+
+**Proposed first window:** one explicitly named, verified Google account, **three requests total over 24 hours**, with one live request at a time. These values are a proposal requiring separate approval. The owner must specify the account, start and expiry, request allowance, and confirm continued Free Tier eligibility and key/project association before activation.
+
+- **Access and revocation.** Server-side admission checks the signed-in account, grant window, remaining allowance and per-revision consent. Immediately before sending, PostgreSQL checks the pinned revision, current worker lease, original grant and owner, then commits a single debit. Errors after admission consume that debit. Deleting the singleton grant stops subsequent dispatch authorizations across processes. A request already authorized for dispatch can finish. Existing quota reservations, deduplication, 429 cooldown and single-attempt live behavior remain in force.
+- **Consent and review.** The submission control requires an initially unchecked consent box for the saved revision and explains Google's Free Tier data use. The API independently requires affirmative consent. A proposal awaiting review opens its original quotation alongside its suggested title, priority, deadline phrase and any recorded uncertainty. Editors still choose a project, priority and schedule before approving and explicitly creating a task.
+- **Offline evidence.** Disposable PostgreSQL tests covered owner isolation, expiry, revocation, exhaustion, competing consumers, ambiguous evidence, conditional wording, unresolved dates, and an observation-only source yielding zero actions. Desktop/mobile Chromium exercised consent, the saved Brain Dump button, real queue and processing history with a simulated provider, navigation and reload, review, idempotent conversion and linked-task progress. Manual planning remained available when processing was disabled or failed.
+- **Checks.** Workspace typecheck, frontend tests, frontend/API production builds, PostgreSQL integration and worker regressions, the Chromium acceptance suite, frontend security tests and package audit passed. The scoped review removed worker lease and grant fields from run responses. The secret audit found no issues.
+- **Limitations.** Exact quotation matching establishes provenance. Human review must decide whether a suggestion preserves qualifiers such as “if” or “probably”, and whether a deadline, priority or proposed action is justified. The beta grant and consent workflow was verified offline; the previous synthetic live pilot is the only verified successful live plan. General AI access remains closed.
+
+## Threadline Phase 5B.5 — Live Action Plan pilot
 
 **One real request produced four persisted, reviewable proposals.** Google returned HTTP 200 and structured JSON to the isolated worker using `gemini-3.5-flash-lite`, v1beta `generateContent`, schema v2 and `grounded-plan-4`. The only source was the approved fictional brain dump, in new revision `17753c1e-6416-423b-92f3-4a6f18061746`. The server key matched the owner-confirmed suffix for the verified Free Tier project.
 

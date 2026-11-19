@@ -1,77 +1,100 @@
 import { Router } from "express";
 import { pool } from "@workspace/db";
 import { cancel } from "../extraction/lifecycle";
+import { activeBetaGrant } from "../extraction/beta";
 import { liveAccess } from "../extraction/gemini";
 import { extract } from "../extraction/service";
 import { ExtractionError } from "../extraction/validation";
-const router = Router();
-router.post("/", async (req, res) => {
-  const b = req.body;
-  if (
-    !b ||
-    typeof b !== "object" ||
-    Array.isArray(b) ||
-    Object.keys(b).some(
-      (key) =>
-        !["idempotency_key", "source_revision_id", "schema_version"].includes(
-          key,
-        ),
-    ) ||
-    (b.schema_version !== undefined &&
-      b.schema_version !== 1 &&
-      b.schema_version !== 2) ||
-    typeof b.source_revision_id !== "string" ||
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-      b.source_revision_id,
-    ) ||
-    typeof b.idempotency_key !== "string" ||
-    !/^[a-zA-Z0-9_-]{8,100}$/.test(b.idempotency_key)
-  ) {
-    res.status(400).json({ error: "Invalid extraction request" });
-    return;
-  }
-  try {
-    liveAccess(b.source_revision_id);
-    if (b.schema_version === 1)
-      throw new ExtractionError("PLANNING_SCHEMA_REQUIRED", 400);
-    res
-      .status(202)
-      .json(
-        await extract(
-          res.locals.userId,
-          b.source_revision_id,
-          b.idempotency_key,
-          "gemini",
-          2,
-        ),
-      );
-  } catch (e) {
-    if (e instanceof ExtractionError) {
-      res.status(e.status).json({ error: e.code });
-      return;
-    }
-    throw e;
-  }
-});
 const validId = (id: unknown) =>
   typeof id === "string" &&
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-router.get("/availability", (req, res) => {
-  if (
-    req.query.source_revision_id !== undefined &&
-    !validId(req.query.source_revision_id)
-  ) {
-    res.status(400).json({ error: "Invalid source revision ID" });
-    return;
-  }
-  try {
-    liveAccess(req.query.source_revision_id as string | undefined);
-    res.json({ enabled: true });
-  } catch (e) {
-    if (!(e instanceof ExtractionError)) throw e;
-    res.json({ enabled: false, reason: e.code });
-  }
-});
+// The run history is user-visible; dispatch credentials and grant accounting are server-only.
+function publicRun({
+  lease_token,
+  consent_grant_id,
+  beta_dispatched_at,
+  ...run
+}: Record<string, unknown>) {
+  return run;
+}
+export function planningAdmission(
+  providerCheck: (sourceId?: string) => void,
+  mode: "gemini" | "mock",
+) {
+  const router = Router();
+  router.post("/", async (req, res) => {
+    const b = req.body;
+    if (
+      !b ||
+      typeof b !== "object" ||
+      Array.isArray(b) ||
+      Object.keys(b).some(
+        (key) =>
+          ![
+            "idempotency_key",
+            "source_revision_id",
+            "schema_version",
+            "consent",
+          ].includes(key),
+      ) ||
+      (b.schema_version !== undefined &&
+        b.schema_version !== 1 &&
+        b.schema_version !== 2) ||
+      typeof b.source_revision_id !== "string" ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        b.source_revision_id,
+      ) ||
+      typeof b.idempotency_key !== "string" ||
+      !/^[a-zA-Z0-9_-]{8,100}$/.test(b.idempotency_key)
+    ) {
+      res.status(400).json({ error: "Invalid extraction request" });
+      return;
+    }
+    try {
+      providerCheck(b.source_revision_id);
+      if (b.consent !== true)
+        throw new ExtractionError("CONSENT_REQUIRED", 400);
+      const grant = await activeBetaGrant(res.locals.userId);
+      if (b.schema_version === 1)
+        throw new ExtractionError("PLANNING_SCHEMA_REQUIRED", 400);
+      const run = await extract(
+        res.locals.userId,
+        b.source_revision_id,
+        b.idempotency_key,
+        mode,
+        2,
+        grant,
+      );
+      res.status(202).json(publicRun(run));
+    } catch (e) {
+      if (e instanceof ExtractionError) {
+        res.status(e.status).json({ error: e.code });
+        return;
+      }
+      throw e;
+    }
+  });
+  router.get("/availability", async (req, res) => {
+    if (
+      req.query.source_revision_id !== undefined &&
+      !validId(req.query.source_revision_id)
+    ) {
+      res.status(400).json({ error: "Invalid source revision ID" });
+      return;
+    }
+    try {
+      providerCheck(req.query.source_revision_id as string | undefined);
+      await activeBetaGrant(res.locals.userId);
+      res.json({ enabled: true });
+    } catch (e) {
+      if (!(e instanceof ExtractionError)) throw e;
+      res.json({ enabled: false, reason: e.code });
+    }
+  });
+  return router;
+}
+const router = Router();
+router.use(planningAdmission(liveAccess, "gemini"));
 router.get("/:id/progress", async (req, res) => {
   if (!validId(req.params.id)) {
     res.status(400).json({ error: "Invalid run ID" });
@@ -120,7 +143,7 @@ router.get("/", async (req, res) => {
     )
   ).rows;
   res.json({
-    runs: rows.slice(0, 50),
+    runs: rows.slice(0, 50).map(publicRun),
     next_offset: rows.length > 50 ? offset + 50 : null,
   });
 });
@@ -134,7 +157,7 @@ router.post("/:id/cancel", async (req, res) => {
     res.status(404).json({ error: "Run not found" });
     return;
   }
-  res.json(run);
+  res.json(publicRun(run));
 });
 router.get("/:id/events", async (req, res) => {
   const since = cursor(req.query.since_sequence);
@@ -221,6 +244,6 @@ router.get("/:id", async (req, res) => {
       [run.id, res.locals.userId],
     )
   ).rows;
-  res.json({ run, blocks });
+  res.json({ run: publicRun(run), blocks });
 });
 export default router;

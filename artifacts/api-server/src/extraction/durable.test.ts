@@ -323,8 +323,22 @@ try {
   } = await import("./quota");
   const first = await fixture();
   const second = await fixture();
+  const { activeBetaGrant, consumeBetaDispatch } = await import("./beta");
+  await assert.rejects(activeBetaGrant(first.user), {
+    code: "BETA_UNAVAILABLE",
+  });
+  const grant = (
+    await pool.query(
+      "INSERT INTO threadline_beta_grant(user_id,starts_at,expires_at,request_limit) VALUES($1,now(),now()+interval '1 hour',1) RETURNING id",
+      [first.user],
+    )
+  ).rows[0].id;
+  assert.equal(await activeBetaGrant(first.user), grant);
+  await assert.rejects(activeBetaGrant(second.user), {
+    code: "BETA_UNAVAILABLE",
+  });
   const enqueueLive = (f: typeof first) =>
-    enqueue(f.user, f.source, randomUUID(), "gemini", 2);
+    enqueue(f.user, f.source, randomUUID(), "gemini", 2, grant);
   const [job, sameRevision] = await Promise.all([
     enqueueLive(first),
     enqueueLive(first),
@@ -339,6 +353,37 @@ try {
   const claimed = results.find((item) => item !== null);
   assert.ok(claimed);
   assert.equal(results.filter(Boolean).length, 1);
+  // Exercise the dispatch fence independently of either closed live gate.
+  const dispatch = () =>
+    consumeBetaDispatch(
+      claimed.id,
+      claimed.lease_token,
+      claimed.source_revision_id,
+    );
+  await pool.query("UPDATE threadline_beta_grant SET user_id=$1", [
+    claimed.user_id === first.user ? second.user : first.user,
+  ]);
+  await assert.rejects(dispatch(), { code: "BETA_UNAVAILABLE" });
+  await pool.query(
+    "UPDATE threadline_beta_grant SET user_id=$1,starts_at=now()-interval '2 hours',expires_at=now()-interval '1 hour'",
+    [claimed.user_id],
+  );
+  await assert.rejects(dispatch(), { code: "BETA_UNAVAILABLE" });
+  await pool.query("DELETE FROM threadline_beta_grant");
+  await assert.rejects(dispatch(), { code: "BETA_UNAVAILABLE" });
+  await pool.query(
+    "INSERT INTO threadline_beta_grant(id,user_id,starts_at,expires_at,request_limit) VALUES($1,$2,now(),now()+interval '1 hour',1)",
+    [grant, claimed.user_id],
+  );
+  await assert.rejects(
+    consumeBetaDispatch(claimed.id, randomUUID(), claimed.source_revision_id),
+    { code: "BETA_UNAVAILABLE" },
+  );
+  const permits = await Promise.allSettled([dispatch(), dispatch()]);
+  assert.equal(permits.filter((r) => r.status === "fulfilled").length, 1);
+  await assert.rejects(activeBetaGrant(claimed.user_id), {
+    code: "BETA_LIMIT",
+  });
   const waitingRun = claimed.id === job.id ? queued : job;
   const original = claimed.id === job.id ? first : second;
   assert.equal(await claim("gemini", waitingRun.id), null);

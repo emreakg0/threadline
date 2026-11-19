@@ -6,6 +6,8 @@ export const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models
 // A separate owner decision must open both checks.
 export const LIVE_AUTHORIZED = false;
 function freeTierApproval(): {
+  project: "threadline-gemini";
+  model: typeof MODEL;
   keySha256: string;
   expiresAt: string;
   sourceRevisionId?: string;
@@ -16,7 +18,12 @@ function freeTierApproval(): {
 export function liveAccess(sourceId?: string) {
   if (!LIVE_AUTHORIZED) throw new ExtractionError("LIVE_DISABLED", 503);
   const approval = freeTierApproval();
-  if (!approval || !(Date.parse(approval.expiresAt) > Date.now()))
+  if (
+    !approval ||
+    approval.project !== "threadline-gemini" ||
+    approval.model !== MODEL ||
+    !(Date.parse(approval.expiresAt) > Date.now())
+  )
     throw new ExtractionError("FREE_TIER_UNVERIFIED", 503);
   if (approval.sourceRevisionId && sourceId !== approval.sourceRevisionId)
     throw new ExtractionError("SOURCE_NOT_AUTHORIZED", 503);
@@ -36,6 +43,7 @@ export interface Adapter {
     signal?: AbortSignal,
     version?: SchemaVersion,
     sourceId?: string,
+    claim?: { id: string; lease_token: string },
   ): Promise<string>;
 }
 
@@ -222,9 +230,13 @@ export async function readPlanningResponse(
 
 export const gemini: Adapter = {
   mode: "gemini",
-  async generate(source, signal, version, sourceId) {
+  async generate(source, signal, version, sourceId, claim) {
     const key = liveAccess(sourceId);
     if (version !== 2) throw new ExtractionError("MODEL_CONFIG_CHANGED");
+    if (!claim || !sourceId) throw new ExtractionError("BETA_UNAVAILABLE", 403);
+    const { consumeBetaDispatch } = await import("./beta");
+    await consumeBetaDispatch(claim.id, claim.lease_token, sourceId);
+    signal?.throwIfAborted();
     let response: Response;
     try {
       response = await fetch(ENDPOINT, {

@@ -46,10 +46,16 @@ export type Action = Omit<Fields, "priority" | "project_id" | "due_date"> &
   };
 const taskStates = { todo: "To do", in_progress: "In progress", done: "Done" };
 
-export function PlanEvidence({ evidence }: { evidence: Evidence[] }) {
+export function PlanEvidence({
+  evidence,
+  expanded = false,
+}: {
+  evidence: Evidence[];
+  expanded?: boolean;
+}) {
   if (!evidence.length) return null;
   return (
-    <details className="tl-plan-evidence">
+    <details className="tl-plan-evidence" open={expanded}>
       <summary>Original source evidence ({evidence.length})</summary>
       {evidence.map((entry) => (
         <figure key={entry.id}>
@@ -265,13 +271,14 @@ export function PlanAction({
                 )}
                 {action.proposal.deadline_phrase && (
                   <div>
-                    <dt>Source deadline</dt>
+                    <dt>Deadline phrase in source</dt>
                     <dd>“{action.proposal.deadline_phrase}”</dd>
                   </div>
                 )}
               </dl>
             )}
-            {action.uncertainty_reason && (
+            {(action.uncertainty_reason ||
+              (action.proposal && action.state === "needs_review")) && (
               <p
                 className={
                   action.schedule === "unresolved"
@@ -279,11 +286,15 @@ export function PlanAction({
                     : undefined
                 }
               >
-                <small>Original proposal uncertainty</small>
-                {action.uncertainty_reason}
+                <small>Check the original intent</small>
+                {action.uncertainty_reason ??
+                  "Does the quotation describe a commitment, a possibility, or a condition?"}
               </p>
             )}
-            <PlanEvidence evidence={action.evidence} />
+            <PlanEvidence
+              evidence={action.evidence}
+              expanded={action.state === "needs_review"}
+            />
           </div>
           {action.converted ? (
             task ? (
@@ -312,7 +323,10 @@ export function PlanAction({
                     ))}
                   </select>
                 </label>
-                <a className="tl-text-link" href={"#capture/tasks/task/" + task.id}>
+                <a
+                  className="tl-text-link"
+                  href={"#capture/tasks/task/" + task.id}
+                >
                   Open linked task <WorkspaceIcon name="arrow" />
                 </a>
               </div>

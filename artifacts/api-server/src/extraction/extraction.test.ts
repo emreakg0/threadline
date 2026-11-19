@@ -340,6 +340,64 @@ try {
     .rows;
   assert.equal(saved.length, 1);
   assert.equal(saved[0].review_state, "needs_review");
+  const conditional =
+    "If the quiz moves to Thursday, review calculus. Review calculus was last week's topic.";
+  const scenarios = [
+    {
+      source: conditional,
+      blocks: [
+        {
+          ...proposed,
+          content: "Review calculus if the quiz moves",
+          uncertainty_reason: "The quiz date may change.",
+          evidence: ["If the quiz moves to Thursday, review calculus."],
+          proposal: { ...proposed.proposal, deadline_phrase: "Thursday" },
+        },
+      ],
+    },
+    { source: "It rained this morning.", blocks: [] },
+  ];
+  for (const scenario of scenarios) {
+    const d = randomUUID(),
+      rev = randomUUID();
+    await pool.query(
+      "INSERT INTO threadline_documents(id,user_id,title) VALUES($1,$2,'Scenario')",
+      [d, user],
+    );
+    await pool.query(
+      "INSERT INTO threadline_source_revisions(id,user_id,document_id,revision,source_text) VALUES($1,$2,$3,1,$4)",
+      [rev, user, d, scenario.source],
+    );
+    const simulated = await enqueue(user, rev, randomUUID(), "mock", 2);
+    await processOne(
+      {
+        mode: "mock",
+        generate: async () =>
+          JSON.stringify({ schema_version: 2, blocks: scenario.blocks }),
+      },
+      simulated.id,
+    );
+    const saved = await pool.query(
+      "SELECT review_state,uncertainty_reason,schedule,due_date FROM threadline_plan_actions a JOIN threadline_knowledge_blocks b ON b.id=a.block_id WHERE b.originating_run_id=$1",
+      [simulated.id],
+    );
+    assert.equal(
+      (
+        await pool.query("SELECT status FROM threadline_runs WHERE id=$1", [
+          simulated.id,
+        ])
+      ).rows[0].status,
+      "succeeded",
+    );
+    assert.equal(saved.rowCount, scenario.blocks.length);
+    if (saved.rowCount)
+      assert.deepEqual(saved.rows[0], {
+        review_state: "needs_review",
+        uncertainty_reason: scenario.blocks[0].uncertainty_reason,
+        schedule: "unresolved",
+        due_date: null,
+      });
+  }
   const failure = await extract(user, revision, "invalid-key", {
     mode: "mock",
     generate: async () => "{",
@@ -394,7 +452,8 @@ try {
   assert.equal(
     (
       await pool.query(
-        "SELECT count(*)::int n FROM threadline_knowledge_blocks",
+        "SELECT count(*)::int n FROM threadline_knowledge_blocks WHERE document_id=$1",
+        [doc],
       )
     ).rows[0].n,
     1,

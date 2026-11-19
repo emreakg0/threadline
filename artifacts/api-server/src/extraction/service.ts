@@ -16,6 +16,7 @@ export async function extract(
   key: string,
   mode: Adapter["mode"] = "gemini",
   version: SchemaVersion = 1,
+  consentGrantId?: string,
 ) {
   return transaction(async (c) => {
     await c.query("SELECT pg_advisory_xact_lock(72810382)");
@@ -82,7 +83,7 @@ export async function extract(
     }
     const run = (
       await c.query(
-        `INSERT INTO threadline_runs(id,user_id,source_revision_id,document_id,idempotency_key,pipeline_version,schema_version,provider,model,prompt_version) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+        `INSERT INTO threadline_runs(id,user_id,source_revision_id,document_id,idempotency_key,pipeline_version,schema_version,provider,model,prompt_version,consent_grant_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
         [
           randomUUID(),
           user,
@@ -94,6 +95,7 @@ export async function extract(
           mode,
           MODEL,
           formats[version].prompt,
+          consentGrantId ?? null,
         ],
       )
     ).rows[0];

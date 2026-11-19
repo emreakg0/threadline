@@ -354,3 +354,7 @@ The isolated Chromium workflow saved four mock actions from the exact pilot brai
 ## Phase 5B.5 — Third authorized live pilot
 
 Verified one live end-to-end run through PostgreSQL persistence and authenticated Action Plan review. All four expected topics had unique exact source evidence. Eleven events recorded the completed run. The two deadline-bearing actions remained unresolved and no tasks were created. The remaining open question is consistent semantic fidelity, including tentative wording. Stop for owner review; no live requests remain authorized.
+
+## Phase 5C — Controlled personal beta readiness
+
+Owner-only admission, bounded database grants, revocation, per-revision consent and dispatch accounting are implemented and mock-tested. The ordinary gates remain closed and no live requests were sent. Proposed first window: three requests total in 24 hours for one verified account. The next decision belongs to the owner: approve or decline an exact account, allowance and validity window after reviewing Free Tier privacy and interpretation risks.
