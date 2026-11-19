@@ -268,3 +268,14 @@ access, schema acceptance, grounded evidence, reviewable persisted proposals,
 and recorded execution. Close the gate again after the result or failure.
 A malformed response, unavailable model, or 429 ends the attempt. Any wider
 enablement requires a separate owner decision.
+
+### Phase 5B.1 pilot preflight result
+
+The owner authorized one synthetic request for `threadline-gemini`. Preflight
+confirmed the pinned model and endpoint and that the server-side key was
+present. The workspace had no authenticated access to project settings to
+confirm current Free Tier, absence of paid billing, and key association.
+The pilot stopped before dispatch with zero requests. The gate remained closed
+and the isolated integration test verified `LIVE_DISABLED`. Response
+acceptance, generated actions, evidence validation, persistence, and live
+recorded execution remain pending the authorized pilot.

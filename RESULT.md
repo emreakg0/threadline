@@ -1,8 +1,8 @@
 # Threadline Phase 5B — Gemini 3.5 Flash-Lite
 
-Phase 5B is ready for a separately authorized, one-request pilot. The checked-in
-gate remains `LIVE_AUTHORIZED=false`. The key was never read or changed, and no
-provider requests, billing changes, or deployment took place.
+Phase 5B.1 stopped at preflight. The owner authorized one synthetic request,
+and this session sent zero. The checked-in gate remains `LIVE_AUTHORIZED=false`.
+No provider requests, billing changes, or deployment took place.
 
 ## Integration
 
@@ -38,13 +38,23 @@ provider requests, billing changes, or deployment took place.
   screenshots were inspected, including reduced motion at 390 px.
   Screenshots are in `/tmp/threadline-5b-processing-*.png`.
 
-## Pending owner authorization
+## Phase 5B.1 pilot preflight
 
-Apply migration `0007_threadline_gemini_quota` before starting the updated API.
-Google documents structured output and free standard text for this model on
-eligible Free Tier projects. The project tier and limits are owner-reported.
-Actual access through the configured key, acceptance of the exact request,
-and generated-plan quality remain unverified. Threadline cannot see external
-use of the Google project or validate its billing tier from the text API.
-See [GEMINI_INTEGRATION.md](GEMINI_INTEGRATION.md) for the single-revision
-pilot boundary. Stop for explicit authorization of that one synthetic test.
+- Configured model and endpoint matched the authorization:
+  `gemini-3.5-flash-lite` at the Gemini Developer API v1beta
+  `generateContent` endpoint. The server-side key was present.
+- Outcome: blocked before dispatch. This environment lacked authenticated
+  access to the Google project settings. Current Free Tier status, absence of
+  paid billing, and the configured key's project association could not be
+  sufficiently confirmed. Public pricing only establishes model eligibility.
+- Zero requests were sent. There was no provider response, action count,
+  evidence-validation result, persisted proposal, or live execution trace.
+  No pilot fixture or temporary authorization was created.
+- Focused PostgreSQL integration and extraction checks passed in disposable
+  schemas, including migration 0007 and the normal API's `LIVE_DISABLED`
+  response. No production migration or data change was made.
+
+Next step: obtain a current, redacted project verification for
+`threadline-gemini` and confirmation that the existing server secret came
+from that project. The approved one-request pilot remains unspent. Generated
+quality, evidence accuracy, live persistence, and live replay remain unverified.

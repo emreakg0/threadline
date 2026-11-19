@@ -372,3 +372,14 @@ Git 133c0f1 created the initial repository; 3f10439 initialized the productivity
 - Passed isolated API/PostgreSQL and Chromium checks, workspace typecheck,
   frontend tests, builds, security and package checks. Inspected desktop and
   mobile views. No live calls, key access, or billing changes.
+
+## Threadline Phase 5B.1 — pilot preflight
+
+- Checked the pinned Gemini 3.5 Flash-Lite Developer API endpoint and key
+  presence. Public pricing documented Free Tier model eligibility. No
+  authenticated project settings were available to confirm current billing
+  status or the existing secret's project association.
+- Stopped before dispatch. No synthetic pilot rows, authorization changes,
+  or provider attempts were created. Focused isolated document and extraction
+  tests passed and verified the normal API still returns `LIVE_DISABLED`.
+  This checkpoint updates documentation only.

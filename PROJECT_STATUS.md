@@ -310,3 +310,17 @@ mock planning, review, task conversion, and legacy replay. The checked-in
 in disposable schemas. The next task is an explicit owner decision on one
 synthetic first call. Project/key access and actual structured response quality
 still require that separate bounded verification.
+
+## Threadline Phase 5B.1 — pilot preflight blocked
+
+The owner authorized one synthetic `gemini-3.5-flash-lite` request. Preflight
+verified the pinned endpoint and server-side key presence. This environment
+could not verify project billing or the configured key's project association.
+Zero requests were sent, and the application gate stayed closed. Focused
+isolated integration checks verified the normal API's `LIVE_DISABLED`
+response.
+
+The next task is to confirm current Free Tier and billing status for
+`threadline-gemini`, and the existing key's association with it, before
+preparing the one-shot pilot. Live output and its downstream processing
+remain unverified.
