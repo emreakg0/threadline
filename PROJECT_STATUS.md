@@ -371,3 +371,17 @@ Gate, API/worker, typecheck, frontend, security, build and dependency checks pas
 See RESULT.md for evidence and immediate revocation instructions.
 Next unfinished task: owner-initiated use and evidence review within this allowance;
 any extension requires fresh authorization.
+
+## Security cleanup — Private owner-beta configuration
+
+Removed approval and activation values from tracked `.replit`, preserving the
+existing approval in a 0600, Git-ignored/deployment-excluded private runtime file.
+Verified private-file gate access and the original owner/model/expiry/budget:
+one used and two remaining at verification, with no request sent by cleanup.
+Expanded audit and gate regressions passed; API integration/worker, workspace
+typecheck, frontend/security, both builds and dependency audit passed.
+No raw-credential matches were found in scanned history or available retained
+logs. The default audit still rejects the historical approval/fingerprint in
+`.replit`; no rewriting or allowlisting was performed. Current files are clean.
+Next unfinished task: restore GitHub access, verify the private origin and
+review the historical audit finding before completing the remote backup.

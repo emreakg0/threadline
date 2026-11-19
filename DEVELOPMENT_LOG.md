@@ -440,3 +440,26 @@ Added migration 0008 and server-side checks tying consent, the authenticated own
 - Updated RESULT.md, PROJECT_STATUS.md and GEMINI_INTEGRATION.md with scope,
   evidence, revocation and the next owner-only action. No billing or deployment
   changes. GitHub access is currently unavailable; no remote push was attempted.
+
+## 2026-11-19 — Secure beta configuration cleanup
+
+- Addressed owner feedback: non-secret development settings had persisted the
+  approval and fingerprint into tracked `.replit`. Removed both stored values.
+- Moved the unchanged approval/control to the API's ignored `.local` directory
+  with owner-only directory/file permissions, explicit deployment exclusion and
+  fail-closed loading. Optional Secrets overrides remain supported; partial
+  overrides do not inherit file authorization.
+- Reused existing gates and accounting; no owner, model, budget, expiry or billing
+  changes. Running API authorization and a no-network private-file gate check
+  passed. One request was used and two remained at verification.
+- Extended the existing secret audit for key fingerprints and beta values,
+  actual staged content, historical/reflog blobs and retained logs. Added seven
+  synthetic audit regressions and private-file failure-path gate tests.
+- Checked history/current files and available retained logs without printing
+  values. Found the historical approval/fingerprint record but no raw-credential
+  matches. Current index/worktree pass; the default history-inclusive audit
+  correctly remains nonzero. No allowlist, force-push or history rewrite.
+- Audit/gate tests, PostgreSQL API/worker tests, workspace typecheck, frontend/
+  security tests, both builds and package audit passed.
+- GitHub privacy lookup reported no accessible GitHub connection. Remote backup
+  remains blocked pending restored access and review of the historical finding.

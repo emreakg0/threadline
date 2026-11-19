@@ -1,5 +1,16 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import {
+  chmodSync,
+  linkSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { liveAccess, MODEL } from "./gemini";
 
 // No provider transport or real credentials are used by this gate-only test.
@@ -66,4 +77,53 @@ denied("LIVE_DISABLED");
 process.env.THREADLINE_GEMINI_LIVE_AUTHORIZED = "true";
 delete process.env.GEMINI_API_KEY;
 denied("FREE_TIER_UNVERIFIED");
+
+// Extend the existing gate-only test: no real runtime file or provider is accessed.
+const originalDirectory = process.cwd();
+const privateDirectory = mkdtempSync(join(tmpdir(), "threadline-authorization-"));
+try {
+  process.chdir(privateDirectory);
+  mkdirSync(".local", { mode: 0o700 });
+  const file = ".local/threadline-gemini-authorization.json";
+  delete process.env.THREADLINE_GEMINI_FREE_TIER_APPROVAL;
+  delete process.env.THREADLINE_GEMINI_LIVE_AUTHORIZED;
+  process.env.GEMINI_API_KEY = "synthetic-authorization-fixture";
+  denied("LIVE_DISABLED");
+  const privateConfig = (value: unknown = { liveAuthorized: true, approval }) => {
+    rmSync(file, { force: true });
+    writeFileSync(file, JSON.stringify(value), { mode: 0o600 });
+  };
+  privateConfig();
+  assert.equal(liveAccess(), "synthetic-authorization-fixture");
+  // A partial Secrets override cannot silently inherit approval from the file.
+  process.env.THREADLINE_GEMINI_LIVE_AUTHORIZED = "true";
+  denied("FREE_TIER_UNVERIFIED");
+  process.env.THREADLINE_GEMINI_LIVE_AUTHORIZED = "false";
+  denied("LIVE_DISABLED");
+  delete process.env.THREADLINE_GEMINI_LIVE_AUTHORIZED;
+  chmodSync(file, 0o644);
+  denied("LIVE_DISABLED");
+  privateConfig({ liveAuthorized: "true", approval });
+  denied("LIVE_DISABLED");
+  privateConfig({
+    liveAuthorized: true,
+    approval: { ...approval, expiresAt: "invalid" },
+  });
+  denied("FREE_TIER_UNVERIFIED");
+  privateConfig();
+  process.env.NODE_ENV = "production";
+  denied("LIVE_DISABLED");
+  process.env.NODE_ENV = "development";
+  linkSync(file, ".local/linked.json");
+  denied("LIVE_DISABLED");
+  rmSync(file);
+  symlinkSync("linked.json", file);
+  denied("LIVE_DISABLED");
+  rmSync(file);
+  writeFileSync(file, "{", { mode: 0o600 });
+  denied("LIVE_DISABLED");
+} finally {
+  process.chdir(originalDirectory);
+  rmSync(privateDirectory, { recursive: true, force: true });
+}
 console.log("Development authorization gates passed; zero provider requests.");

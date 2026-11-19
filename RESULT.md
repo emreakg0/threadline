@@ -1,3 +1,39 @@
+# Threadline security cleanup — Private beta authorization
+
+- Removed both beta authorization values from tracked `.replit`. Preserved the
+  exact existing approval in an owner-only, Git-ignored and deployment-excluded
+  runtime file; no credential or fingerprint values appear in this report.
+- Verified the running API opens both local gates using the private file with
+  no legacy environment overrides. Missing, malformed, insecurely-permissioned,
+  symlinked or hard-linked files fail closed. Production remains disabled.
+- The existing owner, model, three-total-request budget and original expiry
+  **2026-11-20 07:12:43.255 UTC** are unchanged. At verification, one request had
+  been used and two remained. No provider request or budget reset was performed
+  during cleanup.
+- Extended the existing audit to inspect the real index separately from the
+  working tree, reachable/reflog history and optional retained logs, detecting
+  key fingerprints, approval assignments and forced private-file additions.
+  Added seven synthetic audit regressions and extended existing gate tests.
+- Current staged/tracked files pass. Full history review identified a historical
+  `.replit` blob containing the approval and fingerprint, not a raw credential.
+  No raw-credential matches were found in checked history, current files or
+  available retained logs/workflow tails. Heuristics and retained logs cannot
+  establish that inaccessible or deleted logs were clean.
+- The full audit intentionally still fails on historical metadata. History was
+  not rewritten, the record was not allowlisted and no force-push was attempted.
+- Audit/gate regressions, API PostgreSQL integration/worker tests, workspace
+  typecheck, frontend/security tests and both production builds passed.
+  Package audit found no known vulnerabilities.
+- GitHub privacy verification is blocked: the workspace has no accessible GitHub
+  connection. This report accompanies a forward-only local cleanup commit; a push
+  cannot be verified or performed until access is restored. Preserve the history
+  finding for explicit review before any further remote operation.
+- Revocation and private-runtime-file details are in GEMINI_INTEGRATION.md.
+  Next unfinished task: restore GitHub access, verify repository privacy and
+  review the historical audit finding before completing the remote backup.
+
+## Earlier activation report
+
 # Threadline Phase 5C.1 — Development owner beta activated
 
 - Applied existing migration 0008 transactionally to the confirmed development

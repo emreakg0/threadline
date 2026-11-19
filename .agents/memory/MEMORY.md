@@ -1,1 +1,1 @@
-- [Preview environment labels](preview-environment-labels.md) — Replit's platform production label does not identify a deployed production API.
+- [Runtime authorization configuration](preview-environment-labels.md) — platform labels are not deployment evidence; non-secret variable setters write tracked .replit.

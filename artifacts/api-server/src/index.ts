@@ -29,8 +29,6 @@ try {
 logger.info({
  enabled: betaGatesOpen,
  code: betaGateCode,
- liveFlag: process.env.THREADLINE_GEMINI_LIVE_AUTHORIZED === "true",
- approvalPresent: Boolean(process.env.THREADLINE_GEMINI_FREE_TIER_APPROVAL),
  nodeProduction: process.env.NODE_ENV === "production",
 }, 'Development Gemini authorization status');
 try {

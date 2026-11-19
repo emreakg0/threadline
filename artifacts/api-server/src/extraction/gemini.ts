@@ -1,11 +1,57 @@
 import { createHash } from "node:crypto";
+import { closeSync, constants, fstatSync, openSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { ExtractionError, planSchema, type SchemaVersion } from "./validation";
 
 export const MODEL = "gemini-3.5-flash-lite";
 export const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 // Development-only administrative controls; neither is browser-configurable.
 // The approval is stored outside Git and expires independently of a restart.
-function freeTierApproval(): {
+function authorizationConfiguration(): {
+  liveAuthorized: boolean;
+  approval: unknown;
+} {
+  try {
+    const liveFlag = process.env.THREADLINE_GEMINI_LIVE_AUTHORIZED;
+    const approval = process.env.THREADLINE_GEMINI_FREE_TIER_APPROVAL;
+    // Replit Secrets can override the private file; a partial override fails closed.
+    if (liveFlag !== undefined || approval !== undefined)
+      return {
+        liveAuthorized: liveFlag === "true",
+        approval,
+      };
+    // pnpm runs this service from artifacts/api-server. .local is Git/deploy ignored.
+    const fd = openSync(
+      resolve(".local/threadline-gemini-authorization.json"),
+      constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
+    );
+    try {
+      const file = fstatSync(fd);
+      if (
+        !file.isFile() ||
+        file.uid !== process.getuid?.() ||
+        (file.mode & 0o077) !== 0 ||
+        file.nlink !== 1 ||
+        file.size > 16384
+      )
+        throw new Error("Unsafe authorization configuration");
+      const value: unknown = JSON.parse(readFileSync(fd, "utf8"));
+      if (!value || typeof value !== "object" || Array.isArray(value))
+        throw new Error("Invalid authorization configuration");
+      const config = value as Record<string, unknown>;
+      return {
+        liveAuthorized: config.liveAuthorized === true,
+        approval: config.approval,
+      };
+    } finally {
+      closeSync(fd);
+    }
+  } catch {
+    return { liveAuthorized: false, approval: null };
+  }
+}
+
+function freeTierApproval(approval: unknown): {
   project: "threadline-gemini";
   model: typeof MODEL;
   keySha256: string;
@@ -14,9 +60,7 @@ function freeTierApproval(): {
   sourceRevisionId?: string;
 } | null {
   try {
-    const approval: unknown = JSON.parse(
-      process.env.THREADLINE_GEMINI_FREE_TIER_APPROVAL ?? "null",
-    );
+    if (typeof approval === "string") approval = JSON.parse(approval);
     if (!approval || typeof approval !== "object" || Array.isArray(approval))
       return null;
     const a = approval as Record<string, unknown>;
@@ -51,12 +95,12 @@ function freeTierApproval(): {
 }
 
 export function liveAccess(sourceId?: string) {
-  if (
-    process.env.NODE_ENV === "production" ||
-    process.env.THREADLINE_GEMINI_LIVE_AUTHORIZED !== "true"
-  )
+  if (process.env.NODE_ENV === "production")
     throw new ExtractionError("LIVE_DISABLED", 503);
-  const approval = freeTierApproval();
+  const configuration = authorizationConfiguration();
+  if (!configuration.liveAuthorized)
+    throw new ExtractionError("LIVE_DISABLED", 503);
+  const approval = freeTierApproval(configuration.approval);
   if (
     !approval ||
     approval.project !== "threadline-gemini" ||

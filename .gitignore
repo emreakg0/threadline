@@ -95,3 +95,5 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+# Owner-only beta runtime configuration; never force-add this directory.
+/artifacts/api-server/.local/

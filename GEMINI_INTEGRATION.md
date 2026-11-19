@@ -337,11 +337,19 @@ confirmed development database. The singleton grant is owner-only, three total
 dispatches, valid 2026-11-19 07:12:43.255 UTC through 2026-11-20 07:12:43.255 UTC.
 Activation and verification sent no Gemini requests and changed no billing.
 
-The former hardcoded closed gate now requires development-only
-`THREADLINE_GEMINI_LIVE_AUTHORIZED=true` and
-`THREADLINE_GEMINI_FREE_TIER_APPROVAL`. The latter is administrative JSON with
-the exact project, model, configured-key SHA-256 binding, startsAt and expiresAt.
-It is not client-controlled and its value must not be copied into source or docs.
+Following security cleanup, the development gate reads
+`artifacts/api-server/.local/threadline-gemini-authorization.json` from the API's
+working directory. This private runtime file is Git-ignored and explicitly
+deployment-excluded; the directory has mode 0700 and the file mode 0600. It stores
+the original `liveAuthorized` control and `approval` object without changing
+the owner, key binding, model, time window or database budget.
+
+Alternatively, both `THREADLINE_GEMINI_LIVE_AUTHORIZED` and
+`THREADLINE_GEMINI_FREE_TIER_APPROVAL` may be supplied through Replit Secrets.
+Do not use non-secret configuration setters: they write values into tracked
+`.replit`. Any partial Secrets override fails closed rather than inheriting file
+approval. Approval contains the exact project, model, configured-key SHA-256
+binding, startsAt and expiresAt; never copy its value into source, docs or logs.
 Malformed, missing, future, expired, over-24-hour, wrong-project/model or mismatched
 key approvals fail closed. NODE_ENV=production always denies live access.
 The fixed model/endpoint, user consent, grant accounting and no-live-retry policy
@@ -349,7 +357,18 @@ are unchanged. A changed server key requires renewed verified approval.
 
 Expiry independently closes database admission and the provider approval check;
 the stored administrative flag does not renew anything. Immediate revocation:
-commit `DELETE FROM threadline_beta_grant` in development, remove both
-development configuration variables and restart the API. Do not reset used or
+commit `DELETE FROM threadline_beta_grant` in development and remove the private
+runtime file (and both Secrets overrides if configured). File removal immediately
+denies subsequent local gate checks; restart the API to remove environment
+overrides. Already-authorized transport cannot be recalled. Do not reset used or
 issue replacement grants without fresh owner authorization. Production has not
 been activated.
+
+The audit now checks raw credentials, configured-key fingerprints, literal key
+fingerprint fields, beta configuration assignments and forced additions of the
+private runtime file, across the actual index, working files, history and reflogs.
+It can also scan available retained logs without echoing matched values.
+`python3 scripts/test-secret-audit.py` runs synthetic audit regressions.
+The default full audit still rejects the historical approval/fingerprint record
+in `.replit`; `--current-only` validates the cleaned index/worktree only and must
+not be represented as a clean-history result. No history rewrite is authorized.
