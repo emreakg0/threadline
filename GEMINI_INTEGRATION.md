@@ -328,3 +328,28 @@ Migration 0008 creates an empty singleton grant table and adds nullable consent 
 **Administrative stop.** A trusted database administrator can commit `DELETE FROM threadline_beta_grant` to revoke the current window. Every subsequent dispatch checks the database, including work already queued. Revocation cannot recall a submission already authorized for transport. A new approval gets a fresh grant ID; queued work from an old grant cannot spend a replacement. Keep both provider gates closed after the window. The current milestone grants no permission to provision or activate anything.
 
 **Review boundary.** Exact unique excerpts open beside the proposal during review. An uncertainty note is a model interpretation. Its absence does not certify a definite commitment. Compare the quotation, edit or dismiss the proposal, resolve the date and choose priority before approving. Use manual planning for sensitive information.
+
+## Phase 5C.1 — Development-only activation
+
+The owner supplied the verified Google subject and reconfirmed the Free Tier
+project and configured-key association. Migration 0008 is now applied to the
+confirmed development database. The singleton grant is owner-only, three total
+dispatches, valid 2026-11-19 07:12:43.255 UTC through 2026-11-20 07:12:43.255 UTC.
+Activation and verification sent no Gemini requests and changed no billing.
+
+The former hardcoded closed gate now requires development-only
+`THREADLINE_GEMINI_LIVE_AUTHORIZED=true` and
+`THREADLINE_GEMINI_FREE_TIER_APPROVAL`. The latter is administrative JSON with
+the exact project, model, configured-key SHA-256 binding, startsAt and expiresAt.
+It is not client-controlled and its value must not be copied into source or docs.
+Malformed, missing, future, expired, over-24-hour, wrong-project/model or mismatched
+key approvals fail closed. NODE_ENV=production always denies live access.
+The fixed model/endpoint, user consent, grant accounting and no-live-retry policy
+are unchanged. A changed server key requires renewed verified approval.
+
+Expiry independently closes database admission and the provider approval check;
+the stored administrative flag does not renew anything. Immediate revocation:
+commit `DELETE FROM threadline_beta_grant` in development, remove both
+development configuration variables and restart the API. Do not reset used or
+issue replacement grants without fresh owner authorization. Production has not
+been activated.

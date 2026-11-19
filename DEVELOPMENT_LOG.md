@@ -417,3 +417,26 @@ Used the committed quote-only adapter and durable worker in a disposable schema 
 ## Phase 5C — Controlled personal beta readiness
 
 Added migration 0008 and server-side checks tying consent, the authenticated owner, grant budget and worker lease to a single dispatch. Added a revision-specific consent checkbox, source-first review and safe beta error messages. Regression fixtures exercise personal-beta admission with a simulated provider, conditional and observation-only notes, expiry, revocation, budget exhaustion, concurrent spending, and desktop/mobile approval-to-task progress. No application grant, deployment, billing change or live request.
+
+## 2026-11-19 — Phase 5C.1 development owner activation
+
+- Applied existing migration 0008 with transaction, advisory lock, database/schema
+  prerequisites and bounded lock/statement times. Preserved all existing data.
+- Reused `extraction/gemini.ts` and existing beta admission/debit logic, adding
+  development-scoped administrative flags and expiring, key-bound Free Tier
+  approval rather than hardcoding account details or credentials.
+- Added a gate-only authorization regression file and wired it into API tests;
+  ordinary API tests force live dispatch off. Startup logs report only safe gate
+  status, never keys, fingerprints or account details.
+- Runtime verification identified that the preview workflow carries Replit's
+  platform `production` label despite not being a production service. The guard
+  uses the service's NODE_ENV production setting instead, with a regression.
+- Final pristine window began at 07:12:43.255 UTC and ends exactly 24 hours later,
+  with an absolute ceiling of three and zero used at verification. The API
+  restarted successfully and logged both local gates open; health returned OK.
+- Focused gate checks, PostgreSQL API/worker tests, workspace typecheck, frontend
+  tests/security checks and both builds passed. Package audit found no known
+  vulnerabilities. All provider outcomes were simulated; zero Gemini requests.
+- Updated RESULT.md, PROJECT_STATUS.md and GEMINI_INTEGRATION.md with scope,
+  evidence, revocation and the next owner-only action. No billing or deployment
+  changes. GitHub access is currently unavailable; no remote push was attempted.

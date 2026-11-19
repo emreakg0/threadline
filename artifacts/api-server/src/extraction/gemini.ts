@@ -3,20 +3,59 @@ import { ExtractionError, planSchema, type SchemaVersion } from "./validation";
 
 export const MODEL = "gemini-3.5-flash-lite";
 export const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
-// A separate owner decision must open both checks.
-export const LIVE_AUTHORIZED = false;
+// Development-only administrative controls; neither is browser-configurable.
+// The approval is stored outside Git and expires independently of a restart.
 function freeTierApproval(): {
   project: "threadline-gemini";
   model: typeof MODEL;
   keySha256: string;
+  startsAt: string;
   expiresAt: string;
   sourceRevisionId?: string;
 } | null {
-  return null;
+  try {
+    const approval: unknown = JSON.parse(
+      process.env.THREADLINE_GEMINI_FREE_TIER_APPROVAL ?? "null",
+    );
+    if (!approval || typeof approval !== "object" || Array.isArray(approval))
+      return null;
+    const a = approval as Record<string, unknown>;
+    if (
+      a.project !== "threadline-gemini" ||
+      a.model !== MODEL ||
+      typeof a.keySha256 !== "string" ||
+      !/^[a-f0-9]{64}$/.test(a.keySha256) ||
+      typeof a.startsAt !== "string" ||
+      typeof a.expiresAt !== "string" ||
+      (a.sourceRevisionId !== undefined && typeof a.sourceRevisionId !== "string")
+    )
+      return null;
+    const start = Date.parse(a.startsAt);
+    const end = Date.parse(a.expiresAt);
+    const now = Date.now();
+    if (!(start <= now && end > now && end > start && end - start <= 86400000))
+      return null;
+    return {
+      project: a.project,
+      model: a.model,
+      keySha256: a.keySha256,
+      startsAt: a.startsAt,
+      expiresAt: a.expiresAt,
+      ...(a.sourceRevisionId !== undefined
+        ? { sourceRevisionId: a.sourceRevisionId }
+        : {}),
+    };
+  } catch {
+    return null;
+  }
 }
 
 export function liveAccess(sourceId?: string) {
-  if (!LIVE_AUTHORIZED) throw new ExtractionError("LIVE_DISABLED", 503);
+  if (
+    process.env.NODE_ENV === "production" ||
+    process.env.THREADLINE_GEMINI_LIVE_AUTHORIZED !== "true"
+  )
+    throw new ExtractionError("LIVE_DISABLED", 503);
   const approval = freeTierApproval();
   if (
     !approval ||

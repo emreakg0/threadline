@@ -358,3 +358,16 @@ Verified one live end-to-end run through PostgreSQL persistence and authenticate
 ## Phase 5C — Controlled personal beta readiness
 
 Owner-only admission, bounded database grants, revocation, per-revision consent and dispatch accounting are implemented and mock-tested. The ordinary gates remain closed and no live requests were sent. Proposed first window: three requests total in 24 hours for one verified account. The next decision belongs to the owner: approve or decline an exact account, allowance and validity window after reviewing Free Tier privacy and interpretation risks.
+
+## Phase 5C.1 — Development owner beta activated
+
+Existing migration 0008 is applied to development. Following the owner's account
+and Free Tier/key-association confirmation, one owner-only grant allows three
+total dispatches until 2026-11-20 07:12:43.255 UTC. Verification found zero used,
+three remaining, and both runtime gates open. No Gemini requests, billing changes,
+deployment or automatic retries were performed. Approval is development-scoped,
+key/project/model-bound and expires automatically; production remains disabled.
+Gate, API/worker, typecheck, frontend, security, build and dependency checks passed.
+See RESULT.md for evidence and immediate revocation instructions.
+Next unfinished task: owner-initiated use and evidence review within this allowance;
+any extension requires fresh authorization.

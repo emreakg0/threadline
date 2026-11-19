@@ -1,3 +1,32 @@
+# Threadline Phase 5C.1 — Development owner beta activated
+
+- Applied existing migration 0008 transactionally to the confirmed development
+  database, with migration prerequisites and lock/statement timeouts.
+- Matched the owner-provided Google subject to an existing account and unexpired
+  session. The owner reconfirmed the unbilled `threadline-gemini` project and key
+  association. No billing configuration or provider verification request was made.
+- Issued one owner-only grant: three total dispatches, from
+  **2026-11-19 07:12:43.255 UTC** to **2026-11-20 07:12:43.255 UTC**.
+  At verification, used = 0 and remaining = 3.
+- Replaced the two hard-closed switches with development-scoped administrative
+  configuration. Approval pins the configured key fingerprint, project, fixed
+  `gemini-3.5-flash-lite` model and exact window, failing closed after expiry.
+  Production remains disabled. Configuration and credentials are not in this report.
+- Reused existing per-revision consent, owner isolation, atomic dispatch debit,
+  quotas, deduplication and no-live-retry implementation. No Gemini requests were
+  sent during activation or checks.
+- Gate-only regressions, API/worker PostgreSQL regressions, workspace typecheck,
+  frontend tests/security checks, frontend/API builds and package audit passed.
+  The running API logged both gates open after restart; health returned OK.
+- Revoke immediately by committing `DELETE FROM threadline_beta_grant` in the
+  confirmed development database. Then remove the development-only
+  `THREADLINE_GEMINI_LIVE_AUTHORIZED` and `THREADLINE_GEMINI_FREE_TIER_APPROVAL`
+  variables and restart API Server. Already-authorized transport cannot be recalled.
+- Next: the owner may initiate requests through the app, review original evidence,
+  and explicitly approve any resulting tasks. No allowance extension is authorized.
+
+## Earlier readiness report
+
 # Threadline Phase 5C — Controlled personal beta readiness
 
 **Prepared for owner review; live inference is disabled.** No owner was enrolled, no grant was issued in the application database, and no provider request was sent. The normal application retains `LIVE_AUTHORIZED=false` and `freeTierApproval() === null`. The new migration was exercised only in disposable test schemas.

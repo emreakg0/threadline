@@ -8,7 +8,9 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "tsx src/focus.integration.ts && tsx src/documents.integration.ts && tsx src/extraction/extraction.test.ts && node --import tsx src/extraction/durable.test.ts"
+    "test": "THREADLINE_GEMINI_LIVE_AUTHORIZED=false pnpm run test:offline",
+    "test:authorization": "tsx src/extraction/authorization.test.ts",
+    "test:offline": "pnpm run test:authorization && tsx src/focus.integration.ts && tsx src/documents.integration.ts && tsx src/extraction/extraction.test.ts && node --import tsx src/extraction/durable.test.ts"
   },
   "dependencies": {
     "@workspace/api-zod": "workspace:*",
