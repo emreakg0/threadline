@@ -383,3 +383,17 @@ Git 133c0f1 created the initial repository; 3f10439 initialized the productivity
   or provider attempts were created. Focused isolated document and extraction
   tests passed and verified the normal API still returns `LIVE_DISABLED`.
   This checkpoint updates documentation only.
+
+## Threadline Phase 5B.1 — one-request pilot outcome
+
+- Accepted the owner's current Free Tier and key-origin verification and
+  checked the configured secret's suffix without displaying it.
+- Applied migration 0007 in an isolated schema, used a short-lived
+  single-revision worker authorization, and consumed a durable allowance
+  before one real Gemini Developer API call. HTTP 400 was recorded as
+  `PROVIDER_REJECTED`. The authenticated events endpoint reported the actual
+  failure in order and the Action Plan had no proposals.
+- Revoked and removed the pilot authorization and cleaned up only the pilot
+  fixtures. Normal live inference remained disabled. Focused extraction and
+  document integration checks passed. Only this sanitized report was retained
+  in Git.

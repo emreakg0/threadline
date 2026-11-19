@@ -324,3 +324,17 @@ The next task is to confirm current Free Tier and billing status for
 `threadline-gemini`, and the existing key's association with it, before
 preparing the one-shot pilot. Live output and its downstream processing
 remain unverified.
+
+## Threadline Phase 5B.1 — pilot completed with provider rejection
+
+After owner verification of the Free Tier project and key association, the
+isolated worker consumed its single allowance and sent one
+`gemini-3.5-flash-lite` request. Google returned HTTP 400
+(`PROVIDER_REJECTED`). Source validation passed. No output was available
+to validate or persist, and the authenticated replay events showed the
+failed extract stage. No actions or tasks were persisted.
+
+The pilot allowance was revoked and its disposable schema removed. The
+normal API verified both gates remain closed. The next step before any
+general availability decision is to diagnose the provider rejection.
+Any further live request requires fresh owner authorization.

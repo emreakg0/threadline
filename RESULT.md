@@ -1,8 +1,7 @@
 # Threadline Phase 5B — Gemini 3.5 Flash-Lite
 
-Phase 5B.1 stopped at preflight. The owner authorized one synthetic request,
-and this session sent zero. The checked-in gate remains `LIVE_AUTHORIZED=false`.
-No provider requests, billing changes, or deployment took place.
+The Phase 5B.1 pilot sent its one authorized Gemini request. Google returned
+HTTP 400, recorded as `PROVIDER_REJECTED`. The run stopped at extraction.
 
 ## Integration
 
@@ -38,23 +37,37 @@ No provider requests, billing changes, or deployment took place.
   screenshots were inspected, including reduced motion at 390 px.
   Screenshots are in `/tmp/threadline-5b-processing-*.png`.
 
-## Phase 5B.1 pilot preflight
+## Phase 5B.1 pilot outcome
 
-- Configured model and endpoint matched the authorization:
-  `gemini-3.5-flash-lite` at the Gemini Developer API v1beta
-  `generateContent` endpoint. The server-side key was present.
-- Outcome: blocked before dispatch. This environment lacked authenticated
-  access to the Google project settings. Current Free Tier status, absence of
-  paid billing, and the configured key's project association could not be
-  sufficiently confirmed. Public pricing only establishes model eligibility.
-- Zero requests were sent. There was no provider response, action count,
-  evidence-validation result, persisted proposal, or live execution trace.
-  No pilot fixture or temporary authorization was created.
-- Focused PostgreSQL integration and extraction checks passed in disposable
-  schemas, including migration 0007 and the normal API's `LIVE_DISABLED`
-  response. No production migration or data change was made.
+- The owner reconfirmed that `threadline-gemini` was on the Free Tier with
+  billing setup still offered, and confirmed the existing server key's
+  project association. The server verified the expected key suffix without
+  displaying it.
+- The pilot applied migration `0007_threadline_gemini_quota` in a disposable
+  PostgreSQL schema. It used only the approved fictional text, pinned schema
+  v2 and prompt, and `gemini-3.5-flash-lite` at the Gemini Developer API v1beta
+  `generateContent` endpoint. The synthetic source revision was
+  `43f9dce7-b58a-4f97-aacd-2f661abe2246`.
+- Exactly one outbound request was sent. The short-lived isolated worker
+  atomically consumed its allowance in PostgreSQL after reserving quota and
+  before dispatch. The HTTP 400 response was recorded as
+  `PROVIDER_REJECTED`. The provider body was discarded by the adapter, so
+  the cause of the HTTP 400 remains unknown.
+- Source validation passed. Extraction failed before output or evidence
+  validation. The number of generated actions is unavailable. Zero proposals
+  and zero tasks were persisted. The authenticated Action Plan read returned
+  an empty action list.
+- The authenticated How It Works events endpoint returned seven ordered
+  records for the actual Gemini run. They showed queueing, startup, source
+  validation, and the failed extraction, with no output-validation or
+  persistence stages.
+- The allowance was consumed and revoked, and the pilot had no pending jobs.
+  The temporary worker and disposable schema were removed after verification.
+  The normal source still has `LIVE_AUTHORIZED=false` and
+  `freeTierApproval()` returning `null`. The API reported disabled and rejected
+  a loopback submission with HTTP 503 `LIVE_DISABLED`.
 
-Next step: obtain a current, redacted project verification for
-`threadline-gemini` and confirmation that the existing server secret came
-from that project. The approved one-request pilot remains unspent. Generated
-quality, evidence accuracy, live persistence, and live replay remain unverified.
+Focused extraction and PostgreSQL integration regressions and the secret audit
+passed. No production data, billing settings, or deployment changed. General
+availability still requires understanding the HTTP 400 and verifying live
+output, evidence, and persistence. The pilot authorization is spent.

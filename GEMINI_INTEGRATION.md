@@ -279,3 +279,14 @@ The pilot stopped before dispatch with zero requests. The gate remained closed
 and the isolated integration test verified `LIVE_DISABLED`. Response
 acceptance, generated actions, evidence validation, persistence, and live
 recorded execution remain pending the authorized pilot.
+
+### Phase 5B.1 authorized request outcome
+
+The owner subsequently reconfirmed Free Tier, absence of paid billing, and
+the key's project association. One request with the pinned model, prompt,
+and schema returned HTTP 400. The adapter reported `PROVIDER_REJECTED`
+and discarded the provider error body. The cause remains unknown. The run
+recorded source validation and failed extraction, with no output validation,
+proposals, or tasks. The one-shot allowance was consumed and revoked. The
+ordinary adapter and API gates remain closed. Any new live request requires
+fresh owner authorization.
