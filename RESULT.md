@@ -1,4 +1,13 @@
-# Threadline Phase 5B.3 — Second single-request pilot
+# Threadline Phase 5B.4 — Server-grounded source evidence
+
+New planning requests use `grounded-plan-4`. Gemini supplies verbatim quotations as strings. For each quotation, the worker searches the exact immutable source revision and requires exactly one occurrence, including overlapping matches. The server counts Unicode code points before the match and within the quotation to derive a zero-based start and exclusive end. For example, the Chromium fixture persisted “programming assignment due Thursday” at [9, 44).
+
+- **Strict validation.** Model-supplied offsets, absent or ambiguous matches, empty excerpts, malformed evidence and unsupported deadlines fail before persistence. The matcher preserves case, whitespace, punctuation and Unicode representation. Existing block, excerpt and length limits and priority checks still apply. Failures record category codes without quotation or source text. A match establishes where the evidence came from; users still review the proposal’s meaning.
+- **Persistence and review.** Desktop and mobile Chromium exercised the exact pilot brain dump against an isolated mock worker. Four proposals persisted with source-revision links and correct spans. Relative dates remained unconfirmed, suggested priorities stayed separate from approved values, and the tentative email remained in review. A run with a valid first action and an invented second quotation persisted zero blocks. Tasks appeared only after explicit approval and conversion.
+- **Compatibility and verification.** The v1 validator still checks supplied offsets. Replay tests read v1 events and a historical v2 failure with its original prompt and error code after API restart. Keeping pipeline `plan-2` preserves revision deduplication. Workspace typecheck, frontend/API builds, PostgreSQL integration and worker suites, frontend and security tests, package audit, and secret audit passed. Desktop Action Plan and mobile processing screenshots were inspected.
+- **Live boundary.** Zero provider requests. Both gates remain closed. Whether Gemini reliably selects unique verbatim quotations with this prompt remains unverified. The Phase 5B.3 response was discarded, so its specific failing entry is unknown.
+
+## Threadline Phase 5B.3 — Second single-request pilot
 
 **Google accepted the revised structured-output request (HTTP 200). Threadline rejected the generated plan during local evidence validation.** Exactly one Gemini Developer API v1beta `generateContent` request went to `gemini-3.5-flash-lite`, using schema v2 and prompt `grounded-plan-3`. There was no retry or fallback. Google error status and request-field violations are inapplicable to this successful HTTP response.
 

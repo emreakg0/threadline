@@ -22,7 +22,7 @@ const headers = (owner = 0) => ({
 });
 type TestJson = {
   status: string;
-  events: unknown[];
+  events: { payload: unknown }[];
   runs: { id: string }[];
   source_text: string;
   id: string;
@@ -434,6 +434,19 @@ try {
     (await (await request("/extractions", "GET", undefined, 1)).json()).runs,
     [],
   );
+  // Historical planning traces are read from storage without validating old provider output.
+  const historicalId = randomUUID();
+  const { transaction, appendEvent } = await import("./extraction/lifecycle");
+  await transaction(async (c) => {
+    await c.query(
+      `INSERT INTO threadline_runs(id,user_id,source_revision_id,document_id,idempotency_key,
+          pipeline_version,schema_version,provider,model,prompt_version,status,error_code,started_at,completed_at)
+       VALUES($1::uuid,$2,$3,$4,$1::uuid::text,'plan-2',2,'mock','gemini-3.5-flash-lite','grounded-plan-3',
+              'failed','EVIDENCE_MISMATCH',now(),now())`,
+      [historicalId, users[0], initial.source.id, id],
+    );
+    await appendEvent(c, historicalId, "failed", { code: "EVIDENCE_MISMATCH" });
+  });
   // A fresh HTTP server reads persisted data, not process-local document state.
   await new Promise<void>((resolve, reject) =>
     server!.close((e) => (e ? reject(e) : resolve())),
@@ -446,6 +459,21 @@ try {
   assert.deepEqual(
     await (await request("/extractions/" + recorded.id + "/events")).json(),
     recordedEvents,
+  );
+  const historicalPath = "/extractions/" + historicalId;
+  const { run: historical } = (await (
+    await request(historicalPath)
+  ).json()) as unknown as {
+    run: { prompt_version: string; error_code: string };
+  };
+  assert.equal(historical.prompt_version, "grounded-plan-3");
+  assert.equal(historical.error_code, "EVIDENCE_MISMATCH");
+  const historicalEvents = await (
+    await request(historicalPath + "/events")
+  ).json();
+  assert.deepEqual(
+    historicalEvents.events.map((e) => e.payload),
+    [{ code: "EVIDENCE_MISMATCH" }],
   );
   const persisted = await (await request(`/documents/${id}`)).json();
   assert.equal(persisted.version, 6);
@@ -494,7 +522,7 @@ try {
       deadline_phrase: "later",
       suggested_priority: null,
     },
-    evidence: [{ quote, start, end: start + quote.length }],
+    evidence: [quote],
   };
   await processOne(
     {
@@ -511,13 +539,15 @@ try {
       id: string;
       schedule: string;
       due_date: string | null;
-      evidence: { quote: string }[];
+      evidence: { quote: string; start: number; end: number }[];
       task: unknown;
     }[];
   };
   assert.equal(action.schedule, "unresolved");
   assert.equal(action.due_date, null);
   assert.equal(action.evidence[0].quote, quote);
+  assert.equal(action.evidence[0].start, start);
+  assert.equal(action.evidence[0].end, start + quote.length);
   assert.equal(action.task, null);
   const actionPath = plan + "/" + action.id;
   const convert = actionPath + "/convert";

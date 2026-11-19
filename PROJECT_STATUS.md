@@ -346,3 +346,7 @@ Offline verification passed for the revised Gemini request schema, safe HTTP 400
 ## Phase 5B.3 — Second authorized pilot
 
 The revised request received HTTP 200 in the second authorized pilot. Four expected action topics appeared. Local exact-evidence validation failed, so no proposals, dates or tasks were saved. The next open issue is reliable source evidence grounding. General inference is closed and further live requests require fresh authorization.
+
+## Phase 5B.4 — Reliable source evidence grounding
+
+The isolated Chromium workflow saved four mock actions from the exact pilot brain dump with server-grounded evidence. Invalid evidence rejected the entire plan. Historical v1/v2 replay, security checks and integration tests passed. The remaining question is whether Gemini reliably returns unique verbatim quotes under the new prompt. Any live evaluation requires separate authorization.

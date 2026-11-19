@@ -215,7 +215,7 @@ model, quotas, and retry policies.
 - The request uses `generationConfig.responseMimeType: application/json`,
   `responseJsonSchema`, and a maximum of 4,096 output tokens. No tools,
   grounding, batching, priority tier, or paid provider features are requested.
-  Schema version 2, pipeline `plan-2`, and prompt `grounded-plan-3` are pinned
+  Schema version 2, pipeline `plan-2`, and prompt `grounded-plan-4` are pinned
   per new run. Schema v1 rows, results, and replay remain readable. The live
   endpoint creates v2 jobs only.
 - Google's [model card](https://aistudio.google.com/docs/models/gemini-3.5-flash-lite)
@@ -304,3 +304,11 @@ Zero provider requests were sent during this investigation. Both authorization g
 ## Phase 5B.3 — Second authorized pilot
 
 A single authorized v1beta generateContent request to `gemini-3.5-flash-lite` with `grounded-plan-3` received HTTP 200 and parseable JSON. Four action titles matched the four expected topics. The strict validator rejected at least one evidence entry with `EVIDENCE_MISMATCH`. The trace ended at output validation with zero persisted proposals or tasks. This confirms provider acceptance for this request only. It does not establish the cause of the earlier 400. The temporary allowance was consumed before dispatch and removed with the isolated fixtures. Both ordinary gates remain closed.
+
+## Phase 5B.4 — Quote-only planning evidence
+
+The v2 provider contract under `grounded-plan-4` accepts one to eight verbatim strings per block. Include enough surrounding text to identify one occurrence in the pinned revision. The server rejects model-supplied offset objects. A unique exact match yields the original quote and a half-open Unicode code-point span. No trimming, case folding, normalization or approximate matching is used to locate an excerpt.
+
+The worker records `QUOTE_NOT_FOUND`, `AMBIGUOUS_QUOTE`, `EMPTY_EVIDENCE`, `INVALID_EVIDENCE`, or `UNSUPPORTED_DEADLINE` for the corresponding failures. The whole output must pass before the persistence transaction starts. Quotation presence alone cannot establish that a paraphrase faithfully reflects intent.
+
+Schema v1 keeps its original offset contract. Historical v2 evidence and execution records are read as stored. The existing claim guard rejects queued jobs pinned to obsolete prompt versions. Pipeline identity remains stable for per-revision deduplication. Offline mock and browser checks passed with both ordinary live gates closed.

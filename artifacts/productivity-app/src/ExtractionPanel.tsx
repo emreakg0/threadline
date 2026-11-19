@@ -24,6 +24,12 @@ const messages: Record<string, string> = {
   INVALID_JSON: "The response was not valid JSON.",
   INVALID_OUTPUT: "The response did not match the planning format.",
   INVALID_PROPOSAL: "The response contained an invalid proposal.",
+  QUOTE_NOT_FOUND: "A quote did not match the saved brain dump.",
+  AMBIGUOUS_QUOTE: "A quote appears more than once in the saved brain dump.",
+  EMPTY_EVIDENCE: "A proposal is missing source evidence.",
+  INVALID_EVIDENCE: "The response contained invalid source evidence.",
+  UNSUPPORTED_DEADLINE:
+    "A proposed deadline was missing from the cited evidence.",
   EVIDENCE_MISMATCH: "A quote did not match the saved brain dump.",
   STORAGE_OR_PROCESSING_FAILURE: "Threadline could not save the result.",
   OUTCOME_UNCERTAIN: "The worker stopped before it could record the outcome.",

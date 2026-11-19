@@ -39,6 +39,7 @@ const proposed = {
   ...block,
   kind: "action",
   content: "Contact Sam",
+  evidence: ["Call Sam tomorrow"],
   proposal: {
     description: null,
     category: "Follow-ups",
@@ -67,6 +68,38 @@ for (const entry of [
   },
 ])
   assert.throws(() => validate(planOutput(entry), source, 2));
+assert.deepEqual(validate(planOutput(), source, 2)[0].evidence, block.evidence);
+for (const [text, evidence, code] of [
+  [source, ["call Sam tomorrow"], "QUOTE_NOT_FOUND"],
+  [source, ["Call  Sam tomorrow"], "QUOTE_NOT_FOUND"],
+  [source, ["Call Sam tomorrow."], "QUOTE_NOT_FOUND"],
+  ["é", ["e\u0301"], "QUOTE_NOT_FOUND"],
+  ["aaaa", ["aaa"], "AMBIGUOUS_QUOTE"],
+  [source, [" "], "EMPTY_EVIDENCE"],
+  [source, [], "EMPTY_EVIDENCE"],
+  [
+    source,
+    [{ quote: "Call Sam tomorrow", start: 3, end: 20 }],
+    "INVALID_EVIDENCE",
+  ],
+  [source, ["Sam"], "UNSUPPORTED_DEADLINE"],
+] as const)
+  assert.throws(
+    () => validate(planOutput({ ...proposed, evidence }), text, 2),
+    (e: ExtractionError) => e.code === code && e.message === code,
+  );
+const unicode = validate(
+  planOutput({ ...proposed, evidence: ["🧵 tomorrow"] }),
+  "🎈🧵 tomorrow",
+  2,
+);
+assert.deepEqual(unicode[0].evidence, [
+  { quote: "🧵 tomorrow", start: 1, end: 11 },
+]);
+assert.throws(
+  () => validate("{", source, 2),
+  (e: ExtractionError) => e.code === "INVALID_JSON",
+);
 const request = planningRequest(source);
 assert.equal(MODEL, "gemini-3.5-flash-lite");
 assert.equal(

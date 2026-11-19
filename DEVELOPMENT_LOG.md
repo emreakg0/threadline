@@ -405,3 +405,7 @@ Simplified the v2 provider schema, pinned its serialized request, and added boun
 ## Phase 5B.3 — Second authorized pilot
 
 Ran the production planning adapter and durable worker in isolation with the approved source and a key-, model- and revision-bound ten-minute allowance. Committed atomic consumption preceded the sole outbound request. HTTP 200 returned four action topics. The worker recorded EVIDENCE_MISMATCH during output validation and skipped persistence. Verified nine trace events, zero tasks and zero pending jobs, then removed the isolated schema and worker. Only sanitized documentation was retained.
+
+## Phase 5B.4 — Reliable source evidence grounding
+
+Updated the planning request fixture, prompt, validator and processing error messages. New v2 runs derive unique exact source spans in Unicode code points. Added tests for ambiguous overlaps, Unicode, invalid evidence, deadlines, persistence and historical replay. Desktop/mobile Chromium exercised the complete workflow in a disposable schema. Typecheck, builds, PostgreSQL regressions, frontend security and package audit passed. Zero provider requests; both authorization gates remain closed.

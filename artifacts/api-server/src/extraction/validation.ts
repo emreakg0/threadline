@@ -9,7 +9,7 @@ export const kinds = [
 ] as const;
 export const formats = {
   1: { pipeline: "2c-1", prompt: "extractive-1" },
-  2: { pipeline: "plan-2", prompt: "grounded-plan-3" },
+  2: { pipeline: "plan-2", prompt: "grounded-plan-4" },
 } as const;
 export type SchemaVersion = keyof typeof formats;
 export type Proposal = {
@@ -92,8 +92,7 @@ export const planSchema = {
           evidence: {
             type: "array",
             description: "One to eight exact excerpts.",
-            items:
-              responseSchema.properties.blocks.items.properties.evidence.items,
+            items: string,
           },
           proposal: {
             type: ["object", "null"],
@@ -146,6 +145,21 @@ const bounded = (v: unknown, limit = 1200): v is string =>
   v.length <= limit &&
   !v.includes("\0") &&
   !/[\uD800-\uDFFF]/u.test(v);
+function groundQuote(
+  quote: unknown,
+  source: string,
+): Block["evidence"][number] {
+  if (typeof quote === "string" && !quote.trim())
+    throw new ExtractionError("EMPTY_EVIDENCE");
+  if (!bounded(quote)) throw new ExtractionError("INVALID_EVIDENCE");
+  const index = source.indexOf(quote);
+  if (index < 0) throw new ExtractionError("QUOTE_NOT_FOUND");
+  // Advance one code unit so overlapping occurrences also count.
+  if (source.indexOf(quote, index + 1) !== -1)
+    throw new ExtractionError("AMBIGUOUS_QUOTE");
+  const start = Array.from(source.slice(0, index)).length;
+  return { quote, start, end: start + Array.from(quote).length };
+}
 function proposal(value: unknown, evidence: Block["evidence"]): Proposal {
   exact(value, [
     "description",
@@ -192,7 +206,7 @@ export function validate(
     value.blocks.length > 24
   )
     throw new ExtractionError("INVALID_OUTPUT");
-  const points = Array.from(source);
+  const points = version === 1 ? Array.from(source) : [];
   let summaries = 0;
   return value.blocks.map((v: unknown) => {
     const keys = ["kind", "content", "uncertainty_reason", "evidence"];
@@ -200,13 +214,19 @@ export function validate(
     if (
       !kinds.includes(v.kind as Block["kind"]) ||
       !bounded(v.content) ||
-      !(v.uncertainty_reason === null || bounded(v.uncertainty_reason)) ||
-      !Array.isArray(v.evidence) ||
-      v.evidence.length < 1 ||
-      v.evidence.length > 8
+      !(v.uncertainty_reason === null || bounded(v.uncertainty_reason))
     )
       throw new ExtractionError("INVALID_OUTPUT");
+    if (!Array.isArray(v.evidence) || v.evidence.length > 8)
+      throw new ExtractionError(
+        version === 1 ? "INVALID_OUTPUT" : "INVALID_EVIDENCE",
+      );
+    if (!v.evidence.length)
+      throw new ExtractionError(
+        version === 1 ? "INVALID_OUTPUT" : "EMPTY_EVIDENCE",
+      );
     const evidence = v.evidence.map((e: unknown) => {
+      if (version === 2) return groundQuote(e, source);
       exact(e, ["quote", "start", "end"]);
       if (
         !bounded(e.quote) ||
