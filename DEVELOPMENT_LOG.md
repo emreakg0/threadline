@@ -480,3 +480,17 @@ Added migration 0008 and server-side checks tying consent, the authenticated own
   migration re-run, typecheck, frontend and security tests, both builds and
   package audit passed. Full secret audit still flags earlier approval metadata
   outside `main` history. The private origin and pushable history were verified.
+
+## 2026-11-20 — Action Thread Stage 1 offline planning engine
+
+- Added the `action-thread` contract, graph validator and pure structured-output
+  request builder. Reused strict field, text and quote checks from extraction.
+  The v3 contract separates suggested strategies from verbatim source data.
+- Bounded graph size and retry traversals. Verified reachable acyclic forward
+  paths, meaningful decision structures, and an exit for each retry.
+- Added 38 offline cases in the API package, including Calc 2, portfolio,
+  scheduling, simple and ambiguous requests, conditional evidence and invalid
+  or injection-shaped output. Existing integration, worker, frontend/replay,
+  typecheck, builds, security and package audit passed.
+- Kept v3 outside the live request and persistence paths. Zero Gemini calls.
+  Stage 2 requires separate authorization for live evaluation and persistence.

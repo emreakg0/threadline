@@ -404,3 +404,16 @@ outside the history reachable from `main`; current/staged files and reachable
 
 Next unfinished task is owner-initiated testing and review of persisted
 evidence within the renewed window. Action Thread redesign remains deferred.
+
+## 2026-11-20 — Action Thread Stage 1
+
+The backend-only v3 contract, prompt and offline validator are implemented.
+Synthetic tests verified actionable plans, meaningful branching, path
+reachability, bounded retries, clarification and exact source provenance. The
+v1/v2 request and execution paths remain in use. API/PostgreSQL, frontend,
+typecheck, builds and security checks passed. No Gemini requests, beta changes,
+schema migrations, UI changes or deployment were performed.
+
+Next unfinished task is separately authorized Stage 2 evaluation of the v3
+structured response on synthetic inputs, followed by versioned persistence
+and replay design. Gemini acceptance and planning quality remain unverified.

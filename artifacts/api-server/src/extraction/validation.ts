@@ -126,7 +126,7 @@ export class ExtractionError extends Error {
     super(code);
   }
 }
-function exact(
+export function exact(
   v: unknown,
   keys: string[],
 ): asserts v is Record<string, unknown> {
@@ -139,13 +139,13 @@ function exact(
   )
     throw new ExtractionError("INVALID_OUTPUT");
 }
-const bounded = (v: unknown, limit = 1200): v is string =>
+export const bounded = (v: unknown, limit = 1200): v is string =>
   typeof v === "string" &&
   v.trim().length > 0 &&
   v.length <= limit &&
   !v.includes("\0") &&
   !/[\uD800-\uDFFF]/u.test(v);
-function groundQuote(
+export function groundQuote(
   quote: unknown,
   source: string,
 ): Block["evidence"][number] {

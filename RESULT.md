@@ -1,4 +1,70 @@
-# Threadline owner beta budget renewal
+# Threadline Stage 1 — Action Thread planning engine
+
+Stage 1 adds an offline v3 planning contract and validator. It leaves the v1/v2
+request, persistence, review and replay paths in use. The new module builds a
+Gemini structured-output payload and validates supplied JSON without provider
+transport, database writes, worker registration or a new API route.
+
+## Version 3 contract
+
+- A thread has a goal, success criteria, entry node, actions and decisions,
+  directed edges, assumptions and missing-information questions. Nontrivial
+  plans have 3–8 actions and up to 3 decisions. Simple plans have 1–2 actions.
+  Clarification-only responses return questions and an empty graph.
+- Nodes have stable graph-local IDs independent of display order, titles,
+  descriptions and observable completion criteria. Decisions require 2–3
+  distinct outcome labels and destinations. Converging paths represent
+  alternative routes into a step.
+- All nodes must be reachable from entry without retry edges, and those
+  forward edges form a DAG. Each retry returns to a node on every forward
+  route to the remedial action and allows 1–3 total traversals per execution.
+  At most two retry edges are allowed. The remedial action has a forward exit
+  for when its retry budget is exhausted.
+- Exact, uniquely occurring excerpts and any stated deadline phrase carry
+  source provenance and locally computed Unicode code-point offsets.
+  The goal and nodes carry AI strategy provenance. Excerpts can retain
+  conditional wording without classifying it as a confirmed commitment.
+  Strategy text still requires semantic review.
+
+## Validated Calc 2 fixture
+
+Derive the Maclaurin coefficients for e^x and sin(x), then practice substitution
+and term-by-term integration. Solve five representative problems independently.
+Count correct solutions that the student can explain.
+
+- **Four or more** → Practice Taylor expansions about a nonzero center,
+  absolute convergence, and the ratio and root tests. Finish with a mixed set
+  and justify the center or test used on each problem.
+- **Fewer than four** → Classify errors, rework one example, and try a fresh
+  set. After two retries, prepare a question about the first unresolved error.
+
+## Files and verification
+
+- `artifacts/api-server/src/action-thread/` contains the contract, graph
+  validator, request builder, synthetic fixtures and tests.
+- `artifacts/api-server/src/extraction/validation.ts` exports the existing
+  field, text and quote-grounding checks for reuse. The API package runs the
+  v3 suite alongside existing offline tests.
+- 38 v3 cases passed, covering Calc 2, portfolio planning, weekly scheduling,
+  simple requests, clarification, conditional commitments and malformed or
+  injection-shaped output. Existing API/PostgreSQL integration and worker
+  tests, frontend and replay tests, typecheck, both builds, frontend security,
+  secret-audit regressions and package audit passed.
+- The source uses a shallow Gemini JSON Schema with strict checks performed
+  locally. Zero Gemini calls were made. Provider acceptance, planning quality,
+  and model behavior on prompt injection require authorized live evaluation.
+  [Gemini structured output documentation](https://aistudio.google.com/docs/structured-output)
+
+## Stage 2 prerequisites
+
+Obtain separate authorization for a bounded v3 evaluation with synthetic
+inputs. Measure useful specificity, source fidelity, decision quality, and
+output size against the worker's reservation rules. Design additive graph
+persistence and version-aware replay, including cumulative retry counters and
+an explicit owner review path. Keep v1/v2 compatibility and require consent
+before live submission and review before task conversion.
+
+## Earlier owner beta budget renewal
 
 - Applied forward-only migration 0009 to development and expanded the existing
   owner grant to **100 total Gemini 3.5 Flash-Lite requests**. The same owner and
