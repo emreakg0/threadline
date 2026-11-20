@@ -434,3 +434,21 @@ requests, task creation during the v3 smoke test, or deployment.
 Next unfinished task is the owner's Stage 2B decision. Before any live
 evaluation, apply migration 0010 to the intended environment and obtain a
 separate bounded v3 authorization. See RESULT.md for the API and evidence.
+
+## 2026-11-20 — Action Thread Stage 2B
+
+Capture now includes the interactive Action Threads graph and responsive
+list. Persisted branches, progress controls, source evidence and history work
+through authenticated v3 APIs. Retrying is optional and its limits remain
+cumulative. Migration 0010 was applied through the runner to the verified
+Replit development database.
+
+Authenticated disposable PostgreSQL and Chromium tests passed, including
+both Calc 2 outcomes, voluntary exit, converging paths, conflict recovery,
+owner isolation, mobile, keyboard and reduced motion. Desktop and mobile
+screenshots were inspected. Existing Capture, Action Plan, Tasks and replay
+regressions, typecheck, builds and security checks passed. Live v3 generation
+remains disabled and the development database contains no test graphs.
+
+Next unfinished task is the owner's decision on further scope. Any live v3
+evaluation requires separate authorization. No next stage was started.

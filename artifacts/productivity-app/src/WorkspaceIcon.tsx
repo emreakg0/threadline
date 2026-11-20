@@ -13,6 +13,10 @@ const paths = {
   arrow: "M8 5l5 5-5 5",
   history: "M5 6a6 6 0 1 1-1 6M3 3v5h5m2-2v4l3 2",
   archive: "M3 4h14v4H3zm1 4v8h12V8m-8 3h4",
+  branch: "M10 3 14 7l-4 4-4-4 4-4ZM10 11v2m-6 4v-4h12v4",
+  check: "m4 10 4 4 8-8",
+  finish: "M4 17V3m0 1h11l-2.5 4L15 12H4",
+  step: "M10 3v14m0-7h5M6 10h4",
   evidence: "M6 3h8v13H6zm2 5h4m-4 3h4",
 };
 

@@ -615,7 +615,7 @@
     border-right: 0;
     border-bottom: 1px solid var(--tl-line);
   }
-  .threadline .tl-sidebar nav { grid-column: 1 / -1; grid-row: 2; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+  .threadline .tl-sidebar nav { grid-column: 1 / -1; grid-row: 2; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 3px; }
   .threadline .tl-sidebar nav a { justify-content: center; gap: 5px; padding-inline: 4px; text-align: center; font-size: 0.75rem; }
   .tl-sidebar nav a::before { inset: auto 12px 0; width: auto; height: 2px; transform: scaleX(0.3); }
   .tl-nav-label { display: none; }
@@ -633,6 +633,7 @@
   .tl-content, .tl-review { padding: 25px clamp(14px, 4vw, 30px) 32px; }
 }
 @media (max-width: 620px) {
+  .threadline .tl-sidebar nav { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .threadline .tl-brand { gap: 6px; font-size: 1rem; padding-inline: 0; }
   .threadline .tl-brand .tl-mark { width: 27px; height: 27px; }
   .threadline .tl-new { gap: 4px; padding-inline: 6px; font-size: 0.73rem; }

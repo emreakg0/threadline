@@ -12,6 +12,8 @@ import { useCapture } from "./useCapture";
 import { PlanProcessing } from "./PlanProcessing";
 import { processingRoute } from "./ExtractionPanel";
 import { ActionPlan } from "./ActionPlan";
+import { ActionThreads } from "./action-threads/ActionThreads";
+import { threadsRoute } from "./action-threads/data";
 import type { Project } from "./types";
 import { CaptureEditor } from "./CaptureEditor";
 import { Library } from "./Library";
@@ -23,6 +25,7 @@ import "./capture.css";
 const navigation = [
   { route: "#capture", label: "Brain dump", icon: "capture" },
   { route: "#capture/plan", label: "Action Plan", icon: "review" },
+  { route: threadsRoute, label: "Action Threads", icon: "branch" },
   { route: "#capture/tasks", label: "Tasks", icon: "tasks" },
   {
     route: "#capture/library",
@@ -424,6 +427,9 @@ export function CaptureWorkspace({
           ))}
           {processingId && (
             <PlanProcessing key={processingId} id={processingId} />
+          )}
+          {section === threadsRoute && (
+            <ActionThreads id={route.startsWith(threadsRoute + "/") ? route.slice(threadsRoute.length + 1) || null : null} />
           )}
           {section === "#capture/runs" && <HowItWorks runId={traceId} />}
         </main>

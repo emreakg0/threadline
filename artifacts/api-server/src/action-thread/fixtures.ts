@@ -78,3 +78,24 @@ export function calcPlan() {
   ];
   return thread;
 }
+
+export const portfolioSource = "I want to build a portfolio site that includes a case study, but I might not have permission to show screenshots.";
+export function portfolioPlan() {
+  const thread = plan("Create a portfolio case study with approved material", "inventory", [portfolioSource]);
+  thread.success_criteria = ["The case study has problem, contribution and outcome sections with approved visuals or a text-only equivalent."];
+  thread.nodes = [
+    action("inventory", "Inventory case study material", "Outline the problem, contribution, outcome and usable assets.", "List each potential visual and its permission status."),
+    { ...action("check-rights", "May the screenshots be shown?", "Check written permission for each screenshot.", "Record whether all selected screenshots may be shared."), kind: "decision" },
+    action("use-images", "Prepare approved visuals", "Resize screenshots and write descriptive captions.", "Every image has permission and a caption."),
+    action("use-text", "Write a text-only walkthrough", "Describe the interface problem, design change and result without confidential details.", "The full case study works without screenshots."),
+    action("review", "Review navigation and accessibility", "Read the whole case study on mobile and navigate it from home by keyboard.", "Navigation and content work without a mouse."),
+  ];
+  thread.edges = [
+    next("inventory", "check-rights"),
+    { ...next("check-rights", "use-images"), kind: "outcome", outcome: "Written permission obtained" },
+    { ...next("check-rights", "use-text"), kind: "outcome", outcome: "Permission unavailable" },
+    next("use-images", "review"),
+    next("use-text", "review"),
+  ];
+  return thread;
+}

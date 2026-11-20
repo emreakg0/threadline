@@ -69,12 +69,13 @@ async function snapshot(c: Client, scope: Scope, progress: Progress) {
   const retry = edges.find((edge) => edge.kind === "retry");
   const forward = edges.find((edge) => edge.kind === "next");
   const remaining = retriesRemaining(retry);
-  const advance = node.kind === "decision" ? "decide" : remaining > 0 ? "retry" : "complete";
+  const allowed = node.kind === "decision" ? ["decide"] : ["complete"];
+  if (remaining > 0) allowed.push("retry");
   return {
     progress,
     active_next_steps: [{
       ...details,
-      allowed_operations: [advance, "block"],
+      allowed_operations: [...allowed, "block"],
       outcomes: edges.filter((edge) => edge.kind === "outcome").map(({ to, outcome }) => ({ to, outcome })),
       retry: retry ? { to: retry.to, used: retry.used, remaining, limit: retry.max_traversals } : null,
       forward_exit: forward?.to ?? null,
@@ -117,7 +118,6 @@ function advance(node: ActiveNode, command: ThreadOperation) {
     if (retriesRemaining(retry) <= 0) conflict("THREAD_RETRY_EXHAUSTED");
     return retry.to;
   }
-  if (retriesRemaining(retry) > 0) conflict("THREAD_RETRY_REQUIRED");
   return node.edges.find((edge) => edge.kind === "next")?.to ?? null;
 }
 

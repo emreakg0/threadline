@@ -1,4 +1,56 @@
-# Threadline Stage 2A — Action Thread persistence and backend
+# Threadline Stage 2B — Interactive Action Threads
+
+Capture now links to **Action Threads** at `#capture/threads`. Saved threads
+open at `#capture/threads/<id>` and restore the server's active step on reload.
+The page explains that live v3 generation is disabled and shows saved graphs,
+including review, progress, completion, rejection and clarification states.
+
+## Workspace and progress
+
+- A layered 2D layout draws conditional arrows, converging paths and dashed
+  retry loops. The graph supports pointer and keyboard pan, zoom, fit and
+  node selection. A linear list is the default on narrow screens and is
+  available at any width.
+- The inspector shows the selected step, its completion or decision criterion,
+  exact source evidence, assumptions and open questions. The current next step
+  appears above the graph. Only server-permitted actions appear as controls.
+- Review and progress use the authenticated v3 API with expected versions and
+  idempotency keys. A conflict refreshes the saved path and asks the user to
+  review the active step. An unconfirmed write can be retried with the same key.
+- Completing a remedial step can take its validated forward exit at any time.
+  **Complete and retry** remains available while that edge has attempts left.
+  Retry counts remain cumulative across refresh and concurrent requests.
+- The existing Brain Dump, Action Plan, Tasks and How It Works remain
+  available in Capture. The graph uses React, HTML and SVG with no additional
+  dependency.
+
+## Development and verification
+
+- Verified that the configured connection matches the Replit development
+  runtime and the previously confirmed development database. Applied migration
+  0010 through the existing runner and confirmed its ledger entry. The
+  development beta grant remained present. The development thread list held
+  zero records after application.
+- Chromium exercised the authenticated graph and list with disposable, labelled
+  mock data. Both Calc 2 outcomes were chosen explicitly and both threads
+  completed. The remedial path retried once and then continued with an attempt
+  remaining. A portfolio plan converged after the selected branch. The harness
+  covered approval, rejection, clarification, refresh, owner isolation,
+  stale-version refresh, pointer and keyboard pan, zoom, native keyboard
+  selection, mobile and reduced motion. Desktop and mobile captures were
+  inspected at 1440 px and 390 px respectively.
+- The full Capture Chromium suite also passed its Brain Dump, existing
+  Action Plan, Tasks and persisted How It Works replay cases.
+- Passed workspace typecheck, API/PostgreSQL tests including 38 graph
+  cases, migration upgrade and re-run, frontend layout/replay tests,
+  both builds, frontend security, secret-audit regressions and package audit.
+  No Gemini requests or deployment.
+
+Stage 2B ends here. Saved threads are usable through the Action Threads UI.
+The development list has no fixtures. Live v3 schema acceptance and planning
+quality still require a separate authorized evaluation.
+
+## Earlier Stage 2A — Action Thread persistence and backend
 
 Stage 2A connects v3 to the authenticated API and durable extraction worker.
 The normal API's v3 submission and transport gates return

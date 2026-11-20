@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import express from "express";
-import { action, calcPlan, calcSource, next, plan } from "./fixtures";
+import { calcPlan, calcSource, portfolioPlan, portfolioSource } from "./fixtures";
 import { actionThreadRequest } from "./prompt";
 import { validateActionThread } from "./graph";
 import type { ActionThread } from "./contract";
@@ -101,27 +101,6 @@ async function failed(id: string, status: string, error?: string) {
   }
 }
 
-const portfolioSource = "I want to build a portfolio site that includes a case study, but I might not have permission to show screenshots.";
-function portfolioPlan() {
-  const thread = plan("Create a portfolio case study with approved material", "inventory", [portfolioSource]);
-  thread.success_criteria = ["The case study has problem, contribution and outcome sections with approved visuals or a text-only equivalent."];
-  thread.nodes = [
-    action("inventory", "Inventory case study material", "Outline the problem, contribution, outcome and usable assets.", "List each potential visual and its permission status."),
-    { ...action("check-rights", "May the screenshots be shown?", "Check written permission for each screenshot.", "Record whether all selected screenshots may be shared."), kind: "decision" },
-    action("use-images", "Prepare approved visuals", "Resize screenshots and write descriptive captions.", "Every image has permission and a caption."),
-    action("use-text", "Write a text-only walkthrough", "Describe the interface problem, design change and result without confidential details.", "The full case study works without screenshots."),
-    action("review", "Review navigation and accessibility", "Read the whole case study on mobile and navigate it from home by keyboard.", "Navigation and content work without a mouse."),
-  ];
-  thread.edges = [
-    next("inventory", "check-rights"),
-    { ...next("check-rights", "use-images"), kind: "outcome", outcome: "Written permission obtained" },
-    { ...next("check-rights", "use-text"), kind: "outcome", outcome: "Permission unavailable" },
-    next("use-images", "review"),
-    next("use-text", "review"),
-  ];
-  return thread;
-}
-
 let schemaCreated = false;
 try {
   await pool.query(`CREATE SCHEMA ${schema}`);
@@ -205,8 +184,7 @@ try {
   calc = await decide(job.id, calc, "check-mastery", "diagnose-errors");
   calc = await change(job.id, calc, { operation: "block", node_id: "diagnose-errors", note: "Check the derivative rule again." });
   assert.equal(calc.active_node_id, "diagnose-errors");
-  const earlyExit = withVersion({ operation: "complete", node_id: "diagnose-errors" }, calc.version);
-  assert.equal((await post<{ error: string }>(job.id, earlyExit, 409)).error, "THREAD_RETRY_REQUIRED");
+  assert.deepEqual((await progress(job.id)).active_next_steps[0].allowed_operations, ["complete", "retry", "block"]);
   const firstRetry = withVersion({ operation: "retry", node_id: "diagnose-errors" }, calc.version);
   const contenders = await Promise.all([
     post(job.id, firstRetry),
@@ -245,6 +223,16 @@ try {
   passState = await decide(pass.id, passState, "check-mastery", "cover-remaining");
   passState = await complete(pass.id, passState, "cover-remaining");
   assert.equal((await complete(pass.id, passState, "mixed-practice")).state, "completed");
+
+  const voluntary = await enqueue(submission(await save(calcSource)));
+  await processOne(mock(calcPlan()), voluntary.id);
+  let exitState = (await post(voluntary.id, approve)).progress;
+  for (const node of ["derive-basics", "manipulate-series", "independent-set"]) exitState = await complete(voluntary.id, exitState, node);
+  exitState = await decide(voluntary.id, exitState, "check-mastery", "diagnose-errors");
+  exitState = await complete(voluntary.id, exitState, "diagnose-errors");
+  assert.equal(exitState.active_node_id, "request-feedback");
+  assert.equal((await complete(voluntary.id, exitState, "request-feedback")).state, "completed");
+  assert.equal((await progress(voluntary.id)).events.filter(({ operation }) => operation === "retry").length, 0);
 
   let site = (await post(portfolio.id, approve)).progress;
   site = await complete(portfolio.id, site, "inventory");

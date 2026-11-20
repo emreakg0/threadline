@@ -511,3 +511,19 @@ Added migration 0008 and server-side checks tying consent, the authenticated own
 - Passed migration upgrade/re-run, existing API and worker tests, 38 v3 unit
   cases, frontend/replay, workspace typecheck, both builds, security and audit
   regressions. Migration ran in disposable schemas only.
+
+## 2026-11-20 — Action Thread Stage 2B graph and progress
+
+- Matched Replit runtime database metadata and the development grant, applied
+  migration 0010 through the existing runner and verified the ledger entry.
+- Added the Capture Action Threads route, automatic 2D graph, responsive list,
+  inspector and authenticated progress interactions. Reused the existing API
+  client, icons, dark workspace tokens and CDP harness.
+- Exposed the forward exit and optional retry together, using the existing
+  row lock and event counts. Added PostgreSQL regression coverage for leaving
+  without spending retry allowance and frontend tests for route projection.
+- Verified the authenticated Chromium flow with disposable mock Calc 2,
+  portfolio, clarification and rejection fixtures. Inspected graph and mobile
+  screenshots. Capture, Action Plan, Tasks and How It Works regressions passed.
+- Passed API, frontend, migration, typecheck, builds, security and package
+  audit checks. No Gemini requests or deployment.
