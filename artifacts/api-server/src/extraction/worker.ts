@@ -9,6 +9,9 @@ import {
   type Adapter,
 } from "./gemini";
 import { validate, ExtractionError, type Block } from "./validation";
+import type { ActionThread } from "../action-thread/contract";
+import { validateActionThread } from "../action-thread/graph";
+import { persistActionThread } from "../action-thread/store";
 import {
   transaction,
   appendEvent,
@@ -19,7 +22,7 @@ import { claim, heartbeat, owned, type Claim } from "./claims";
 import { nextPacificMidnight } from "./quota";
 export { claim, heartbeat } from "./claims";
 async function requireActivePlanSource(c: Client, r: Claim) {
-  if (r.schema_version !== 2) return;
+  if (r.schema_version < 2) return;
   const document = (
     await c.query(
       "SELECT archived_at FROM threadline_documents WHERE id=$1 AND user_id=$2 FOR SHARE",
@@ -54,12 +57,19 @@ async function startStep(r: Claim, key: string) {
     await appendEvent(c, r.id, "step_started", { key }, r.step);
   });
 }
-export async function finish(r: Claim, blocks: Block[]) {
+export async function finish(r: Claim, result: Block[] | ActionThread) {
   return transaction(async (c) => {
     if (!(await owned(c, r))) return false;
     await requireActivePlanSource(c, r);
     const step = r.step;
-    for (const [position, b] of blocks.entries()) {
+    const blocks = Array.isArray(result) ? result : null;
+    if (Array.isArray(result)) {
+      if (r.schema_version === 3) throw new ExtractionError("MODEL_CONFIG_CHANGED");
+    } else {
+      if (r.schema_version !== 3) throw new ExtractionError("MODEL_CONFIG_CHANGED");
+      await persistActionThread(c, r, result);
+    }
+    for (const [position, b] of (blocks ?? []).entries()) {
       const id = randomUUID();
       await c.query(
         `INSERT INTO threadline_knowledge_blocks(id,user_id,document_id,originating_run_id,kind,position,content,uncertainty_reason) VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,
@@ -104,13 +114,13 @@ export async function finish(r: Claim, blocks: Block[]) {
     }
     await c.query(
       "UPDATE threadline_execution_steps SET status='succeeded',completed_at=clock_timestamp(),duration_ms=GREATEST(0,extract(epoch FROM(clock_timestamp()-started_at))*1000)::bigint,output_summary=$2 WHERE id=$1",
-      [step, `${blocks.length} review blocks`],
+      [step, blocks ? `${blocks.length} review blocks` : "Validated Action Thread"],
     );
     await appendEvent(
       c,
       r.id,
       "step_completed",
-      { key: "persist", blocks: blocks.length },
+      blocks ? { key: "persist", blocks: blocks.length } : { key: "persist", schema_version: 3 },
       step,
     );
     await c.query(
@@ -171,7 +181,7 @@ export async function processOne(adapter: Adapter = gemini, id?: string) {
   let timeout: ReturnType<typeof setTimeout> | undefined;
   let abortListener: () => void = () => {};
   try {
-    if (adapter.mode === "gemini") liveAccess(r.source_revision_id);
+    if (adapter.mode === "gemini") liveAccess(r.source_revision_id, r.schema_version);
     await transaction(async (c) => {
       if (!(await owned(c, r))) throw new ExtractionError("STALE_LEASE");
       await requireActivePlanSource(c, r);
@@ -202,13 +212,15 @@ export async function processOne(adapter: Adapter = gemini, id?: string) {
       await endStep(c, r, "succeeded");
     });
     await startStep(r, "validate_output");
-    const blocks = validate(raw, r.source, r.schema_version);
+    const result = r.schema_version === 3
+      ? validateActionThread(raw, r.source)
+      : validate(raw, r.source, r.schema_version);
     await transaction(async (c) => {
       if (!(await owned(c, r))) throw new ExtractionError("STALE_LEASE");
       await endStep(c, r, "succeeded");
     });
     await startStep(r, "persist");
-    await finish(r, blocks);
+    await finish(r, result);
   } catch (e) {
     if (e instanceof ProviderRequestError)
       logger.warn(

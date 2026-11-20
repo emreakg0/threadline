@@ -11,7 +11,8 @@
     "test": "THREADLINE_GEMINI_LIVE_AUTHORIZED=false pnpm run test:offline",
     "test:authorization": "tsx src/extraction/authorization.test.ts",
     "test:action-thread": "tsx --test src/action-thread/graph.test.ts",
-    "test:offline": "pnpm run test:authorization && pnpm run test:action-thread && tsx src/focus.integration.ts && tsx src/documents.integration.ts && tsx src/extraction/extraction.test.ts && node --import tsx src/extraction/durable.test.ts"
+    "test:action-thread:integration": "tsx src/action-thread/integration.test.ts",
+    "test:offline": "pnpm run test:authorization && pnpm run test:action-thread && pnpm run test:action-thread:integration && tsx src/focus.integration.ts && tsx src/documents.integration.ts && tsx src/extraction/extraction.test.ts && node --import tsx src/extraction/durable.test.ts"
   },
   "dependencies": {
     "@workspace/api-zod": "workspace:*",

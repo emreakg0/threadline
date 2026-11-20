@@ -1,4 +1,87 @@
-# Threadline Stage 1 — Action Thread planning engine
+# Threadline Stage 2A — Action Thread persistence and backend
+
+Stage 2A connects v3 to the authenticated API and durable extraction worker.
+The normal API's v3 submission and transport gates return
+`THREAD_LIVE_DISABLED`. An offline test harness exercises the same services
+with authenticated sessions, a disposable owner grant and a mock provider.
+The existing v1/v2 request, Action Plan, task and replay paths remain in use.
+
+## Storage and processing
+
+- Migration `0010_threadline_action_threads` adds
+  `threadline_action_threads`, `threadline_action_thread_nodes`,
+  `threadline_action_thread_edges`, `threadline_action_thread_progress` and
+  `threadline_action_thread_transitions`. Composite foreign keys tie the
+  proposal to the exact run, source revision and owner. Ordered nodes and
+  edges reconstruct the validated graph. Source excerpts retain their
+  provenance and offsets.
+- The worker selects pipeline `action-thread-3` and prompt `action-thread-1`.
+  Its v3 estimate uses the serialized request bytes, output ceiling and
+  framing allowance under the existing shared quota rules. The live guard
+  precedes key access, beta debit and network transport.
+- The worker validates the whole graph, then commits the validated proposal,
+  progress row and completed run together. How It Works reads the existing
+  source-validation, extraction, output-validation and persistence stages,
+  timestamps, durations and errors. Provider response text is transient.
+- User progress is recorded in a separate append-only transition history,
+  with an optimistic version and one current node. Each decision selects
+  one outcome. Converging branches accept arrival from either path.
+  Completing a terminal action completes the thread. A blocker records
+  a note at the current node. A retry completes the remedial step and takes
+  its declared retry edge. Counts come from committed retry transitions
+  under the same row lock. Once the cap is reached, completing the remedial
+  step takes the declared forward exit.
+
+## Authenticated API
+
+All paths below are under `/api/action-threads`. Requests use the existing
+session, write-origin and owner checks. A thread ID equals its run ID.
+
+| Method and path | Contract |
+| --- | --- |
+| `POST /` | `source_revision_id`, `idempotency_key`, `consent: true`. Returns the queued run ID when admission is enabled. Live v3 returns 503. |
+| `GET /?offset=0` | Up to 50 owned threads with review state and version. |
+| `GET /:id` | Exact validated graph with evidence and current review state. |
+| `POST /:id/review` | `operation: approve` or `reject`. Approval starts at the entry node. A clarification-only proposal can be rejected while the owner revises the source. |
+| `GET /:id/progress?after_version=0` | Current state, active next step and allowed operations, plus a page of completion, decision, blocker and retry records. |
+| `POST /:id/progress` | `operation: complete\|decide\|block\|retry` and `node_id`. Decisions include the selected outcome's `to_node_id`. Blockers include `note`. |
+
+Review and progress commands require `expected_version` and
+`idempotency_key`. An exact duplicate returns the current snapshot with
+`replayed: true`. A stale version or an invalid transition returns a
+specific 409 code. Unowned thread IDs return 404. A second submission key for
+the same pinned revision returns `THREAD_REQUEST_EXISTS`; its existing run
+is discoverable via `GET /api/extractions?source_revision_id=<id>`.
+Run progress, cancellation, steps and events use the existing extraction API.
+
+## Persisted Calc 2 fixture
+
+An authenticated mock run stored seven actions and one decision, grounded in
+two excerpts from the saved midterm note. The API returned the same validated
+graph after editing the brain dump into a new revision and after restarting
+the HTTP listener. Both mastery outcomes were executed through the API:
+four explainable answers unlocked Taylor/convergence and mixed practice;
+the other path recorded a blocker, consumed two retries and exited to
+preparing a feedback question. An independent portfolio graph tested two
+alternative routes into one common review step.
+
+## Verification and next stage
+
+- Passed 38 v3 graph validation cases and the authenticated disposable
+  PostgreSQL acceptance test. It covered concurrent requests, ownership,
+  provenance, persistence, atomic rollback, traced stages, provider failure,
+  cancellation, timeout, lease recovery and the closed live gate.
+- Passed the migration upgrade and repeat-run test, v1/v2 API and durable
+  worker tests, frontend/replay tests, workspace typecheck, both builds,
+  frontend security, secret-audit regressions and package audit. Test graphs
+  used mock responses. Zero Gemini requests and zero task creations occurred
+  during the v3 acceptance run.
+- Migration 0010 was exercised in disposable schemas. Before Stage 2B,
+  apply it to the intended environment through the migration runner and
+  obtain separate approval for any v3 live evaluation. Provider schema
+  acceptance, planning quality and live latency remain unverified.
+
+## Earlier Stage 1 — Action Thread planning engine
 
 Stage 1 adds an offline v3 planning contract and validator. It leaves the v1/v2
 request, persistence, review and replay paths in use. The new module builds a

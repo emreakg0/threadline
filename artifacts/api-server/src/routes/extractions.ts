@@ -5,9 +5,11 @@ import { activeBetaGrant } from "../extraction/beta";
 import { liveAccess } from "../extraction/gemini";
 import { extract } from "../extraction/service";
 import { ExtractionError } from "../extraction/validation";
-const validId = (id: unknown) =>
+export const validId = (id: unknown): id is string =>
   typeof id === "string" &&
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+export const validIdempotencyKey = (key: unknown): key is string =>
+  typeof key === "string" && /^[a-zA-Z0-9_-]{8,100}$/.test(key);
 // The run history is user-visible; dispatch credentials and grant accounting are server-only.
 function publicRun({
   lease_token,
@@ -40,12 +42,8 @@ export function planningAdmission(
       (b.schema_version !== undefined &&
         b.schema_version !== 1 &&
         b.schema_version !== 2) ||
-      typeof b.source_revision_id !== "string" ||
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-        b.source_revision_id,
-      ) ||
-      typeof b.idempotency_key !== "string" ||
-      !/^[a-zA-Z0-9_-]{8,100}$/.test(b.idempotency_key)
+      !validId(b.source_revision_id) ||
+      !validIdempotencyKey(b.idempotency_key)
     ) {
       res.status(400).json({ error: "Invalid extraction request" });
       return;
@@ -106,7 +104,7 @@ router.get("/:id/progress", async (req, res) => {
      FROM threadline_runs r
      LEFT JOIN LATERAL (SELECT event_type,payload FROM threadline_execution_events
        WHERE run_id=r.id AND user_id=r.user_id ORDER BY sequence DESC LIMIT 1) e ON true
-     WHERE r.id=$1 AND r.user_id=$2 AND r.schema_version=2`,
+     WHERE r.id=$1 AND r.user_id=$2 AND r.schema_version IN (2,3)`,
     [req.params.id, res.locals.userId],
   );
   if (!result.rowCount) {
@@ -115,7 +113,7 @@ router.get("/:id/progress", async (req, res) => {
   }
   res.json(result.rows[0]);
 });
-function cursor(v: unknown) {
+export function cursor(v: unknown) {
   if (v === undefined) return 0;
   if (
     typeof v !== "string" ||

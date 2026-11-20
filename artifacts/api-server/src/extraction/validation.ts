@@ -10,8 +10,10 @@ export const kinds = [
 export const formats = {
   1: { pipeline: "2c-1", prompt: "extractive-1" },
   2: { pipeline: "plan-2", prompt: "grounded-plan-4" },
+  3: { pipeline: "action-thread-3", prompt: "action-thread-1" },
 } as const;
 export type SchemaVersion = keyof typeof formats;
+type BlockSchemaVersion = Exclude<SchemaVersion, 3>;
 export type Proposal = {
   description: string | null;
   category: string | null;
@@ -190,7 +192,7 @@ function proposal(value: unknown, evidence: Block["evidence"]): Proposal {
 export function validate(
   raw: string,
   source: string,
-  version: SchemaVersion = 1,
+  version: BlockSchemaVersion = 1,
 ): Block[] {
   if (raw.length > 100000) throw new ExtractionError("INVALID_OUTPUT");
   let value: unknown;

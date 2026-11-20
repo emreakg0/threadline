@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { MODEL, type Adapter } from "./gemini";
 import { ExtractionError, formats, type SchemaVersion } from "./validation";
 import { transaction, appendEvent } from "./lifecycle";
+import { validateSource as validateThreadSource } from "../action-thread/contract";
 import {
   geminiUsage,
   projectDaily,
@@ -27,7 +28,7 @@ export async function extract(
       )
     ).rows[0];
     if (!source) throw new ExtractionError("SOURCE_NOT_FOUND", 404);
-    if (version === 2) {
+    if (version >= 2) {
       const doc = (
         await c.query(
           "SELECT archived_at FROM threadline_documents WHERE id=$1 AND user_id=$2 FOR SHARE",
@@ -38,6 +39,7 @@ export async function extract(
     }
     if (source.source_text.length > 20000)
       throw new ExtractionError("SOURCE_TOO_LARGE");
+    if (version === 3) validateThreadSource(source.source_text);
     const prior = (
       await c.query(
         "SELECT * FROM threadline_runs WHERE user_id=$1 AND idempotency_key=$2",
@@ -53,7 +55,7 @@ export async function extract(
         throw new ExtractionError("IDEMPOTENCY_CONFLICT", 409);
       return prior;
     }
-    if (mode === "gemini") {
+    if (mode === "gemini" || version === 3) {
       // A revision is submitted once, including failed or interrupted outcomes.
       const existing = (
         await c.query(
@@ -62,8 +64,13 @@ export async function extract(
           [user, sourceId, mode, MODEL, formats[version].pipeline, version],
         )
       ).rows[0];
-      if (existing) return existing;
+      if (existing) {
+        if (version === 3) throw new ExtractionError("THREAD_REQUEST_EXISTS", 409);
+        return existing;
+      }
+    }
 
+    if (mode === "gemini") {
       const usage = await geminiUsage(c, user);
       if (usage.blocked) throw new ExtractionError("QUOTA_EXHAUSTED", 429);
       const queued = (

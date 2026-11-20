@@ -1,9 +1,10 @@
 import plans from "./plans";
-import { Router } from "express";
+import { Router, type RequestHandler } from "express";
 import { randomBytes, randomUUID, createHash } from "node:crypto";
 import { pool } from "@workspace/db";
 import extractions from "./extractions";
 import documents from "./documents";
+import { actionThreadRouter } from "./action-threads";
 const router = Router();
 const hash = (s:string) => createHash("sha256").update(s).digest("hex");
 const cookies = (s = "") => Object.fromEntries(s.split(";").map(x => x.trim().split("=")));
@@ -43,16 +44,18 @@ router.get("/auth/google/callback",async(req,res)=>{
  }catch(e){await client.query("ROLLBACK");throw e;}finally{client.release();}
  res.setHeader("Set-Cookie",[cookie("focus_session",session,604800),cookie("focus_oauth","",0)]);res.redirect("/");
 });
-router.use(async(req,res,next)=>{
+export const requireSession: RequestHandler = async(req,res,next)=>{
  if(req.method!=="GET" && (!origin || req.headers.origin!==origin)){res.status(403).json({error:"Invalid request origin"});return;}
  const token=cookies(req.headers.cookie).focus_session;
  if(!token){res.status(401).json({error:"Sign in required"});return;}
  const result=await pool.query("SELECT user_id FROM focus_sessions WHERE token_hash=$1 AND expires_at>now()",[hash(token)]);
  if(!result.rowCount){res.status(401).json({error:"Session expired"});return;}res.locals.userId=result.rows[0].user_id;next();
-});
+};
+router.use(requireSession);
 router.use("/documents", documents);
 router.use("/extractions", extractions);
 router.use("/plans", plans);
+router.use("/action-threads", actionThreadRouter());
 router.post("/auth/logout",async(req,res)=>{await pool.query("DELETE FROM focus_sessions WHERE token_hash=$1",[hash(cookies(req.headers.cookie).focus_session)]);res.setHeader("Set-Cookie",cookie("focus_session","",0));res.sendStatus(204);});
 router.get("/projects",async(_req,res)=>{res.json((await pool.query("SELECT * FROM focus_projects WHERE user_id=$1 ORDER BY inbox DESC,name",[res.locals.userId])).rows);});
 router.post("/projects",async(req,res)=>{const name=String(req.body.name??"").trim();if(!name||name.length>100){res.status(400).json({error:"Project name must be 1–100 characters"});return;}res.status(201).json((await pool.query("INSERT INTO focus_projects(id,user_id,name) VALUES ($1,$2,$3) RETURNING *",[randomUUID(),res.locals.userId,name])).rows[0]);});

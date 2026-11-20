@@ -37,9 +37,12 @@ function text(value: unknown, max: number) {
   return bounded(value, max) ? value : invalid();
 }
 
+export function validThreadNodeId(value: unknown): value is string {
+  return bounded(value, limits.id) && /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(value);
+}
+
 function id(value: unknown) {
-  const result = text(value, limits.id);
-  return /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(result) ? result : invalid();
+  return validThreadNodeId(value) ? value : invalid();
 }
 
 function choice<T extends string>(value: unknown, choices: readonly T[]): T {

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { pool } from "@workspace/db";
-import { MODEL, tokenReservation, type Adapter } from "./gemini";
+import { liveAccess, MODEL, tokenReservation, type Adapter } from "./gemini";
+import { validateSource as validateThreadSource } from "../action-thread/contract";
 import { transaction, appendEvent, reconcile, type Client } from "./lifecycle";
 import { ExtractionError, formats, type SchemaVersion } from "./validation";
 import {
@@ -34,7 +35,7 @@ export async function owned(c: Client, r: Claim) {
 export async function claim(
   mode: Adapter["mode"],
   id?: string,
-  authorize?: (sourceId: string) => void,
+  authorize?: (sourceId: string, version: SchemaVersion) => void,
 ): Promise<Claim | null> {
   return transaction(async (c) => {
     await c.query("SELECT pg_advisory_xact_lock(72810382)");
@@ -77,7 +78,7 @@ export async function claim(
       !format ||
       r.pipeline_version !== format.pipeline ||
       r.prompt_version !== format.prompt ||
-      (mode === "gemini" && r.schema_version !== 2)
+      (mode === "gemini" && r.schema_version === 1)
     )
       return stop("MODEL_CONFIG_CHANGED");
     if (attempt > (mode === "gemini" ? 1 : 2))
@@ -92,7 +93,7 @@ export async function claim(
     )
       return stop("QUOTA_EXHAUSTED");
 
-    if (r.schema_version === 2) {
+    if (r.schema_version >= 2) {
       const document = (
         await c.query(
           "SELECT archived_at FROM threadline_documents WHERE id=$1 AND user_id=$2 FOR SHARE",
@@ -110,14 +111,16 @@ export async function claim(
       )
     ).rows[0];
     try {
-      authorize?.(r.source_revision_id);
+      const checkAccess = mode === "gemini" && r.schema_version === 3 ? liveAccess : authorize;
+      checkAccess?.(r.source_revision_id, r.schema_version);
+      if (r.schema_version === 3) validateThreadSource(source.source_text);
     } catch (error) {
       if (error instanceof ExtractionError) return stop(error.code);
       throw error;
     }
     let reservation: number | null = null;
     if (mode === "gemini") {
-      reservation = tokenReservation(source.source_text);
+      reservation = tokenReservation(source.source_text, r.schema_version);
       if (reservation > tokensPerMinute) return stop("SOURCE_TOO_LARGE");
       const usage = await geminiUsage(c, r.user_id);
       if (usage.blocked) return stop("QUOTA_EXHAUSTED");

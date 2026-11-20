@@ -494,3 +494,20 @@ Added migration 0008 and server-side checks tying consent, the authenticated own
   typecheck, builds, security and package audit passed.
 - Kept v3 outside the live request and persistence paths. Zero Gemini calls.
   Stage 2 requires separate authorization for live evaluation and persistence.
+
+## 2026-11-20 — Action Thread Stage 2A persistence and API
+
+- Added migration 0010 and owner-bound graph, progress and append-only
+  transition storage. Split immutable proposals from versioned review,
+  active-step state and retry accounting.
+- Added authenticated Action Thread endpoints and integrated the v3 request
+  and validator with shared extraction reservations, lease fencing and
+  processing events. Live v3 gates close before authorization file access,
+  debit or provider transport. Existing v1/v2 and task paths remain available.
+- Verified persistence and restart, Calc 2 branches and exhausted retries,
+  portfolio path convergence, concurrency, owner checks, provenance and
+  injected storage rollback. Checked provider failure, timeout, cancellation
+  and interruption in the v3 acceptance harness. No real Gemini calls.
+- Passed migration upgrade/re-run, existing API and worker tests, 38 v3 unit
+  cases, frontend/replay, workspace typecheck, both builds, security and audit
+  regressions. Migration ran in disposable schemas only.

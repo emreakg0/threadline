@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { closeSync, constants, fstatSync, openSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { actionThreadRequest } from "../action-thread/prompt";
 import { ExtractionError, planSchema, type SchemaVersion } from "./validation";
 
 export const MODEL = "gemini-3.5-flash-lite";
@@ -94,7 +95,8 @@ function freeTierApproval(approval: unknown): {
   }
 }
 
-export function liveAccess(sourceId?: string) {
+export function liveAccess(sourceId?: string, version: SchemaVersion = 2) {
+  if (version === 3) throw new ExtractionError("THREAD_LIVE_DISABLED", 503);
   if (process.env.NODE_ENV === "production")
     throw new ExtractionError("LIVE_DISABLED", 503);
   const configuration = authorizationConfiguration();
@@ -152,11 +154,16 @@ export function planningRequest(source: string) {
   };
 }
 
-export function tokenReservation(source: string) {
+function requestForVersion(source: string, version: SchemaVersion) {
+  return version === 3 ? actionThreadRequest(source) : planningRequest(source);
+}
+
+export function tokenReservation(source: string, version: SchemaVersion = 2) {
+  const request = requestForVersion(source, version);
   // Reserve UTF-8 bytes for text and schema plus the full output ceiling and framing headroom.
   return (
-    Buffer.byteLength(JSON.stringify(planningRequest(source))) +
-    maxOutputTokens +
+    Buffer.byteLength(JSON.stringify(request)) +
+    request.generationConfig.maxOutputTokens +
     2048
   );
 }
@@ -314,8 +321,8 @@ export async function readPlanningResponse(
 export const gemini: Adapter = {
   mode: "gemini",
   async generate(source, signal, version, sourceId, claim) {
-    const key = liveAccess(sourceId);
-    if (version !== 2) throw new ExtractionError("MODEL_CONFIG_CHANGED");
+    const key = liveAccess(sourceId, version);
+    if (version !== 2 && version !== 3) throw new ExtractionError("MODEL_CONFIG_CHANGED");
     if (!claim || !sourceId) throw new ExtractionError("BETA_UNAVAILABLE", 403);
     const { consumeBetaDispatch } = await import("./beta");
     await consumeBetaDispatch(claim.id, claim.lease_token, sourceId);
@@ -327,7 +334,7 @@ export const gemini: Adapter = {
         headers: { "Content-Type": "application/json", "x-goog-api-key": key },
         signal: signal ?? AbortSignal.timeout(12000),
         redirect: "error",
-        body: JSON.stringify(planningRequest(source)),
+        body: JSON.stringify(requestForVersion(source, version)),
       });
     } catch {
       throw new ExtractionError(

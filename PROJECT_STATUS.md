@@ -417,3 +417,20 @@ schema migrations, UI changes or deployment were performed.
 Next unfinished task is separately authorized Stage 2 evaluation of the v3
 structured response on synthetic inputs, followed by versioned persistence
 and replay design. Gemini acceptance and planning quality remain unverified.
+
+## 2026-11-20 — Action Thread Stage 2A
+
+Version 3 now has owner-scoped PostgreSQL graph storage, authenticated review
+and progress APIs, and integration with the existing leased worker and
+processing trace. The proposal is immutable. Progress has its own version and
+transition history, including cumulative retry accounting. Live v3 admission
+and dispatch are closed.
+
+Verified 38 graph cases and an offline end-to-end test in a disposable
+PostgreSQL schema. Migration upgrade/re-run preserved v1/v2 history. API,
+typecheck, frontend/replay, builds and security checks passed. No provider
+requests, task creation during the v3 smoke test, or deployment.
+
+Next unfinished task is the owner's Stage 2B decision. Before any live
+evaluation, apply migration 0010 to the intended environment and obtain a
+separate bounded v3 authorization. See RESULT.md for the API and evidence.
