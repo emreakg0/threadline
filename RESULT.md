@@ -1,4 +1,137 @@
-# Threadline Stage 2B — Interactive Action Threads
+# Threadline Stage 3 — Gemini Action Thread evaluation
+
+**Implemented and awaiting renewed owner authorization.** The development-only
+workflow is ready for the bounded evaluation. This session made **0 actual
+Gemini requests**. No live v3 graph was generated or scored.
+
+## Authorization and release boundary
+
+- Confirmed the connection matches the Replit development runtime and verified
+  migration `0010_threadline_action_threads.sql` in its ledger. The singleton
+  owner grant has a 100-request ceiling and 3 used, matched by three dispatch
+  records for the same owner and grant. Its expiry was
+  `2026-11-20T23:38:35.931Z`. The private provider approval expired at
+  `2026-11-20T23:37:35.931Z`. The old balance of 97 is unusable while expired.
+  The development database has zero live v3 dispatches and zero saved graphs.
+- Checked the local key against the protected approval and verified its
+  recorded Free Tier project and `gemini-3.5-flash-lite` model binding.
+  Current Google billing status requires the owner's console confirmation.
+  No model, key, billing, runtime authorization or deployment changes were made.
+- The v3 gate requires an explicit development runtime and a v3-scoped approval
+  loaded from the protected, deployment-ignored authorization file. The
+  `NODE_ENV=production` path rejects v3. Tests exercised the production gate
+  locally. This session used only the development database and disposable test
+  schemas.
+- An authenticated owner must explicitly consent for each saved source
+  revision. The durable queue preserves idempotency, keeps the existing beta
+  and rate limits, and reserves at most three v3 slots across the database.
+  The worker enforces the cap again in the transaction that debits the beta
+  grant and stamps the run. Failed or uncertain transport attempts consume a
+  slot, and a stop immediately after debit may also consume a slot. No Gemini
+  request is automatically retried. The scoped approval leaves legacy live
+  dispatch closed during this evaluation.
+
+## Offline verification
+
+- The real request builder and adapter sent the v3 request to an in-process
+  stub. The suite asserted JSON Schema, a 4,096 output-token ceiling and the
+  exact wire payload. Gemini itself has yet to accept the schema or return
+  token usage. The v3 parser distinguishes `MAX_TOKENS` from other incomplete
+  responses. Safe server diagnostics record the output ceiling and numeric
+  candidate/thought token counts when Google supplies them.
+  [Gemini GenerateContent API reference](https://aistudio.google.com/api-reference/generate-content)
+- All 38 graph contract cases passed. The PostgreSQL adapter test saved a
+  complete Calc 2 fixture with seven actions, one decision, grounded excerpts
+  and a bounded remediation loop. A missing edge destination and a truncated
+  fixture saved zero graph rows. An injected database failure rolled back the
+  full graph. All fixture data was isolated and removed after the tests.
+- Offline checks covered disabled and production authorization, wrong owner,
+  expired grant and provider approval, quota exhaustion, duplicate admission,
+  switch-off before dispatch, and the transaction's refusal of a fourth debit.
+- Workspace typecheck, frontend and API builds, full API/PostgreSQL and
+  frontend tests, migration upgrade/re-run, Vite security, seven secret-audit
+  regression cases, and package audit passed.
+- Authenticated Chromium exercised the disabled and quota states, explicit
+  consent, queued and running updates, graph review, approval, a decision,
+  validation failure, and recorded execution. Existing Brain Dump, v2
+  Action Plan, Tasks, replay, graph, keyboard and mobile checks passed.
+  Inspected the desktop consent and mobile graph screenshots.
+- The full-history credential audit found three matches for the same
+  pre-existing authorization metadata blob in local history. The tracked
+  files, staged changes and history reachable from `main` were separately
+  checked for the private push.
+
+## Live planning rubric
+
+Each completed live response will be scored 0–5 for action specificity,
+practical usefulness, logical sequencing, decision/branch quality, and
+grounding/factual fidelity. The maximum is 25. Save a concise rationale for
+each score and compare the actual next steps with the existing v2 baseline.
+The three scores remain pending because there are no live responses.
+
+| Synthetic scenario | Score | What to evaluate |
+| --- | --- | --- |
+| A · Calculus II exam | Pending / 25 | Address Maclaurin construction and manipulation first. Check observable practice, mastery, useful remediation, and progress through Taylor and convergence topics. |
+| B · Portfolio website | Pending / 25 | Check requirements, case studies before presentation, a realistic build/test/deploy sequence, and a meaningful branch when a blocker exists. |
+| C · Weekly organization | Pending / 25 | Collect exact commitments, prioritize work, and check capacity or conflicts. Preserve the uncertainty about dates and times. |
+
+### Exact evaluation inputs
+
+**A.** I have an upcoming Calculus II exam covering Maclaurin series, Taylor series, absolute convergence, and the ratio and root tests. I understand convergence tests better than series expansions, but I struggle to construct and manipulate Maclaurin series. I need a realistic study plan.
+
+**B.** I need to build a portfolio website for internship applications. I have two coding projects but no case studies. I want something I can deploy and show recruiters. I'm not sure which steps to prioritize.
+
+**C.** I have classes, a part-time job, and several assignments due next week. My schedule feels disorganized. I need a repeatable way to prioritize coursework without missing deadlines, but I haven't listed the exact times yet.
+
+## Next unfinished task
+
+The owner must explicitly approve a new time window for these three synthetic
+requests and reconfirm in Google AI Studio that the same key's project is on
+the Free Tier without paid billing. An administrator can then renew
+`starts_at` and `expires_at` on the **same** development singleton grant,
+preserving its ID, owner, 100-request ceiling and used count. Renew the
+protected provider approval for the same project, model and key binding for
+at most 24 hours, ending one minute before the database grant. In the API
+server's ignored 0600 `.local/threadline-gemini-authorization.json`, opt in
+with numeric `schemaVersion` set to `3` and `liveAuthorized` set to `true`.
+Run only the development API with `NODE_ENV=development` and no existing
+Gemini authorization Secrets overrides, which take precedence over the file.
+Set `liveAuthorized` to `false` in the private file to stop new dispatches
+without restarting. A request already sent to Google can still complete.
+
+With renewed authorization, submit one scenario at a time. Save the Brain
+Dump, check the Google consent box, and click **Generate Action Thread**.
+Check **Recorded execution** for timing and failure category. Use **Review
+Action Thread** to inspect the graph and evidence, then explicitly approve or
+reject it. Verify the reported token counts and exact saved graph fields.
+Count every provider attempt toward the three-request cap and pause after a
+failure for offline diagnosis. Record only summarized evidence and scores.
+
+## Files changed
+
+- API and worker
+  - `artifacts/api-server/src/extraction/gemini.ts`
+  - `artifacts/api-server/src/extraction/beta.ts`
+  - `artifacts/api-server/src/extraction/service.ts`
+  - `artifacts/api-server/src/routes/action-threads.ts`
+- Frontend
+  - `artifacts/productivity-app/src/CaptureEditor.tsx`
+  - `artifacts/productivity-app/src/ExtractionPanel.tsx`
+  - `artifacts/productivity-app/src/PlanProcessing.tsx`
+  - `artifacts/productivity-app/src/action-threads/ActionThreads.tsx`
+- Offline verification
+  - `artifacts/api-server/src/action-thread/integration.test.ts`
+  - `artifacts/api-server/src/extraction/authorization.test.ts`
+  - `lib/db/scripts/capture-browser.mjs`
+  - `lib/db/scripts/thread-browser-check.mjs`
+- Continuity
+  - `RESULT.md`
+  - `PROJECT_STATUS.md`
+  - `DEVELOPMENT_LOG.md`
+
+## Previous milestone
+
+### Threadline Stage 2B — Interactive Action Threads
 
 Capture now links to **Action Threads** at `#capture/threads`. Saved threads
 open at `#capture/threads/<id>` and restore the server's active step on reload.

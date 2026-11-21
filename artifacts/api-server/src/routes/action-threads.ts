@@ -3,7 +3,7 @@ import { pool } from "@workspace/db";
 import { validThreadNodeId } from "../action-thread/contract";
 import { getActionThread, listActionThreads } from "../action-thread/store";
 import { readProgress, transitionThread, type ThreadOperation } from "../action-thread/progress";
-import { activeBetaGrant } from "../extraction/beta";
+import { activeBetaGrant, requireThreadEvaluationCapacity } from "../extraction/beta";
 import { liveAccess } from "../extraction/gemini";
 import { extract } from "../extraction/service";
 import { bounded, exact, ExtractionError } from "../extraction/validation";
@@ -19,6 +19,14 @@ function fields(value: unknown, keys: string[]): asserts value is Record<string,
   } catch {
     invalid();
   }
+}
+
+async function requireOwnedRevision(user: string, sourceId: string) {
+  const owned = await pool.query(
+    "SELECT 1 FROM threadline_source_revisions WHERE id=$1 AND user_id=$2",
+    [sourceId, user],
+  );
+  if (!owned.rowCount) throw new ExtractionError("SOURCE_NOT_FOUND", 404);
 }
 
 function mutation(body: unknown, review: boolean) {
@@ -63,13 +71,10 @@ export function actionThreadRouter(mode: "gemini" | "mock" = "gemini") {
     if (!validId(source_revision_id) || !validIdempotencyKey(idempotency_key)) invalid();
     if (consent !== true) throw new ExtractionError("CONSENT_REQUIRED", 400);
     const user = res.locals.userId;
-    const owned = await pool.query(
-      "SELECT 1 FROM threadline_source_revisions WHERE id=$1 AND user_id=$2",
-      [source_revision_id, user],
-    );
-    if (!owned.rowCount) throw new ExtractionError("SOURCE_NOT_FOUND", 404);
+    await requireOwnedRevision(user, source_revision_id);
     if (mode === "gemini") liveAccess(source_revision_id, 3);
-    const grant = await activeBetaGrant(user);
+    // A replay of an admitted key can return its existing run at quota.
+    const grant = await activeBetaGrant(user, { allowExhausted: mode === "gemini" });
     const run = await extract(user, source_revision_id, idempotency_key, mode, 3, grant);
     res.status(202).json({
       id: run.id,
@@ -77,6 +82,21 @@ export function actionThreadRouter(mode: "gemini" | "mock" = "gemini") {
       source_revision_id: run.source_revision_id,
       schema_version: run.schema_version,
     });
+  });
+  router.get("/availability", async (req, res) => {
+    const sourceId = req.query.source_revision_id;
+    if (!validId(sourceId)) invalid();
+    const user = res.locals.userId;
+    await requireOwnedRevision(user, sourceId);
+    try {
+      if (mode === "gemini") liveAccess(sourceId, 3);
+      await activeBetaGrant(user);
+      if (mode === "gemini") await requireThreadEvaluationCapacity();
+      res.json({ enabled: true });
+    } catch (error) {
+      if (!(error instanceof ExtractionError)) throw error;
+      res.json({ enabled: false, reason: error.code });
+    }
   });
   router.get("/", async (req, res) => {
     const offset = cursor(req.query.offset);

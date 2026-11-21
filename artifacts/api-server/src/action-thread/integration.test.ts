@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import express from "express";
 import { calcPlan, calcSource, portfolioPlan, portfolioSource } from "./fixtures";
 import { actionThreadRequest } from "./prompt";
@@ -18,7 +21,7 @@ const { actionThreadRouter } = await import("../routes/action-threads");
 const { claim, finish, processOne } = await import("../extraction/worker");
 const { recoverExpired } = await import("../extraction/lifecycle");
 const { extract } = await import("../extraction/service");
-const { gemini, tokenReservation } = await import("../extraction/gemini");
+const { ENDPOINT, MODEL, gemini, tokenReservation } = await import("../extraction/gemini");
 const { ExtractionError } = await import("../extraction/validation");
 const users = [randomUUID(), randomUUID()];
 const sessions = users.map(() => randomBytes(32).toString("hex"));
@@ -27,7 +30,10 @@ const route = "/action-threads";
 let server: ReturnType<typeof app.listen> | undefined;
 let base = "";
 const originalFetch = globalThis.fetch;
+let providerFixture: ((init?: RequestInit) => Response) | undefined;
 globalThis.fetch = (input, init) => {
+  if (String(input) === ENDPOINT && providerFixture)
+    return Promise.resolve(providerFixture(init));
   assert.match(String(input), /^http:\/\/127\.0\.0\.1:\d+\/api\//, "Only the local HTTP fixture may be called");
   return originalFetch(input, init);
 };
@@ -305,9 +311,96 @@ try {
   await assert.rejects(gemini.generate(calcSource, undefined, 3, latest, { id: live.id, lease_token: randomUUID() }),
     { code: "THREAD_LIVE_DISABLED" });
   const wire = actionThreadRequest(calcSource);
+  assert.equal(wire.generationConfig.maxOutputTokens, 4096);
   assert.equal(tokenReservation(calcSource, 3),
     Buffer.byteLength(JSON.stringify(wire)) + wire.generationConfig.maxOutputTokens + 2048);
   assert.equal((await pool.query("SELECT used FROM threadline_beta_grant")).rows[0].used, 0);
+
+  const originalDirectory = process.cwd();
+  const privateDirectory = mkdtempSync(join(tmpdir(), "threadline-v3-integration-"));
+  try {
+    process.chdir(privateDirectory);
+    mkdirSync(".local", { mode: 0o700 });
+    delete process.env.THREADLINE_GEMINI_LIVE_AUTHORIZED;
+    delete process.env.THREADLINE_GEMINI_FREE_TIER_APPROVAL;
+    process.env.NODE_ENV = "development";
+    process.env.GEMINI_API_KEY = "offline-v3-integration-fixture";
+    const config = {
+      liveAuthorized: true, schemaVersion: 3, approval: {
+        project: "threadline-gemini", model: MODEL,
+        keySha256: createHash("sha256").update(process.env.GEMINI_API_KEY).digest("hex"),
+        startsAt: new Date(Date.now() - 1000), expiresAt: new Date(Date.now() + 3600000),
+      },
+    };
+    const switchFile = ".local/threadline-gemini-authorization.json";
+    const setSwitch = (liveAuthorized: boolean) =>
+      writeFileSync(switchFile, JSON.stringify({ ...config, liveAuthorized }), { mode: 0o600 });
+    setSwitch(true);
+    const submitLive = (body: ReturnType<typeof submission>, status = 202, user = 0) =>
+      request<Job & { error?: string }>(route, status, { method: "POST", body, user });
+    const availability = (source: string, user = 0) =>
+      request<{ enabled: boolean; reason?: string }>(`${route}/availability?source_revision_id=${source}`, 200, { user });
+    assert.deepEqual(await availability(latest), { enabled: true });
+    assert.equal((await availability(foreign.source_revision_id, 1)).reason, "BETA_UNAVAILABLE");
+    assert.equal((await submitLive(foreign, 403, 1)).error, "BETA_UNAVAILABLE");
+    await submitLive(body, 404, 1);
+    await submitLive({ ...body, consent: false }, 400);
+    await pool.query("UPDATE threadline_beta_grant SET starts_at=now()-interval '1 hour', expires_at=now()-interval '1 second'");
+    assert.equal((await submitLive(body, 403)).error, "BETA_UNAVAILABLE");
+    await pool.query("UPDATE threadline_beta_grant SET expires_at=now()+interval '1 hour', used=request_limit");
+    assert.equal((await submitLive({ ...body, idempotency_key: randomUUID() }, 429)).error, "BETA_LIMIT");
+    await pool.query("UPDATE threadline_beta_grant SET used=0,request_limit=100");
+
+    const paused = await submitLive(submission(await save(calcSource)));
+    setSwitch(false);
+    assert.equal(await processOne(gemini, paused.id), false);
+    await failed(paused.id, "failed", "THREAD_LIVE_DISABLED");
+    setSwitch(true);
+    const submissions = await Promise.all(Array.from({ length: 4 }, async () => submission(await save(calcSource))));
+    const [valid, same] = await Promise.all([submitLive(submissions[0]), submitLive(submissions[0])]);
+    assert.deepEqual(same, valid);
+    assert.equal((await submitLive({ ...submissions[0], idempotency_key: randomUUID() }, 409)).error, "THREAD_REQUEST_EXISTS");
+    const bad = await submitLive(submissions[1]);
+    const truncated = await submitLive(submissions[2]);
+    assert.equal((await submitLive(submissions[3], 429)).error, "THREAD_EVALUATION_LIMIT");
+    const broken = calcPlan();
+    broken.edges[0].to = "missing-node";
+    const candidates = [
+      { finishReason: "STOP", content: { parts: [{ text: JSON.stringify(calcPlan()) }] } },
+      { finishReason: "STOP", content: { parts: [{ text: JSON.stringify(broken) }] } },
+      { finishReason: "MAX_TOKENS" },
+    ];
+    let sends = 0;
+    providerFixture = (init) => {
+      assert.equal(init?.method, "POST");
+      assert.deepEqual(JSON.parse(String(init?.body)), wire);
+      assert.ok(sends < candidates.length, "No duplicate or over-budget provider dispatch");
+      return Response.json({ candidates: [candidates[sends++]] });
+    };
+    for (const job of [valid, bad, truncated]) {
+      assert.equal(await processOne(gemini, job.id), true);
+      assert.equal(await processOne(gemini, job.id), false);
+      await pool.query("UPDATE threadline_execution_steps SET started_at=now()-interval '7 seconds' WHERE run_id=$1 AND step_key='extract'", [job.id]);
+    }
+    assert.deepEqual((await detail(valid.id)).graph, original.graph);
+    assert.equal((await detail(valid.id)).provider, "gemini");
+    await failed(bad.id, "failed", "DANGLING_THREAD_EDGE");
+    await failed(truncated.id, "failed", "PROVIDER_OUTPUT_LIMIT");
+    assert.deepEqual(await submitLive(submissions[0]), { ...valid, status: "succeeded" });
+    assert.equal((await availability(submissions[3].source_revision_id)).reason, "THREAD_EVALUATION_LIMIT");
+    const overBudget = await enqueue(submissions[3]);
+    await pool.query("UPDATE threadline_runs SET provider='gemini',consent_grant_id=$2 WHERE id=$1", [overBudget.id, grant.id]);
+    assert.equal(await processOne(gemini, overBudget.id), true);
+    await failed(overBudget.id, "failed", "THREAD_EVALUATION_LIMIT");
+    assert.equal(sends, 3);
+    assert.equal((await pool.query("SELECT used FROM threadline_beta_grant")).rows[0].used, 3);
+    assert.equal((await pool.query("SELECT count(*)::int AS count FROM threadline_runs WHERE beta_dispatched_at IS NOT NULL")).rows[0].count, 3);
+    console.log("PASS: live v3 route and real adapter with stub transport, owner/expiry/quota checks, immediate disable, exactly three debits, complete graph, rejected graph, and output ceiling");
+  } finally {
+    providerFixture = undefined;
+    process.chdir(originalDirectory);
+    rmSync(privateDirectory, { recursive: true, force: true });
+  }
   assert.equal((await pool.query("SELECT 1 FROM focus_tasks")).rowCount, 0);
   assert.equal((await pool.query("SELECT 1 FROM threadline_knowledge_blocks")).rowCount, 0);
   console.log("PASS: authenticated v3 persistence, Calc 2 branches, alternative-path convergence, cumulative retry, restart, concurrency, ownership, provenance, atomic rollback, trace, provider error, cancellation, timeout, recovery and closed live gate");

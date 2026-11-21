@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { activeBetaGrant, requireThreadEvaluationCapacity } from "./beta";
 import { MODEL, type Adapter } from "./gemini";
 import { ExtractionError, formats, type SchemaVersion } from "./validation";
 import { transaction, appendEvent } from "./lifecycle";
@@ -71,6 +72,11 @@ export async function extract(
     }
 
     if (mode === "gemini") {
+      if (version === 3) {
+        if (await activeBetaGrant(user, { client: c }) !== consentGrantId)
+          throw new ExtractionError("BETA_UNAVAILABLE", 403);
+        await requireThreadEvaluationCapacity(c);
+      }
       const usage = await geminiUsage(c, user);
       if (usage.blocked) throw new ExtractionError("QUOTA_EXHAUSTED", 429);
       const queued = (

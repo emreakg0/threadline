@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { api } from "./api";
+import { api, ApiError } from "./api";
 import { WorkspaceIcon } from "./WorkspaceIcon";
 
 export const processingRoute = "#capture/processing/";
@@ -11,7 +11,12 @@ const messages: Record<string, string> = {
     "Your approved beta request allowance has been used. You can still plan manually.",
   CONSENT_REQUIRED:
     "Confirm that you want to send this saved revision to Google.",
-  LIVE_DISABLED: "Live Gemini is disabled.",
+  LIVE_DISABLED: "AI Action Plan generation is disabled.",
+  THREAD_LIVE_DISABLED: "Action Thread generation is disabled.",
+  THREAD_EVALUATION_LIMIT:
+    "All three Action Thread evaluation requests are used or queued.",
+  THREAD_REQUEST_EXISTS:
+    "This saved revision already has an Action Thread request. Reopen the brain dump to see its status.",
   FREE_TIER_UNVERIFIED: "The Free Tier authorization could not be verified.",
   SOURCE_NOT_AUTHORIZED: "This revision is outside the authorized test.",
   DAILY_QUOTA:
@@ -24,11 +29,28 @@ const messages: Record<string, string> = {
   PROVIDER_REJECTED: "Google rejected the structured planning request.",
   PROVIDER_SAFETY_OR_TRUNCATION:
     "Google returned a blocked or incomplete response.",
+  PROVIDER_OUTPUT_LIMIT:
+    "Google hit the Action Thread output limit before finishing.",
   PROVIDER_TIMEOUT: "The request timed out. Google may have received it.",
   PROVIDER_NETWORK: "The connection to Google ended before a response arrived.",
   PROVIDER_TRANSIENT: "Google returned a service error.",
   INVALID_JSON: "The response was not valid JSON.",
   INVALID_OUTPUT: "The response did not match the planning format.",
+  INVALID_THREAD_SOURCE:
+    "Save a brain dump with text within the planning input limit.",
+  INVALID_THREAD: "The response did not match the Action Thread format.",
+  INVALID_THREAD_STATUS:
+    "The response did not contain the expected steps or clarification.",
+  INVALID_THREAD_ENTRY: "The response did not have a valid starting step.",
+  DUPLICATE_THREAD_NODE: "The response contained duplicate steps.",
+  DANGLING_THREAD_EDGE: "A connection pointed to a missing step.",
+  DUPLICATE_OR_SELF_THREAD_EDGE:
+    "The response contained an invalid step connection.",
+  INVALID_THREAD_BRANCH: "A decision or step had invalid exits.",
+  UNBOUNDED_THREAD_CYCLE: "The response contained an unbounded cycle.",
+  UNREACHABLE_THREAD_NODE:
+    "A step could not be reached from the starting step.",
+  INVALID_THREAD_RETRY: "The response contained an invalid retry path.",
   INVALID_PROPOSAL: "The response contained an invalid proposal.",
   QUOTE_NOT_FOUND: "A quote did not match the saved brain dump.",
   AMBIGUOUS_QUOTE: "A quote appears more than once in the saved brain dump.",
@@ -52,12 +74,19 @@ export function ExtractionPanel({
   documentId,
   disabled,
   visible,
+  version = 2,
 }: {
   sourceId: string;
   documentId: string;
   disabled: boolean;
   visible: boolean;
+  version?: 2 | 3;
 }) {
+  const thread = version === 3;
+  const path = thread ? "/action-threads" : "/extractions";
+  const availabilityId = thread
+    ? "tl-thread-availability"
+    : "tl-plan-availability";
   const [runId, setRunId] = useState<string>();
   const [availability, setAvailability] = useState<{
     enabled: boolean;
@@ -71,13 +100,15 @@ export function ExtractionPanel({
   useEffect(() => {
     if (!visible) return;
     active.current = true;
+    let current = true;
+    setAvailability(undefined);
     const filter = "?source_revision_id=" + sourceId;
-    void api("/extractions/availability" + filter)
+    void api(path + "/availability" + filter)
       .then((result) => {
-        if (active.current) setAvailability(result);
+        if (current) setAvailability(result);
       })
       .catch(() => {
-        if (active.current) {
+        if (current) {
           setAvailability({ enabled: false });
           setMessage(
             "AI availability could not be checked. You can plan manually.",
@@ -87,15 +118,16 @@ export function ExtractionPanel({
     void api("/extractions" + filter)
       .then(({ runs }) => {
         const plan = runs.find(
-          (run: { schema_version?: number }) => run.schema_version === 2,
+          (run: { schema_version?: number }) => run.schema_version === version,
         );
-        if (active.current && plan) setRunId((current) => current ?? plan.id);
+        if (current && plan) setRunId((previous) => previous ?? plan.id);
       })
       .catch(() => {});
     return () => {
+      current = false;
       active.current = false;
     };
-  }, [sourceId, visible]);
+  }, [path, sourceId, version, visible]);
 
   async function develop() {
     if (!consented || disabled || !availability?.enabled || pending) return;
@@ -103,8 +135,8 @@ export function ExtractionPanel({
     setPending(true);
     setMessage("");
     try {
-      const run = await api("/extractions", "POST", {
-        schema_version: 2,
+      const run = await api(path, "POST", {
+        ...(thread ? {} : { schema_version: version }),
         consent: true,
         source_revision_id: sourceId,
         idempotency_key: (key.current ??= crypto.randomUUID()),
@@ -118,9 +150,37 @@ export function ExtractionPanel({
     } catch (error) {
       if (active.current) {
         const code =
-          error instanceof Error
+          error instanceof ApiError
             ? (error.message.split(": ").at(-1) ?? "")
             : "";
+        if (thread && code === "THREAD_REQUEST_EXISTS") {
+          const history = await api(
+            "/extractions?source_revision_id=" + sourceId,
+          ).catch(() => null);
+          const existing = history?.runs.find(
+            (run: { schema_version?: number }) =>
+              run.schema_version === version,
+          );
+          if (!active.current) return;
+          if (existing) {
+            setRunId(existing.id);
+            return;
+          }
+        }
+        if (
+          thread &&
+          [
+            "THREAD_LIVE_DISABLED",
+            "FREE_TIER_UNVERIFIED",
+            "BETA_UNAVAILABLE",
+            "BETA_LIMIT",
+            "THREAD_EVALUATION_LIMIT",
+            "SOURCE_NOT_AUTHORIZED",
+          ].includes(code)
+        ) {
+          setAvailability({ enabled: false, reason: code });
+          return;
+        }
         setMessage(
           planningMessage(code) ??
             "The request could not be confirmed. Trying again uses the same request key.",
@@ -130,63 +190,100 @@ export function ExtractionPanel({
       setPending(false);
     }
   }
+  if (
+    thread &&
+    !runId &&
+    !message &&
+    (!availability ||
+      ["THREAD_LIVE_DISABLED", "BETA_UNAVAILABLE", "LIVE_DISABLED"].includes(
+        availability.reason ?? "",
+      ))
+  )
+    return null;
   return (
-    <section className="tl-next-action" aria-label="Action planning">
-      <h2>Turn your thoughts into actions</h2>
-      <p id="tl-plan-availability" className="tl-live-state">
-        {availability?.enabled
-          ? "AI sends this saved revision to Google. Google may use Free Tier inputs and outputs to improve its products. Avoid sensitive notes."
-          : availability
-            ? (planningMessage(availability.reason ?? "") ??
-              "AI planning is unavailable.")
-            : "Checking AI availability…"}
-        {availability?.enabled && (
-          <>
-            {" "}
-            <a
-              href="https://ai.google.dev/gemini-api/terms"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Free Tier terms
-            </a>
-          </>
-        )}
-      </p>
+    <section
+      className="tl-next-action"
+      aria-label={thread ? "Action Thread generation" : "Action planning"}
+    >
+      <h2>{thread ? "Action Thread" : "Turn your thoughts into actions"}</h2>
+      {(!thread || !runId) && (
+        <p id={availabilityId} className="tl-live-state">
+          {availability?.enabled
+            ? "AI sends this saved revision to Google. Google may use Free Tier inputs and outputs to improve its products. " +
+              (thread
+                ? "Use synthetic or approved non-sensitive notes only."
+                : "Avoid sensitive notes.")
+            : availability
+              ? (planningMessage(availability.reason ?? "") ??
+                "AI planning is unavailable.")
+              : "Checking AI availability…"}
+          {availability?.enabled && (
+            <>
+              {" "}
+              <a
+                href="https://ai.google.dev/gemini-api/terms"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Free Tier terms
+              </a>
+            </>
+          )}
+        </p>
+      )}
       {availability?.enabled && !runId && (
         <label className="tl-plan-consent">
           <input
-            aria-describedby="tl-plan-availability"
+            aria-describedby={availabilityId}
             type="checkbox"
             checked={consented}
             onChange={(e) => setConsented(e.target.checked)}
           />
-          I agree to send this saved revision to Google for action planning.
+          {thread
+            ? "I agree to send this saved revision to Google to generate an Action Thread."
+            : "I agree to send this saved revision to Google for action planning."}
         </label>
       )}
       {runId ? (
         <a className="tl-review-link" href={processingRoute + runId}>
-          <WorkspaceIcon name="trace" /> <span>Open processing status</span>{" "}
+          <WorkspaceIcon name="trace" />{" "}
+          <span>
+            {thread
+              ? "Open Action Thread processing status"
+              : "Open processing status"}
+          </span>{" "}
           <WorkspaceIcon name="arrow" />
         </a>
       ) : (
-        <button
-          className="tl-primary"
-          disabled={disabled || pending || !consented || !availability?.enabled}
-          aria-describedby="tl-plan-availability"
-          onClick={() => void develop()}
-        >
-          {pending ? "Saving request…" : "Develop action plan"}
-        </button>
+        (!thread || availability?.enabled) && (
+          <button
+            className="tl-primary"
+            disabled={
+              disabled || pending || !consented || !availability?.enabled
+            }
+            aria-describedby={availabilityId}
+            onClick={() => void develop()}
+          >
+            {pending
+              ? "Saving request…"
+              : thread
+                ? "Generate Action Thread"
+                : "Develop action plan"}
+          </button>
+        )
       )}
       {message && <p role="alert">{message}</p>}
-      <a className="tl-review-link" href={"#capture/plan/" + documentId}>
-        <WorkspaceIcon name="review" /> <span>Open action plan</span>{" "}
-        <WorkspaceIcon name="arrow" />
-      </a>
-      <a className="tl-run-link" href={"#capture/review/" + documentId}>
-        <WorkspaceIcon name="review" /> Review knowledge blocks
-      </a>
+      {!thread && (
+        <>
+          <a className="tl-review-link" href={"#capture/plan/" + documentId}>
+            <WorkspaceIcon name="review" /> <span>Open action plan</span>{" "}
+            <WorkspaceIcon name="arrow" />
+          </a>
+          <a className="tl-run-link" href={"#capture/review/" + documentId}>
+            <WorkspaceIcon name="review" /> Review knowledge blocks
+          </a>
+        </>
+      )}
     </section>
   );
 }

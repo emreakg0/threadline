@@ -527,3 +527,26 @@ Added migration 0008 and server-side checks tying consent, the authenticated own
   screenshots. Capture, Action Plan, Tasks and How It Works regressions passed.
 - Passed API, frontend, migration, typecheck, builds, security and package
   audit checks. No Gemini requests or deployment.
+
+## 2026-11-21 — Action Thread Stage 3 offline implementation
+
+- Verified development migration 0010, the expired singleton owner grant
+  and protected provider approval, the three retained beta debits, and the
+  existing key/model binding. Left authorization and billing untouched.
+- Extended `extraction/gemini.ts`, `beta.ts`, `service.ts` and
+  `routes/action-threads.ts` with the private v3 development scope,
+  owner-only availability, atomic three-dispatch cap and safe output
+  diagnostics. Preserved the strict v3 prompt and validator.
+- Reused `CaptureEditor.tsx`, `ExtractionPanel.tsx`, `PlanProcessing.tsx`
+  and `action-threads/ActionThreads.tsx` for consent, generation, recorded
+  processing and the graph review link. Approval is an explicit user action.
+- Extended the authorization and Action Thread integration tests plus
+  the Capture and Action Thread Chromium harnesses. The offline adapter
+  test verified one complete graph, zero graph rows for invalid and
+  truncated responses, idempotency, cap rollback and grant isolation.
+- Passed API and frontend tests, migration upgrade and replay, typecheck,
+  both builds, Vite security, secret-audit regressions and package audit.
+  Chromium passed v3 consent, queued/running/completed states, graph
+  decisions, validation failure, quota denial and the earlier regressions.
+  Zero actual Gemini requests. Live schema acceptance and quality depend
+  on a newly authorized owner evaluation.

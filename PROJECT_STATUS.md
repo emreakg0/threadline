@@ -39,6 +39,10 @@ Known debt: health-only generated contracts; dense procedural code; large lazy 3
 
 ## Active phase and next task
 
+2026-11-21 Stage 3 is implemented and awaits a renewed owner grant and
+provider authorization before any live evaluation. See the latest
+Stage 3 entry and RESULT.md for the exact next task.
+
 2026-11-10 Semgrep supply-chain milestone: all four named public configuration rules reproduced (4 baseline findings) and now pass (0 findings). Installed pnpm 10.26.1 is pinned; supported seven-day cooldown, blocked exotic subdependencies and no-downgrade trust are active, with blanket exclusions removed. npm 11.19.1 has a verified seven-day fallback but is not the project installer. Frozen CI-style install, typechecks, city/security/API tests and all production builds pass; dependency audit remains clean and lockfile/dependency versions are unchanged. Local registry fixtures verify actual rejection and exact-version urgent exceptions. SECURITY_AUDIT.md records rule revision, applicability/false-positive analysis, exception process and frozen-lockfile limitations. Next product task remains project rename API/UI and ownership tests.
 
 2026-11-10 exposure review completed: repository is private with only its owner listed, no hooks/Pages; no credential matches found in tracked history or generated frontend assets. Patched dependency audit reports zero known vulnerabilities. Explicit Vite hosts, restricted file serving, API no-cache/security headers and fail-closed write-origin checks are implemented and regression-tested. See SECURITY_REVIEW.md for scope, tests and remaining production hardening; this does not certify the application free of all vulnerabilities. No deployment or GitHub access-setting changes.
@@ -452,3 +456,34 @@ remains disabled and the development database contains no test graphs.
 
 Next unfinished task is the owner's decision on further scope. Any live v3
 evaluation requires separate authorization. No next stage was started.
+
+## 2026-11-21 — Action Thread Stage 3
+
+The development-only v3 gate and Brain Dump generation entry point are
+implemented. The owner must consent to processing each saved revision.
+Processing, graph review and How It Works use the existing authenticated
+run and progress APIs. Dispatch accounting caps Stage 3 at three sends in
+the same transaction that debits the existing grant. The private switch is
+checked again before transport. Production and legacy live dispatch are
+closed when the v3-only scope is selected.
+
+The development ledger includes migration 0010. Verified the original
+100-request grant still carries three used dispatches and has expired.
+The earlier private Free Tier approval has also expired. The local key
+and model binding matched the recorded approval. Current billing status
+awaits owner reconfirmation. No provider calls, changes to authorization
+or billing, or deployment occurred.
+
+Mock transport verified full graph persistence, zero graph rows after
+invalid output, the output-limit failure, and the three-dispatch cap.
+Authenticated Chromium verified the consent-to-review workflow, quota and
+failure states, and existing Capture, Tasks and replay paths.
+Existing API/PostgreSQL, migration, frontend and security regressions,
+typecheck, builds and package audit passed. Live schema
+acceptance, actual token usage and all three planning-quality scores remain
+unverified. The report records the exact synthetic inputs.
+
+Next unfinished task is fresh owner approval of a bounded development
+window and Free Tier reconfirmation. Renew the same grant and matching
+private approval without resetting usage, then perform the three-scenario
+live evaluation under the cap. See RESULT.md for the renewal details.

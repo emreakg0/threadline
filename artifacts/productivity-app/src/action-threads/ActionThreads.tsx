@@ -50,7 +50,7 @@ function ThreadIndex() {
     </header>
     <p className="tl-thread-availability">
       <WorkspaceIcon name="branch" />
-      <span>AI generation for Action Threads is currently disabled. You can open and continue saved threads here.</span>
+      <span>When generation is available, you can start an Action Thread from a saved Brain Dump.</span>
     </p>
     {error && <div className="tl-error" role="alert">{error}<button onClick={() => load(request.offset)}>Try again</button></div>}
     {paging && threads.length === 0 && <p role="status">Loading Action Threads…</p>}

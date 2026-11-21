@@ -95,6 +95,7 @@ try {
   };
   privateConfig();
   assert.equal(liveAccess(), "synthetic-authorization-fixture");
+  assert.throws(() => liveAccess(undefined, 3), { code: "THREAD_LIVE_DISABLED" });
   // A partial Secrets override cannot silently inherit approval from the file.
   process.env.THREADLINE_GEMINI_LIVE_AUTHORIZED = "true";
   denied("FREE_TIER_UNVERIFIED");
@@ -114,6 +115,28 @@ try {
   process.env.NODE_ENV = "production";
   denied("LIVE_DISABLED");
   process.env.NODE_ENV = "development";
+  const threadConfig = { liveAuthorized: true, schemaVersion: 3, approval };
+  privateConfig(threadConfig);
+  denied("LIVE_DISABLED");
+  assert.equal(liveAccess(undefined, 3), "synthetic-authorization-fixture");
+  for (const environment of ["production", "test", ""]) {
+    process.env.NODE_ENV = environment;
+    assert.throws(() => liveAccess(undefined, 3), { code: "THREAD_LIVE_DISABLED" });
+  }
+  process.env.NODE_ENV = "development";
+  privateConfig({ ...threadConfig, approval: { ...approval, expiresAt: new Date(now - 1).toISOString() } });
+  assert.throws(() => liveAccess(undefined, 3), { code: "FREE_TIER_UNVERIFIED" });
+  privateConfig({ ...threadConfig, approval: { ...approval, sourceRevisionId: "one-source" } });
+  assert.throws(() => liveAccess("another-source", 3), { code: "SOURCE_NOT_AUTHORIZED" });
+  assert.equal(liveAccess("one-source", 3), "synthetic-authorization-fixture");
+  privateConfig({ ...threadConfig, liveAuthorized: false });
+  assert.throws(() => liveAccess(undefined, 3), { code: "THREAD_LIVE_DISABLED" });
+  denied("LIVE_DISABLED");
+  privateConfig(threadConfig);
+  process.env.THREADLINE_GEMINI_LIVE_AUTHORIZED = "false";
+  assert.throws(() => liveAccess(undefined, 3), { code: "THREAD_LIVE_DISABLED" });
+  delete process.env.THREADLINE_GEMINI_LIVE_AUTHORIZED;
+  privateConfig();
   linkSync(file, ".local/linked.json");
   denied("LIVE_DISABLED");
   rmSync(file);

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api, ApiError } from "./api";
+import { threadsRoute } from "./action-threads/data";
 import { planningMessage } from "./ExtractionPanel";
 import { WorkspaceIcon } from "./WorkspaceIcon";
 import "./plan-processing.css";
@@ -10,6 +11,7 @@ type Progress = {
   error_code: string | null;
   provider: string;
   document_id: string;
+  schema_version: number;
 };
 
 const stages = [
@@ -111,26 +113,37 @@ export function PlanProcessing({ id }: { id: string }) {
       : undefined;
   const active =
     progress?.status === "running" || progress?.status === "queued";
+  const thread = progress?.schema_version === 3;
+  const reviewingThread = thread && progress.status === "succeeded";
+  const stageTitle = (stage: (typeof stages)[number]) =>
+    thread && stage.key === "persist"
+      ? "Saving your Action Thread"
+      : stage.title;
   const title = unavailable
     ? "Status unavailable"
-    : (currentStage?.title ??
-      (active
+    : currentStage
+      ? stageTitle(currentStage)
+      : active
         ? "Preparing the next step"
         : progress?.status === "cancelled"
           ? "Processing cancelled"
           : progress
             ? "Processing failed"
-            : "Checking processing status"));
+            : "Checking processing status";
   const detail =
     unavailable ||
-    currentStage?.detail ||
+    (reviewingThread
+      ? "Your Action Thread is saved. Review its steps and source evidence before approving or rejecting it."
+      : currentStage?.detail) ||
     (active
       ? "Threadline is moving between recorded stages."
       : progress?.status === "cancelled"
         ? "Cancelled results are discarded. You can continue with manual planning."
         : progress
           ? (planningMessage(progress.error_code ?? "") ??
-              "This run did not save an action plan.") +
+              (thread
+                ? "This run did not save an Action Thread."
+                : "This run did not save an action plan.")) +
             " You can continue with manual planning."
           : "Reading the saved execution record.");
   return (
@@ -156,9 +169,8 @@ export function PlanProcessing({ id }: { id: string }) {
         </div>
         <div role="status">
           <p className="tl-processing-label">
-            {progress?.provider === "mock"
-              ? "Mock test · Action planning"
-              : "Action planning"}
+            {progress?.provider === "mock" && "Mock test · "}
+            {thread ? "Action Thread" : "Action planning"}
           </p>
           <h1 ref={heading} tabIndex={-1}>
             {title}
@@ -172,7 +184,7 @@ export function PlanProcessing({ id }: { id: string }) {
                 key={stage.key}
                 aria-current={stage === currentStage ? "step" : undefined}
               >
-                {stage.title}
+                {stageTitle(stage)}
               </li>
             ))}
           </ol>
@@ -181,12 +193,18 @@ export function PlanProcessing({ id }: { id: string }) {
           {progress && (
             <a
               className="tl-review-link"
-              href={"#capture/plan/" + progress.document_id}
+              href={
+                reviewingThread
+                  ? threadsRoute + "/" + id
+                  : "#capture/plan/" + progress.document_id
+              }
             >
               <WorkspaceIcon name="review" />
-              {progress.status === "succeeded"
-                ? "Review action plan"
-                : "Open manual plan"}
+              {reviewingThread
+                ? "Review Action Thread"
+                : progress.status === "succeeded"
+                  ? "Review action plan"
+                  : "Open manual plan"}
               <WorkspaceIcon name="arrow" />
             </a>
           )}

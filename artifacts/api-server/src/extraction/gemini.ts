@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { closeSync, constants, fstatSync, openSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { actionThreadRequest } from "../action-thread/prompt";
+import { logger } from "../lib/logger";
 import { ExtractionError, planSchema, type SchemaVersion } from "./validation";
 
 export const MODEL = "gemini-3.5-flash-lite";
@@ -11,6 +12,7 @@ export const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models
 function authorizationConfiguration(): {
   liveAuthorized: boolean;
   approval: unknown;
+  schemaVersion?: unknown;
 } {
   try {
     const liveFlag = process.env.THREADLINE_GEMINI_LIVE_AUTHORIZED;
@@ -43,6 +45,7 @@ function authorizationConfiguration(): {
       return {
         liveAuthorized: config.liveAuthorized === true,
         approval: config.approval,
+        schemaVersion: config.schemaVersion,
       };
     } finally {
       closeSync(fd);
@@ -96,11 +99,15 @@ function freeTierApproval(approval: unknown): {
 }
 
 export function liveAccess(sourceId?: string, version: SchemaVersion = 2) {
-  if (version === 3) throw new ExtractionError("THREAD_LIVE_DISABLED", 503);
+  if (version === 3 && process.env.NODE_ENV !== "development")
+    throw new ExtractionError("THREAD_LIVE_DISABLED", 503);
   if (process.env.NODE_ENV === "production")
     throw new ExtractionError("LIVE_DISABLED", 503);
   const configuration = authorizationConfiguration();
-  if (!configuration.liveAuthorized)
+  // A v3-scoped approval opts in only this evaluation, leaving legacy live requests closed.
+  if (version === 3 && (!configuration.liveAuthorized || configuration.schemaVersion !== 3))
+    throw new ExtractionError("THREAD_LIVE_DISABLED", 503);
+  if (!configuration.liveAuthorized || (version !== 3 && configuration.schemaVersion !== undefined))
     throw new ExtractionError("LIVE_DISABLED", 503);
   const approval = freeTierApproval(configuration.approval);
   if (
@@ -270,6 +277,7 @@ async function requestDiagnostic(response: Response): Promise<Diagnostic> {
 export async function readPlanningResponse(
   response: Response,
   now = Date.now(),
+  threadRun?: { id: string; maxOutputTokens: number },
 ) {
   if (response.status === 429) {
     const header = response.headers.get("retry-after")?.trim() ?? "";
@@ -303,8 +311,21 @@ export async function readPlanningResponse(
       finishReason?: string;
       content?: { parts?: { text?: string; thought?: boolean }[] };
     }[];
+    usageMetadata?: { candidatesTokenCount?: unknown; thoughtsTokenCount?: unknown };
   } | null;
   const candidate = Array.isArray(r?.candidates) ? r.candidates[0] : undefined;
+  if (threadRun) {
+    const count = (value: unknown) =>
+      typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : undefined;
+    logger.info({
+      runId: threadRun.id,
+      maxOutputTokens: threadRun.maxOutputTokens,
+      candidateTokens: count(r?.usageMetadata?.candidatesTokenCount),
+      thoughtTokens: count(r?.usageMetadata?.thoughtsTokenCount),
+    }, "Gemini Action Thread output usage");
+    if (candidate?.finishReason === "MAX_TOKENS")
+      throw new ExtractionError("PROVIDER_OUTPUT_LIMIT");
+  }
   if (candidate?.finishReason !== "STOP")
     throw new ExtractionError("PROVIDER_SAFETY_OR_TRUNCATION");
   const parts = candidate.content?.parts;
@@ -321,12 +342,17 @@ export async function readPlanningResponse(
 export const gemini: Adapter = {
   mode: "gemini",
   async generate(source, signal, version, sourceId, claim) {
-    const key = liveAccess(sourceId, version);
+    let key = liveAccess(sourceId, version);
     if (version !== 2 && version !== 3) throw new ExtractionError("MODEL_CONFIG_CHANGED");
     if (!claim || !sourceId) throw new ExtractionError("BETA_UNAVAILABLE", 403);
+    const request = requestForVersion(source, version);
     const { consumeBetaDispatch } = await import("./beta");
+    if (version === 3) liveAccess(sourceId, version);
+    signal?.throwIfAborted();
     await consumeBetaDispatch(claim.id, claim.lease_token, sourceId);
     signal?.throwIfAborted();
+    // Re-read the private switch after the database wait, immediately before transport.
+    if (version === 3) key = liveAccess(sourceId, version);
     let response: Response;
     try {
       response = await fetch(ENDPOINT, {
@@ -334,7 +360,7 @@ export const gemini: Adapter = {
         headers: { "Content-Type": "application/json", "x-goog-api-key": key },
         signal: signal ?? AbortSignal.timeout(12000),
         redirect: "error",
-        body: JSON.stringify(requestForVersion(source, version)),
+        body: JSON.stringify(request),
       });
     } catch {
       throw new ExtractionError(
@@ -342,6 +368,8 @@ export const gemini: Adapter = {
         504,
       );
     }
-    return readPlanningResponse(response);
+    return readPlanningResponse(response, Date.now(), version === 3
+      ? { id: claim.id, maxOutputTokens: request.generationConfig.maxOutputTokens }
+      : undefined);
   },
 };

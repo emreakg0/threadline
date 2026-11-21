@@ -285,6 +285,14 @@ export function CaptureEditor({
             documentId={saved.id}
             disabled={busy || dirty || !!saved.archived_at}
           />
+          <ExtractionPanel
+            key={"thread/" + saved.source.id}
+            version={3}
+            sourceId={saved.source.id}
+            visible={visible}
+            documentId={saved.id}
+            disabled={busy || dirty || !!saved.archived_at}
+          />
           <div className="tl-doc-details">
             <h2>Document details</h2>
             <p>
