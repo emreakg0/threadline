@@ -34,15 +34,27 @@ try {
  assert.equal(response.headers.get('x-frame-options'),'DENY');
  assert.equal(response.headers.get('x-powered-by'),null);
  assert.equal((await fetch(base+'/tasks')).status,401);
- response=await fetch(base+'/auth/google',{redirect:'manual'});assert.equal(response.status,302);const url=new URL(response.headers.get('location')!);assert.equal(url.searchParams.get('redirect_uri'),'http://localhost:5173/api/auth/google/callback');oauthState=url.searchParams.get('state')!;
- const oauthCookies=response.headers.getSetCookie().map(cookie=>cookie.split(';')[0]).join('; ');
+ async function startAttempt() {
+  const redirect=await fetch(base+'/auth/google',{redirect:'manual'});
+  assert.equal(redirect.status,302);
+  const url=new URL(redirect.headers.get('location')!);
+  const state=url.searchParams.get('state')!;
+  const cookie=redirect.headers.getSetCookie().map(value=>value.split(';')[0]).join('; ');
+  return { url, state, cookie };
+ }
+ const { url, state, cookie:oauthCookies }=await startAttempt();
+ oauthState=state;
+ assert.equal(url.searchParams.get('redirect_uri'),'http://localhost:5173/api/auth/google/callback');
  const verifier=oauthCookies.match(/focus_oauth_verifier=([^; ]+)/)?.[1];
  assert.equal(url.searchParams.get('code_challenge_method'),'S256');
  assert.equal(url.searchParams.get('code_challenge'),createHash('sha256').update(verifier!).digest('base64url'));
  let oauthCalls=0;
+ let exchangeFails=false;
  globalThis.fetch=async (target, init) => {
   if(String(target)==='https://oauth2.googleapis.com/token'){
-   oauthCalls++; assert.equal((init?.body as URLSearchParams).get('code_verifier'),verifier);
+   oauthCalls++;
+   if(exchangeFails) return new Response(null,{status:503});
+   assert.equal((init?.body as URLSearchParams).get('code_verifier'),verifier);
    return Response.json({access_token:'offline'});
   }
   if(String(target)==='https://openidconnect.googleapis.com/v1/userinfo'){
@@ -61,6 +73,25 @@ try {
  assert.equal(oauthCalls,2);
  await pool.query("UPDATE focus_sessions SET expires_at=now()-interval '1 second' WHERE user_id=$1",[oauthUser]);
  assert.equal((await fetch(base+'/tasks',{headers:{cookie:session}})).status,401);
+ const rejected=await startAttempt();
+ const denied=await fetch(base+'/auth/google/callback?error=access_denied&state='+rejected.state,
+  {headers:{cookie:rejected.cookie},redirect:'manual'});
+ assert.equal(denied.status,302);
+ assert.equal(denied.headers.get('location'),'/?signin=retry');
+ assert.ok(denied.headers.getSetCookie().every(value=>!value.startsWith('focus_session=')));
+ const expired=await startAttempt();
+ await pool.query("UPDATE focus_oauth_states SET expires_at=now()-interval '1 second' WHERE state_hash=$1",[hash(expired.state)]);
+ assert.equal((await fetch(base+'/auth/google/callback?code=offline&state='+expired.state,
+  {headers:{cookie:expired.cookie},redirect:'manual'})).status,400);
+ assert.equal(oauthCalls,2);
+ exchangeFails=true;
+ const fresh=await startAttempt();
+ const failedExchange=await fetch(base+'/auth/google/callback?code=offline&state='+fresh.state,
+  {headers:{cookie:fresh.cookie},redirect:'manual'});
+ assert.equal(failedExchange.status,302);
+ assert.equal(failedExchange.headers.get('location'),'/?signin=retry');
+ assert.ok(failedExchange.headers.getSetCookie().every(value=>!value.startsWith('focus_session=')));
+ assert.equal(oauthCalls,3);
  globalThis.fetch=realFetch;
  response=await fetch(base+'/auth/google/callback?state=invalid');assert.equal(response.status,400);assert.ok((await response.json() as {error:string}).error);
  for(let i=0;i<2;i++){

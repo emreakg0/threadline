@@ -1,4 +1,32 @@
-# Threadline — Stage 4B public release readiness
+# Threadline — Stage 4C1 hosted launch acceptance
+
+**Go for an owner-approved, restricted hosted acceptance with production AI off. No-go for public launch, production AI or GitHub publication.** Stage 4C1 started from private `main` at `789d52f`. [RELEASE.md](RELEASE.md) contains the Replit and Google setup, browser acceptance steps, data operations and decision gates.
+
+## Release candidate
+
+- The approved deployment shape is one Node 24 Express process serving the Vite bundle and same-origin API. The pinned frozen install, `pnpm build:release`, and `pnpm start:release` ran locally. Both output trees were inspected for credential patterns, runtime secret values and sensitive filenames. Deployment exclusions now cover local authorization, credential downloads, editor state, attachments, logs and database exports. Replit's actual upload manifest still needs review.
+- A fresh PostgreSQL fixture applied migrations 0001–0012. The production smoke test also upgraded a pre-0011 fixture, preserved its recorded trace, verified rerunning the migrator, and checked the health/readiness split and 503 when the latest migration entry was absent. A synthetic dump and all 12 migration records survived a local PostgreSQL dump/restore.
+- The built server passed local HTTP preflight for same-origin assets, public landing/demo/legal routes, private anonymous read/write denial, cache controls and secure PKCE redirect cookies. The authenticated production v3 availability and admission checks showed AI disabled with no production opt-in. Local OAuth completion, one-time state, denial, expiration, failed exchange, two-account isolation and logout used intercepted Google transport and disposable accounts.
+- The standalone Tasks route had stopped mounting the existing 3D renderer. Tasks now opens its list by default and offers an optional **3D City** view using the same filtered persisted tasks, editor and completion action. The renderer, scenery and stable database slots were reused. The Chromium city harness passed 0, 1, 5 and 20 tasks and context-loss fallback against the built server behind loopback TLS. Desktop and mobile screenshots were inspected. Physical mobile GPU performance remains unverified.
+- The Chromium capture browser harness passed owner persistence, revisions and original text, manual planning, recorded success and rollback/recovery, Action Thread review/progress and task workflows. Desktop capture and mobile demo screenshots were inspected. A built-server browser check also verified logout, anonymous denial at the city deep link and both read-only demo recordings. Test provider responses are offline.
+
+## Account operations and publication
+
+- The operator-only `lib/db/scripts/account-data.mjs` supplies scoped JSON export and transactional active-database erasure without introducing a public endpoint. Synthetic tests verified mode-0600 output, immutable revision and plan/task export, session revocation, saved graph/transition deletion, and other-account isolation. Owner sign-off is still needed on identity verification, secure delivery, support/privacy contacts, retention, backups and behavior after restore. Browser self-service export and deletion are unavailable.
+- GitHub advertised only `main` with no tags or pull refs. The starting main history scan found no matches. The full audit reported only the three known authorization/fingerprint matches for one historical blob reachable from local Replit and backup refs. The current-only audit checks the index and working tree. Main contains non-noreply commit metadata and internal operating material. Use a sanitized source export with approved public identity and rights, keeping the development repository private. See [MIT proposal](LICENSE-PROPOSAL.md).
+
+## Gemini evidence and remaining capacity
+
+A read-only development database check found two charged Gemini v3 runs and no additional pending job. The first was the previously recorded transient 5xx. A later existing record shows all four pipeline stages succeeded, one v3 graph with three nodes, and completed progress with four transitions. This is persisted evidence from before this session. Hosted replay and owner acceptance of the run remain pending. No Gemini request was made in Stage 4C1.
+
+One of three development v3 evaluation slots remained at inspection, with the broader grant at 5/100. The local protected v3 approval matched the configured key and expires 2026-11-22 at 05:26:46 UTC. The database grant expires one minute later. Both were active at inspection. Recheck both windows and current Free Tier eligibility in the operator console before any separately authorized single dispatch. Production remains disabled pending owner approval, validated live behavior and replay, quotas, disclosures and hosted worker uptime.
+
+## Checks and next action
+
+- Local checks cover the frozen install, typecheck, frontend and API suites, release builds and smoke, browser harnesses, Vite security, package audit, and secret-audit regressions. The full secret-audit historical finding is described above.
+- The next unfinished task is for the owner to approve and configure a restricted Replit acceptance environment. Then run the final HTTPS preflight and two-account Google/browser checklist, including a hosted restart and restore rehearsal. Confirm contacts, retention, and edge protections before public launch. Decide separately on the one remaining development Gemini dispatch and the sanitized GitHub export.
+
+## Prior milestone — Stage 4B public release readiness
 
 **No-go for Stage 4C public launch.** The release candidate passes local production and offline verification. Actual Gemini v3 acceptance, hosted OAuth and worker uptime, privacy operations, and open-source sign-off remain launch gates.
 

@@ -29,7 +29,7 @@ pnpm build:release
 node lib/db/scripts/release-smoke.mjs
 ```
 
-Use a disposable PostgreSQL database for integration and browser tests. The release smoke test builds on the local production bundle and upgrades an isolated schema. The authenticated browser harness is in [lib/db/scripts/capture-browser.mjs](lib/db/scripts/capture-browser.mjs). Its prerequisites are a Vite process on loopback port 21646, Chromium with CDP on loopback port 9222, and PostgreSQL. All provider tests use offline fixtures or intercepted transport.
+Use a disposable PostgreSQL database for integration and browser tests. The release smoke test uses the local production bundle and upgrades an isolated schema. The [capture browser harness](lib/db/scripts/capture-browser.mjs) needs the Vite dev server on loopback port 21646, Chromium with CDP on loopback port 9222, and PostgreSQL. All automated provider tests use offline fixtures or intercepted transport. See [RELEASE.md](RELEASE.md) for the HTTPS deployment preflight and manual two-account acceptance.
 
 ## Project layout
 

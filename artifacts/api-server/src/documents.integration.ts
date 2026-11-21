@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { randomUUID, randomBytes, createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 // Every table/fixture lives in a new schema; no shared-schema migrations or OAuth calls.
 const schema = `capture_test_${randomUUID().replaceAll("-", "")}`;
@@ -779,6 +782,33 @@ try {
   console.log(
     "PASS: document persistence/restart, idempotent capture, owner isolation, input validation, concurrent edit conflicts, archive/restore, exact immutable source history, security headers/origin",
   );
+  const exportDir = mkdtempSync(join(tmpdir(), "threadline-account-test-"));
+  try {
+    const accountTool = new URL("../../../lib/db/scripts/account-data.mjs", import.meta.url).pathname;
+    const account = (...args: string[]) => spawnSync(process.execPath, [accountTool, ...args], {
+      env: { ...process.env, THREADLINE_ACCOUNT_SUBJECT: users[0] },
+      encoding: "utf8", timeout: 30_000,
+    });
+    const file = join(exportDir, "account.json");
+    assert.equal(account("export", file).status, 0);
+    assert.equal(statSync(file).mode & 0o777, 0o600);
+    const exported = readFileSync(file, "utf8");
+    const data = JSON.parse(exported);
+    assert.deepEqual(data.focus_users.map((row: { id: string }) => row.id), [users[0]]);
+    assert.ok(data.threadline_source_revisions.length > 1);
+    assert.ok(data.threadline_plan_actions.length > 0);
+    assert.ok(data.focus_tasks.length > 0);
+    assert.ok(!exported.includes(users[1]) && !exported.includes("token_hash"));
+    assert.equal(account("export", file).status, 1, "never overwrite an export");
+    assert.equal(account("delete").status, 2, "require explicit deletion confirmation");
+    assert.equal(account("delete", "--confirm-delete").status, 0);
+    assert.equal((await request("/documents")).status, 401);
+    assert.equal((await request("/documents", "GET", undefined, 1)).status, 200);
+    assert.equal((await pool.query("SELECT id FROM focus_users")).rows[0].id, users[1]);
+    console.log("PASS: owner-only private export and active-database erasure on disposable accounts");
+  } finally {
+    rmSync(exportDir, { recursive: true, force: true });
+  }
 } finally {
   if (server)
     await new Promise<void>((resolve) => server!.close(() => resolve()));

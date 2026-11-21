@@ -482,6 +482,15 @@ try {
   assert.equal((await pool.query("SELECT 1 FROM focus_tasks")).rowCount, 0);
   assert.equal((await pool.query("SELECT 1 FROM threadline_knowledge_blocks")).rowCount, 0);
   console.log("PASS: authenticated v3 persistence, Calc 2 branches, alternative-path convergence, cumulative retry, restart, concurrency, ownership, provenance, atomic rollback, trace, provider error, cancellation, timeout, recovery and closed live gate");
+  await stopServer();
+  const erase = spawnSync(process.execPath, [
+    new URL("../../../../lib/db/scripts/account-data.mjs", import.meta.url).pathname, "delete", "--confirm-delete",
+  ], { env: { ...process.env, THREADLINE_ACCOUNT_SUBJECT: users[0] }, encoding: "utf8", timeout: 30_000 });
+  assert.equal(erase.status, 0, erase.stderr);
+  assert.equal((await pool.query("SELECT 1 FROM threadline_action_threads WHERE user_id=$1", [users[0]])).rowCount, 0);
+  assert.equal((await pool.query("SELECT 1 FROM threadline_action_thread_transitions WHERE user_id=$1", [users[0]])).rowCount, 0);
+  assert.ok((await pool.query("SELECT 1 FROM threadline_action_threads WHERE user_id=$1", [users[1]])).rowCount);
+  console.log("PASS: erasure cascades through saved graphs and transitions and preserves the other account");
 } finally {
   globalThis.fetch = originalFetch;
   if (server) await stopServer();

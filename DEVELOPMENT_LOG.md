@@ -1,4 +1,4 @@
-# Focus City development log
+# Threadline development log
 
 ## Reconstructed history (dates unknown)
 
@@ -615,3 +615,10 @@ Added migration 0008 and server-side checks tying consent, the authenticated own
 - Added HTTPS production OAuth with PKCE, bounded OAuth state issuance, static release hosting and readiness. Exercised a pre-0011 trace across upgrade and rerun.
 - Added visitor replay using allowlisted synthetic trace exports, landing links and privacy/terms pages. Added launch, licensing and contributor documentation and removed an unused dependency.
 - Verified locally with the built server and offline tests. Recorded external and publication blockers in RESULT.md and RELEASE.md. No live provider requests.
+
+### 2026-11-21 — Stage 4C1 hosted launch acceptance
+
+- Confirmed private `main` started at `789d52f`. Reviewed the production application topology, strengthened `.replitignore`, and extended the release smoke with an HTTPS HTTP preflight, all migration ledger entries, readiness downgrade and default AI rejection. Fresh migration, upgrade/rerun and local backup restore passed.
+- Mounted the existing 3D City as an optional Tasks view in `App.tsx` using real tasks and existing filters/editor. Updated the browser harnesses to cover the current entry point and TaskSheet selectors. The 0/1/5/20 city cases and desktop/mobile visual review passed.
+- Added an operator account-data script because the release had no tested account export/erasure process. Added disposable API integration checks for scoped export, session revocation and graph erasure. Extended the offline OAuth fixture with denial, expired state and failed exchange.
+- Recorded the Replit and Google setup, hosted journey, privacy decisions, prior v3 database evidence, and sanitized publication recommendation in `RELEASE.md` and `RESULT.md`. Prepared proposed MIT terms and attribution for approval. No live Gemini request, deployment, OAuth credential change, billing change or publication occurred.

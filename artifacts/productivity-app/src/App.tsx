@@ -1,11 +1,13 @@
 import { CaptureWorkspace } from "./CaptureWorkspace";
 import { api } from "./api";
-import { useEffect, useState, useMemo, type FormEvent } from "react";
+import { lazy, Suspense, useEffect, useState, useMemo, type FormEvent } from "react";
 import type { Project, Task } from "./types";
 import { WorkspaceIcon } from "./WorkspaceIcon";
 import { PublicLinks, PublicPage, publicPages } from "./PublicPages";
 import { TaskSheet } from "./TaskSheet";
 const tasksRoute = "#capture/tasks";
+const cityRoute = tasksRoute + "/city";
+const CityView = lazy(() => import("./city/CityView"));
 
 function currentRoute() {
   // Keep task links shared before the standalone transition working.
@@ -17,6 +19,9 @@ function currentRoute() {
 export default function App() {
   const [route, setRoute] = useState(currentRoute);
   const inTasks = route === tasksRoute || route.startsWith(tasksRoute + "/");
+  const inCity = route === cityRoute;
+  const taskId = /^#capture\/tasks\/task\/([a-f0-9-]{36})$/i.exec(route)?.[1];
+  const [selectedCityTaskId, setSelectedCityTaskId] = useState<string>();
   const [composerOpen, setComposerOpen] = useState(false),
     [notice, setNotice] = useState("");
   const [initializing, setInitializing] = useState(true);
@@ -82,6 +87,12 @@ export default function App() {
       setBusy(false);
     }
   }
+  function toggleTask(task: Task) {
+    void act(() => api("/tasks/" + task.id, "PATCH", {
+      ...task,
+      status: task.status === "done" ? "todo" : "done",
+    }));
+  }
   async function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget;
@@ -136,6 +147,7 @@ export default function App() {
       ),
     [tasks, project, filter, query],
   );
+  const selectedCityTask = visible.find((task) => task.id === selectedCityTaskId) ?? null;
   useEffect(() => {
     const change = () => setRoute(currentRoute());
     window.addEventListener("hashchange", change);
@@ -144,8 +156,11 @@ export default function App() {
 
   useEffect(() => {
     setComposerOpen(false);
+    setSelectedCityTaskId(undefined);
+  }, [route]);
+
+  useEffect(() => {
     if (!auth?.user || initializing || !inTasks) return;
-    const taskId = /^#capture\/tasks\/task\/([a-f0-9-]{36})$/i.exec(route)?.[1];
     let current = true;
     setError("");
     setTasksLoading(true);
@@ -169,7 +184,7 @@ export default function App() {
     return () => {
       current = false;
     };
-  }, [auth?.user, initializing, inTasks, route]);
+  }, [auth?.user, initializing, inTasks, taskId]);
 
   const taskWorkspace = inTasks && (
     <section className="tl-content tl-tasks">
@@ -192,6 +207,10 @@ export default function App() {
         >
           + New task <kbd>N</kbd>
         </button>
+      </div>
+      <div className="view-switch" role="group" aria-label="Task view">
+        <button aria-pressed={inCity} onClick={() => { location.hash = cityRoute; }}>3D City</button>
+        <button aria-pressed={!inCity} onClick={() => { location.hash = tasksRoute; }}>List</button>
       </div>
       {error && (
         <div role="alert" className="error">
@@ -269,8 +288,26 @@ export default function App() {
           </button>
         )}
       </div>
+      {inCity && (tasksLoading ? <p role="status">Loading tasks…</p> : (
+        <Suspense fallback={<p role="status">Preparing your city…</p>}>
+          <CityView
+            filtered={Boolean(query || filter !== "all")}
+            projects={project ? projects.filter((item) => item.id === project) : projects}
+            tasks={visible}
+            selected={selectedCityTask}
+            onSelect={(task) => setSelectedCityTaskId(task?.id)}
+            onList={() => { location.hash = tasksRoute; }}
+            onComplete={toggleTask}
+            onEdit={() => {
+              setEditing(selectedCityTask);
+              setComposerOpen(true);
+            }}
+            busy={busy}
+          />
+        </Suspense>
+      ))}
       <div className="workspace">
-        <section className="panel">
+        {!inCity && <section className="panel">
           <div className="panel-title">
             <h2>Tasks</h2>
             <span>
@@ -312,14 +349,7 @@ export default function App() {
                     t.status === "done" ? "Reopen task" : "Complete task"
                   }
                   className={"check " + (t.status === "done" ? "checked" : "")}
-                  onClick={() =>
-                    void act(() =>
-                      api("/tasks/" + t.id, "PATCH", {
-                        ...t,
-                        status: t.status === "done" ? "todo" : "done",
-                      }),
-                    )
-                  }
+                  onClick={() => toggleTask(t)}
                 >
                   {t.status === "done" ? "✓" : ""}
                 </button>
@@ -366,7 +396,7 @@ export default function App() {
               </article>
             ))
           )}
-        </section>
+        </section>}
         <TaskSheet open={composerOpen} onClose={() => setComposerOpen(false)}>
           <section
             className="panel composer"

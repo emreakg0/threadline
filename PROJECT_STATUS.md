@@ -1,6 +1,6 @@
-# Focus City project status
+# Threadline project status
 
-Last inspection: 2026-11-19 (UTC). See the Phase 5A section below for current verification and the next task.
+Last inspection was 2026-11-21 UTC. See [Stage 4C1](#stage-4c1--hosted-launch-acceptance) for current verification and the next task.
 
 ## Version control and backup
 
@@ -552,3 +552,9 @@ How It Works now shows a cursor-gated failure branch, verified immutable revisio
 Production now has a closed-by-default, dedicated-key AI pilot with persisted consent and dispatch markers. Google OAuth uses PKCE and HTTPS in production. The same-origin build includes an anonymous, synthetic execution demo and privacy/terms pages.
 
 The next release gate is separate approval for one development v3 acceptance attempt, followed by hosted OAuth, worker, privacy and publication verification. Stage 4C public launch is a no-go until those checks are complete. See RELEASE.md and RESULT.md.
+
+### Stage 4C1 — Hosted launch acceptance
+
+The local release candidate uses one production Express server and a same-origin frontend. PostgreSQL migrations 0001–0012 passed on a fresh fixture and on upgrade, with trace preservation and a local backup restore. The Tasks page can open the existing 3D City and was checked on desktop and mobile with 0, 1, 5 and 20 saved tasks. Production-default AI denial, local OAuth using intercepted responses, anonymous API denial, recorded demo paths and disposable-account export/erasure were covered. See [RESULT.md](RESULT.md) for the tests and evidence.
+
+The next unfinished task is owner approval and configuration of the restricted Replit environment, followed by the HTTPS preflight, real Google two-account browser checklist and hosted restart/restore rehearsal in [RELEASE.md](RELEASE.md). Public launch also needs approved contacts, retention and edge controls. A prior development v3 success was found in persisted records. It still needs owner acceptance, and a further live request requires separate approval and a current grant. GitHub publication remains a separate decision. Production AI remains off.

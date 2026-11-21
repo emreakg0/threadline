@@ -9,7 +9,7 @@ Read PROJECT_STATUS.md and DEVELOPMENT_LOG.md before development. Inspect the ac
 ## Architecture and structure
 
 - pnpm workspace; React 19, TypeScript, Vite and Tailwind frontend in artifacts/productivity-app. App.tsx owns authentication, task forms and filters; src/api.ts handles same-origin requests.
-- src/city retains the legacy React Three Fiber/Three.js renderer outside the active workspace, procedural instanced architecture/scenery, persistent-slot layout, camera composition and tests. Buildings must represent real persisted tasks; decorative scenery must not impersonate tasks.
+- Tasks opens the standalone list and can lazy-load the existing React Three Fiber/Three.js renderer from src/city. Preserve procedural scenery, persistent-slot layout, camera composition and tests. Buildings must represent real persisted tasks; decorative scenery must not impersonate tasks.
 - Express 5 API in artifacts/api-server; src/routes/focus.ts implements Google OAuth, PostgreSQL sessions and ownership-scoped project/task operations.
 - lib/db contains the pg pool, additive SQL migrations and migration/browser scripts. Stable city slots are allocated by database triggers. lib/api-spec and generated client/Zod packages currently cover only the starter health contract.
 - FOCUS_CITY_SETUP.md documents local operation and configuration. artifacts/mockup-sandbox is template tooling.
