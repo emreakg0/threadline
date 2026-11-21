@@ -534,3 +534,11 @@ The fitted graph stays centered. Zoom enables panning only on an axis where
 the canvas overflows its viewport. Mouse, touch, and keyboard panning share
 the same bounds. Zooming out recenters any axis that fits. No further work
 is pending for this visual change.
+
+### Kinetic Action Thread graph
+
+The graph now has independent floating faces, anchored connection ports, flowing SVG energy, active-step orbits and server-confirmed branch and retry effects. Motion defaults on, honors the system reduced-motion setting, and can be switched off in the graph toolbar. Camera bounds still depend on overflow. The mobile graph reduces particle count and omits atmospheric drift.
+
+Workspace typecheck, frontend tests, Vite security checks, both builds and the offline API suite passed. Physical-device GPU and battery performance remain unmeasured. No further implementation is pending for this visual change. The paused Stage 3 live evaluation remains separate.
+
+Authenticated Chromium verified ambient motion over time, fixed camera and aligned ports, confirmed branch and retry surges, mobile touch pan, and both motion settings. See RESULT.md for the measured frame interval.

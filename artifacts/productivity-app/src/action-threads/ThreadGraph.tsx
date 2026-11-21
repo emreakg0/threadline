@@ -1,6 +1,6 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState, type PointerEvent } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { WorkspaceIcon } from "../WorkspaceIcon";
-import type { ActionThread, ThreadNode } from "./data";
+import type { ActionThread, ThreadEvent, ThreadNode } from "./data";
 import { cardHeight, cardWidth, type GraphLayout, type RouteProjection } from "./layout";
 
 type Props = {
@@ -31,7 +31,7 @@ const cameraTransform = ({ x, y, scale }: View) => `translate(${x}px, ${y}px) sc
 const constrainAxis = (offset: number, space: number) =>
   space >= 0 ? space / 2 : Math.max(space, Math.min(0, offset));
 
-export function ThreadGraph({ graph, layout, route, selected, select }: Props) {
+export function ThreadGraph({ graph, layout, route, selected, select, confirmed, narrow }: Props & { confirmed: ThreadEvent | null; narrow: boolean }) {
   const viewport = useRef<HTMLDivElement>(null);
   const plane = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLDivElement>(null);
@@ -44,6 +44,43 @@ export function ThreadGraph({ graph, layout, route, selected, select }: Props) {
   const [dragging, setDragging] = useState(false);
   const [hovered, setHovered] = useState<string | null>(null);
   const [focused, setFocused] = useState<string | null>(null);
+  const [enabled, setEnabled] = useState(() => {
+    try { return localStorage.getItem("threadline.graph.motion") !== "off"; } catch { return true; }
+  });
+  const [reduced, setReduced] = useState(() => matchMedia("(prefers-reduced-motion: reduce)").matches);
+  const [visible, setVisible] = useState(false);
+  const [burst, setBurst] = useState<ThreadEvent | null>(null);
+  const seen = useRef(confirmed?.version);
+  const moving = enabled && !reduced && visible;
+  useEffect(() => {
+    const query = matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => setReduced(query.matches);
+    query.addEventListener("change", sync);
+    let intersecting = false;
+    const visibility = () => setVisible(intersecting && !document.hidden);
+    const observer = new IntersectionObserver(([entry]) => {
+      intersecting = entry.isIntersecting;
+      visibility();
+    });
+    observer.observe(viewport.current!);
+    document.addEventListener("visibilitychange", visibility);
+    return () => {
+      observer.disconnect();
+      document.removeEventListener("visibilitychange", visibility);
+      query.removeEventListener("change", sync);
+    };
+  }, []);
+  useEffect(() => {
+    if (!moving || !confirmed || seen.current === confirmed.version) {
+      seen.current = confirmed?.version;
+      setBurst(null);
+      return;
+    }
+    seen.current = confirmed.version;
+    setBurst(confirmed);
+    const timer = setTimeout(() => setBurst(null), 1050);
+    return () => clearTimeout(timer);
+  }, [moving, confirmed]);
   const drag = useRef<{ id: number; x: number; y: number; origin: View; view: View } | null>(null);
   const attention = !dragging ? focused ?? hovered : null;
   const neighbors = new Set(attention ? [attention] : []);
@@ -131,7 +168,7 @@ export function ThreadGraph({ graph, layout, route, selected, select }: Props) {
       if (canvas.current) canvas.current.style.transform = cameraTransform(start.view);
       return;
     }
-    if (!canPan || !tiltAllowed.current?.matches || focused || event.pointerType !== "mouse") return;
+    if (!moving || !tiltAllowed.current?.matches || focused || event.pointerType !== "mouse") return;
     tiltTarget.current = { x: event.clientX, y: event.clientY };
     if (tiltFrame.current) return;
     tiltFrame.current = requestAnimationFrame(() => {
@@ -140,6 +177,8 @@ export function ThreadGraph({ graph, layout, route, selected, select }: Props) {
       if (!rect || !rect.width || !rect.height) return;
       const offsetX = Math.max(-1, Math.min(1, 2 * (tiltTarget.current.x - rect.left) / rect.width - 1));
       const offsetY = Math.max(-1, Math.min(1, 2 * (tiltTarget.current.y - rect.top) / rect.height - 1));
+      plane.current?.style.setProperty("--light-x", `${50 + offsetX * 40}%`);
+      plane.current?.style.setProperty("--light-y", `${50 + offsetY * 40}%`);
       plane.current?.style.setProperty("--thread-tilt-x", `${offsetY * -1.6}deg`);
       plane.current?.style.setProperty("--thread-tilt-y", `${offsetX * 2.2}deg`);
     });
@@ -197,6 +236,13 @@ export function ThreadGraph({ graph, layout, route, selected, select }: Props) {
 
   return <section aria-label="Graph" className="tl-thread-map">
     <div className="tl-thread-map-bar">
+      <button type="button" className="tl-thread-motion" aria-label="Graph motion" aria-pressed={enabled && !reduced}
+        disabled={reduced} title={reduced ? "Reduced motion is enabled on this device" : undefined}
+        onClick={() => {
+          resetTilt();
+          setEnabled(!enabled);
+          try { localStorage.setItem("threadline.graph.motion", enabled ? "off" : "on"); } catch { /* Session preference still applies. */ }
+        }}>Motion {enabled && !reduced ? "On" : "Off"}</button>
       {canPan && <p>Drag to pan</p>}
       <div className="tl-thread-tools" aria-label="Graph zoom">
         <button type="button" aria-label="Zoom out" onClick={() => zoom(1 / 1.2)}>−</button>
@@ -207,7 +253,7 @@ export function ThreadGraph({ graph, layout, route, selected, select }: Props) {
     </div>
     <div
       ref={viewport} tabIndex={0} role="region" aria-label={canPan ? "Graph canvas. Use arrow keys to pan." : "Graph canvas"}
-      className="tl-thread-viewport" data-can-pan={canPan} data-dragging={dragging}
+      className="tl-thread-viewport" data-motion={moving} data-can-pan={canPan} data-dragging={dragging}
       onPointerDown={startPan} onPointerMove={movePointer}
       onPointerLeave={resetTilt}
       onPointerUp={stopPan} onPointerCancel={stopPan} onLostPointerCapture={stopPan}
@@ -228,28 +274,47 @@ export function ThreadGraph({ graph, layout, route, selected, select }: Props) {
         }}>
           <svg className="tl-thread-connections" viewBox={`0 0 ${layout.width} ${layout.height}`} aria-hidden="true">
             <defs>
+              {edges.map(({ d }, i) => <path key={i} id={marker + "edge" + i} d={d} pathLength="100" />)}
               {["default", "retry", "followed"].map((mode) => <marker
                 key={mode} id={marker + mode} viewBox="0 0 10 10" refX="8" refY="5"
                 markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto"
               ><path data-mode={mode} d="M 1 1 L 8 5 L 1 9" /></marker>)}
             </defs>
             {edges.map(({ edge, d, mode, unavailable, emphasis }) => <path key={edge.from + "/" + edge.to}
-              d={d} data-mode={mode} data-dim={unavailable} data-emphasis={emphasis}
+              pathLength={mode === "retry" ? undefined : 100} d={d} data-mode={mode} data-dim={unavailable} data-emphasis={emphasis}
               markerEnd={`url(#${marker + mode})`} />)}
+            {moving && edges.map(({ edge, retry, unavailable, emphasis }, i) => {
+              const href = "#" + marker + "edge" + i;
+              const chosen = burst?.node_id === edge.from && burst?.to_node_id === edge.to;
+              const hot = route.nodeState(edge.from) === "active" || emphasis === "connected";
+              return <g key={href} className="tl-thread-current" data-hot={hot} data-kind={edge.kind}
+                data-dim={unavailable && !chosen} style={{ "--phase": `${-i * .67}s`, "--entry": `${i * 35}ms` } as CSSProperties}>
+                <use href={href} className="tl-thread-flow" />
+                {i < 8 && (!narrow || hot) && !unavailable && <circle r={hot ? 3.5 : 2.4} className="tl-thread-particle">
+                  <animateMotion dur={retry ? "3s" : hot ? "1.65s" : "3.8s"} begin={`${-i * .67}s`} repeatCount="indefinite">
+                    <mpath href={href} />
+                  </animateMotion>
+                </circle>}
+                {chosen && <use key={burst.version} href={href} className="tl-thread-surge" />}
+              </g>;
+            })}
           </svg>
           {edges.map(({ edge, label, x, y, retry, unavailable, emphasis }) => label && <span aria-hidden="true"
             key={edge.from + "/" + edge.to} className="tl-thread-edge-label" data-retry={retry}
+            data-chosen={burst?.node_id === edge.from && burst.to_node_id === edge.to}
             data-dim={unavailable} data-emphasis={emphasis} style={{ left: x, top: y }}>{label}</span>)}
-          {layout.ordered.map((id) => {
+          {layout.ordered.map((id, index) => {
             const node = graph.nodes.find((item) => item.id === id)!;
             const state = route.nodeState(id);
             const terminal = !graph.edges.some((edge) => edge.from === id);
             const status = nodeStatus(node, state, terminal);
             return <button
               key={id} type="button" className="tl-thread-graph-node" aria-pressed={selected === id}
-              data-state={state} data-kind={node.kind} data-terminal={terminal}
+              data-attended={attention === id} data-state={state} data-kind={node.kind} data-terminal={terminal}
               data-emphasis={attention ? (neighbors.has(id) ? "connected" : "distant") : undefined}
-              style={{ left: layout.positions.get(id)!.x, top: layout.positions.get(id)!.y, width: cardWidth, height: cardHeight }}
+              style={{ left: layout.positions.get(id)!.x, top: layout.positions.get(id)!.y, width: cardWidth, height: cardHeight,
+                "--period": `${3.8 + (index * 7 % 11) * .2}s`, "--phase": `${-index * 1.57}s`, "--entry": `${index * 35}ms`,
+              } as CSSProperties}
               onPointerEnter={(event) => { if (!drag.current && event.pointerType === "mouse") setHovered(id); }}
               onPointerLeave={() => setHovered(null)}
               onFocus={(event) => {
@@ -261,8 +326,12 @@ export function ThreadGraph({ graph, layout, route, selected, select }: Props) {
               onBlur={() => setFocused(null)}
               onClick={() => select(id)}
             >
-              <StepMark kind={node.kind} state={state} terminal={terminal} />
-              <span><small>{status}</small><strong>{node.title}</strong></span>
+              <span className="tl-thread-float"><span className="tl-thread-skin">
+                <StepMark kind={node.kind} state={state} terminal={terminal} />
+                <span><small>{status}</small><strong>{node.title}</strong></span>
+                {burst && (burst.node_id === id || burst.to_node_id === id) &&
+                  <i key={burst.version} className="tl-thread-burst" data-arrival={burst.to_node_id === id} />}
+              </span></span>
             </button>;
           })}
         </div>

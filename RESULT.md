@@ -1,4 +1,16 @@
-# Threadline — Action Thread Depth Mode
+# Threadline — Kinetic Action Thread graph
+
+Graph opens with a staggered entrance. Each card floats and sways on its own cycle above a fixed connection point. The fitted camera stays centered. Glowing particles follow the workflow curves, with a distinct double pulse on retry loops. Hover or keyboard focus lifts a card and lights its neighbors. A breathing halo and orbit mark the active step.
+
+After a successful progress update and history read, the source flashes, the selected connection carries a surge, and the destination springs into place. Branch labels and arrowheads remain readable. A saved Motion On/Off control, the system reduced-motion preference, page visibility and the mobile profile govern animation. Mobile still opens in List.
+
+Changed `ThreadGraph.tsx`, `ActionThreads.tsx`, and `action-threads.css` in the frontend, `lib/db/scripts/thread-browser-check.mjs`, and the three milestone documents. No new rendering dependencies. Zero Gemini requests.
+
+Authenticated Chromium passed desktop and emulated-mobile workflows, keyboard focus, edge alignment under zoom/pan, decision and retry surges, motion preference persistence, reduced motion, and Graph/List switching. Across 10.2 idle seconds, the eight-node fixture retained one camera position, a card traveled 13.8 screen pixels peak to peak, and a particle crossed 51 distinct vertical pixel positions. The sample recorded 607 frame callbacks and a 16.8 ms 95th-percentile frame interval. Separate screenshots captured the graph before and after the interval. Physical phone battery use, GPU costs and other browsers remain unmeasured.
+
+Workspace typecheck, frontend regressions, frontend security checks, frontend/API builds and offline API/PostgreSQL regressions passed. Current-tree secret audit passed. The full local-history scan still identifies the previously documented authorization metadata in an older backup blob outside main's history.
+
+## Earlier milestone — Action Thread Depth Mode
 
 **Graph** now includes subtle perspective and card elevation by default.
 The view controls are **Graph** and **List**. Narrow screens open in List,

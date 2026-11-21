@@ -116,6 +116,14 @@
 .tl-thread-map-bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; min-height: 46px; gap: 6px; padding: 4px 10px 4px 14px; border-bottom: 1px solid var(--tl-line); }
 .tl-thread-map-bar p, .tl-thread-tools span { color: var(--tl-muted); font-size: .75rem; }
 .tl-thread-tools { display: flex; align-items: center; gap: 4px; margin-inline-start: auto; white-space: nowrap; }
+.threadline .tl-thread-motion { display: inline-flex; align-items: center; gap: 7px; font-size: .8rem; }
+.tl-thread-motion::before {
+  content: ""; width: 19px; height: 11px; border-radius: 12px; border: 1px solid #656d80;
+  background: radial-gradient(circle at 5px 50%, #a0a7bc 3px, transparent 3.5px);
+}
+.tl-thread-motion[aria-pressed="true"]::before {
+  border-color: #a28ed6; background: radial-gradient(circle at 13px 50%, #f2eaff 3px, transparent 3.5px), #65538a;
+}
 .tl-thread-tools span { min-width: 36px; text-align: center; font-variant-numeric: tabular-nums; }
 .threadline .tl-thread-tools button { padding-inline: 8px; }
 .tl-thread-viewport {
@@ -132,7 +140,7 @@
 .tl-thread-plane { position: absolute; inset: 0; }
 .tl-thread-canvas { position: absolute; inset: 0 auto auto 0; transform-origin: 0 0; user-select: none; }
 .tl-thread-connections { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-.tl-thread-connections path { color: #8995ad; stroke-width: 2; }
+.tl-thread-connections path[data-mode] { color: #8995ad; stroke-width: 2; }
 .tl-thread-connections path[data-mode="retry"] { color: var(--tl-accent); }
 .tl-thread-connections > path[data-mode="retry"] { stroke-dasharray: 5 5; }
 .tl-thread-connections path[data-mode="followed"] { color: var(--tl-mint); }
@@ -155,8 +163,9 @@
 }
 .tl-thread-edge-label[data-dim="true"] { color: var(--tl-muted); }
 .tl-thread-edge-label[data-retry="true"] { color: var(--tl-accent); transform: translate(0, -50%); max-width: 110px; }
-.threadline .tl-thread-graph-node {
-  position: absolute;
+.tl-thread-skin {
+  position: relative;
+  width: 100%; height: 100%;
   display: flex;
   align-items: center;
   gap: 9px;
@@ -168,18 +177,18 @@
   line-height: 1.18;
   cursor: pointer;
 }
-.threadline .tl-thread-graph-node:hover:not(:disabled) { background: #242b3a; border-color: #969bb6; }
-.threadline .tl-thread-graph-node[data-kind="decision"] { background: #212033; border-color: #766ba9; }
-.threadline .tl-thread-graph-node[data-terminal="true"] { border-style: double; border-width: 3px; }
-.threadline .tl-thread-graph-node[data-state="complete"] { border-color: #537b75; }
-.threadline .tl-thread-graph-node[data-state="unavailable"] { background: #161b24; border-style: dashed; color: var(--tl-muted); }
-.threadline .tl-thread-graph-node[data-state="active"] { background: #26243b; border-color: var(--tl-accent); }
-.threadline .tl-thread-graph-node[aria-pressed="true"] { box-shadow: 0 0 0 3px #aaa1ff52; }
-.tl-thread-graph-node > span:last-child { min-width: 0; }
+.threadline .tl-thread-graph-node:hover:not(:disabled) .tl-thread-skin { background: #242b3a; border-color: #969bb6; }
+.threadline .tl-thread-graph-node[data-kind="decision"] .tl-thread-skin { background: #212033; border-color: #766ba9; }
+.threadline .tl-thread-graph-node[data-terminal="true"] .tl-thread-skin { border-style: double; border-width: 3px; }
+.threadline .tl-thread-graph-node[data-state="complete"] .tl-thread-skin { border-color: #537b75; }
+.threadline .tl-thread-graph-node[data-state="unavailable"] .tl-thread-skin { background: #161b24; border-style: dashed; color: var(--tl-muted); }
+.threadline .tl-thread-graph-node[data-state="active"] .tl-thread-skin { background: #26243b; border-color: var(--tl-accent); }
+.threadline .tl-thread-graph-node[aria-pressed="true"] .tl-thread-skin { box-shadow: 0 0 0 3px #aaa1ff52; }
+.tl-thread-skin > span:nth-child(2) { min-width: 0; }
 .tl-thread-graph-node small, .tl-thread-graph-node strong { display: block; overflow-wrap: anywhere; }
 .tl-thread-graph-node small { margin-bottom: 4px; color: var(--tl-muted); font-size: .72rem; font-weight: 590; }
 .tl-thread-graph-node[data-state="active"] small { color: var(--tl-accent); }
-.tl-thread-graph-node[data-state="complete"] small { color: var(--tl-mint); }
+.tl-thread-graph-node[data-state="complete"] .tl-thread-step-mark, .tl-thread-graph-node[data-state="complete"] small { color: var(--tl-mint); }
 .tl-thread-graph-node strong { font-weight: 650; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 
 .tl-thread-viewport {
@@ -188,20 +197,20 @@
     radial-gradient(circle, #3a465b 0.7px, transparent 0.9px);
   background-size: 100% 100%, 18px 18px;
 }
-.threadline .tl-thread-viewport .tl-thread-graph-node {
+.threadline .tl-thread-viewport .tl-thread-skin {
   --thread-step-glow: 0 0 0 0 transparent;
   --thread-selection-ring: 0 0 0 0 transparent;
   background-image: linear-gradient(170deg, #ffffff08, transparent 74%);
   box-shadow: var(--thread-selection-ring), var(--thread-step-glow), 0 9px 16px -9px #02040dbf, inset 0 1px #ffffff0b;
-  transition: box-shadow 160ms ease-out, border-color 160ms ease-out, opacity 140ms ease-out;
+
 }
-.threadline .tl-thread-viewport .tl-thread-graph-node[data-state="active"] {
+.threadline .tl-thread-viewport .tl-thread-graph-node[data-state="active"] .tl-thread-skin {
   --thread-step-glow: 0 0 20px -5px #ab92ff78;
 }
-.threadline .tl-thread-viewport .tl-thread-graph-node[aria-pressed="true"] {
+.threadline .tl-thread-viewport .tl-thread-graph-node[aria-pressed="true"] .tl-thread-skin {
   --thread-selection-ring: 0 0 0 3px #aaa1ff52;
 }
-.threadline .tl-thread-viewport .tl-thread-graph-node[data-emphasis="connected"]:not([data-state="unavailable"]) {
+.threadline .tl-thread-viewport .tl-thread-graph-node[data-emphasis="connected"]:not([data-state="unavailable"]) .tl-thread-skin {
   border-color: color-mix(in srgb, var(--tl-accent) 57%, var(--tl-line));
 }
 .tl-thread-viewport .tl-thread-connections > path {
@@ -219,19 +228,113 @@
 .tl-thread-viewport :is(.tl-thread-graph-node, .tl-thread-edge-label)[data-emphasis="distant"] { opacity: .88; }
 
 @media (min-width: 761px) and (prefers-reduced-motion: no-preference) {
-  .tl-thread-viewport[data-can-pan="true"][data-dragging="false"] .tl-thread-plane {
+  .tl-thread-viewport[data-motion="true"][data-dragging="false"] .tl-thread-plane {
     transform: perspective(1400px) rotateX(var(--thread-tilt-x, 0deg)) rotateY(var(--thread-tilt-y, 0deg));
     transition: transform 145ms ease-out;
   }
 }
-@media (prefers-reduced-motion: no-preference) {
-  .tl-thread-viewport .tl-thread-graph-node[data-state="complete"] .tl-thread-step-mark {
-    animation: tl-thread-complete-mark 190ms ease-out;
+/* Fixed luminous terminals join the SVG to each floating face. The transparent
+   button owns focus and hit testing throughout the spring and idle cycle. */
+.threadline button.tl-thread-graph-node,
+.threadline button.tl-thread-graph-node:hover:not(:disabled) {
+  position: absolute; display: block; padding: 0; border: 0; background: transparent;
+  text-align: left; box-shadow: none; cursor: pointer; border-radius: 10px;
+}
+.tl-thread-graph-node::before {
+  content: ""; position: absolute; top: 0; bottom: 0; left: calc(50% - 1.5px); width: 3px;
+  border-radius: 2px; background: #a99cf7; box-shadow: 0 0 7px #9c8eff;
+}
+.tl-thread-float { display: block; width: 100%; height: 100%; pointer-events: none; }
+.tl-thread-skin { box-sizing: border-box; }
+.tl-thread-graph-node[data-attended="true"] { z-index: 2; }
+.tl-thread-edge-label { z-index: 1; }
+.tl-thread-viewport::before {
+  content: ""; position: absolute; inset: -8%; pointer-events: none;
+  background: radial-gradient(ellipse at 26% 31%, #7352d239, transparent 45%),
+    radial-gradient(ellipse at 76% 70%, #3e58bb39, transparent 40%),
+    radial-gradient(1.4px 1.4px at 29px 33px, #afbcff99 80%, transparent),
+    radial-gradient(1px 1px at 131px 78px, #aaa2ff99 80%, transparent);
+  background-size: auto, auto, 169px 113px, 243px 157px;
+}
+@media (min-width: 761px) {
+  [data-motion="true"] .tl-thread-plane::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse at var(--light-x, 50%) var(--light-y, 46%), #9b87ed18, transparent 46%);
   }
 }
-@keyframes tl-thread-complete-mark {
-  0% { transform: scale(.88); }
-  55% { transform: scale(1.08); }
+.tl-thread-edge-label[data-chosen="true"] { color: #e0fff5; border-color: #aaf3db; box-shadow: 0 0 16px #86ffd844; }
+.tl-thread-current { --energy: #a6caff; opacity: .66; animation: tl-light-wave .48s ease-out var(--entry) backwards; }
+@keyframes tl-light-wave { 0% { opacity: .18; } 45% { opacity: 1; filter: brightness(1.9); } }
+.tl-thread-current[data-kind="outcome"] { --energy: #97f3ea; }
+.tl-thread-current[data-kind="retry"] { --energy: #ffabcb; }
+.tl-thread-current[data-hot="true"] { --energy: #d5b4ff; opacity: 1; }
+.tl-thread-current[data-hot="true"][data-kind="retry"] { --energy: #ffabcb; }
+.tl-thread-current[data-dim="true"] { opacity: .16; }
+.tl-thread-flow, .tl-thread-surge {
+  fill: none; stroke: var(--energy); stroke-width: 3px; stroke-dasharray: 9 91;
+  animation: tl-energy 3.8s linear var(--phase) infinite;
+}
+.tl-thread-current[data-hot="true"] .tl-thread-flow { stroke-width: 5px; animation-duration: 1.65s; }
+.tl-thread-current[data-kind="retry"] .tl-thread-flow { stroke-dasharray: 5 3 2 90; }
+.tl-thread-particle { fill: white; stroke: var(--energy); stroke-width: 2; filter: drop-shadow(0 0 4px var(--energy)); }
+.tl-thread-surge { stroke-width: 7px; stroke-dasharray: 26 100; animation: tl-surge .65s ease-out both; }
+@keyframes tl-energy { to { stroke-dashoffset: -100; } }
+@keyframes tl-surge { from { stroke-dashoffset: 26; } to { stroke-dashoffset: -100; } }
+
+[data-motion="true"] .tl-thread-float {
+  animation: tl-float var(--period) ease-in-out var(--phase) infinite alternate,
+    tl-arrive .48s cubic-bezier(.2,1.4,.35,1) var(--entry) backwards;
+}
+[data-motion="true"] .tl-thread-graph-node::after {
+  content: ""; position: absolute; z-index: -1; left: 12%; right: 12%; bottom: -10px; height: 17px;
+  background: radial-gradient(ellipse, #050711b8, transparent 70%);
+  animation: tl-shadow var(--period) ease-in-out var(--phase) infinite alternate;
+}
+@keyframes tl-shadow { from { transform: scaleX(.8); opacity: .45; } to { transform: scaleX(1.12); opacity: 1; } }
+@keyframes tl-float {
+  from { transform: translateY(-7px) rotate(-.85deg); }
+  to { transform: translateY(8px) rotate(.85deg); }
+}
+[data-motion="true"] .tl-thread-skin {
+  transition: transform 320ms cubic-bezier(.2,1.7,.35,1), box-shadow 180ms ease;
+}
+[data-motion="true"] .tl-thread-graph-node[data-state="active"] .tl-thread-float {
+  filter: drop-shadow(0 5px 9px #8866ff38);
+}
+@keyframes tl-arrive { from { opacity: .38; scale: .81; translate: 0 12px; } }
+[data-motion="true"] .tl-thread-connections > path:not([data-mode="retry"]) {
+  animation: tl-wire-in .75s ease-out backwards;
+}
+@keyframes tl-wire-in { from { stroke-dasharray: 0 100; } to { stroke-dasharray: 100 0; } }
+[data-motion="true"] .tl-thread-graph-node[data-emphasis="connected"] .tl-thread-skin { transform: translateY(-3px) scale(1.018); }
+[data-motion="true"] .tl-thread-graph-node[data-attended="true"] .tl-thread-skin {
+  transform: translateY(-6px) scale(1.085); border-color: #cbbcff;
+  --thread-step-glow: 0 4px 27px #aa80ff88;
+}
+[data-motion="true"] .tl-thread-graph-node[data-state="active"] .tl-thread-skin::before,
+.tl-thread-burst {
+  content: ""; position: absolute; inset: -3px; border-radius: inherit; pointer-events: none;
+  border: 1px solid #ceaeff; box-shadow: 0 0 18px 4px #9262fc80;
+  animation: tl-halo 1.8s ease-in-out infinite alternate;
+}
+@keyframes tl-halo { from { opacity: .34; scale: .99; } to { opacity: 1; scale: 1.025; } }
+[data-motion="true"] [data-state="active"] .tl-thread-step-mark { position: relative; }
+[data-motion="true"] [data-state="active"] .tl-thread-step-mark::after {
+  content: ""; position: absolute; inset: -3px; border-radius: 50%; border: 2px solid transparent;
+  border-top-color: #e3cdff; border-right-color: #9266f866; animation: tl-orbit 2.5s linear infinite;
+}
+@keyframes tl-orbit { to { transform: rotate(1turn); } }
+.tl-thread-burst { background: #a9ffe783; border-color: #baffec; animation: tl-burst .6s ease-out both; }
+@keyframes tl-burst { to { transform: scale(1.17,1.48); opacity: 0; } }
+.tl-thread-burst[data-arrival="true"] { animation-delay: .36s; animation-name: tl-arrival-ring; animation-fill-mode: forwards; opacity: 0; }
+@keyframes tl-arrival-ring { from { opacity: .8; } to { opacity: 0; scale: 1.14 1.4; } }
+@keyframes tl-ignite { 0% { scale: .93; } 48% { scale: 1.08; } }
+[data-motion="true"] .tl-thread-skin:has(.tl-thread-burst[data-arrival="true"]) { animation: tl-ignite .48s .35s both; }
+[data-motion="true"].tl-thread-viewport::before { animation: tl-nebula 14s ease-in-out infinite alternate; }
+@keyframes tl-nebula { to { transform: translate(3%, -3%) scale(1.05); } }
+@media (max-width: 760px) {
+  [data-motion="true"] .tl-thread-float { animation-duration: calc(var(--period) * 1.55), .48s; }
+  [data-motion="true"].tl-thread-viewport::before { animation: none; }
 }
 .tl-thread-step-mark { display: inline-grid; flex: none; place-items: center; width: 27px; height: 27px; border-radius: 6px; color: var(--tl-accent); background: #aaa1ff13; }
 [data-state="complete"] > .tl-thread-step-mark, [data-state="complete"] > button > .tl-thread-step-mark { color: var(--tl-mint); background: #95dbc413; }

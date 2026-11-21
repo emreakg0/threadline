@@ -595,3 +595,10 @@ Added migration 0008 and server-side checks tying consent, the authenticated own
 - Updated the browser checks for the stationary fitted graph, axis-specific
   pan, zoom-out, and zoomed touch gestures. No backend changes or Gemini
   requests.
+
+### Kinetic Action Thread graph
+
+- Extended ThreadGraph.tsx and action-threads.css with fixed SVG terminals and independently animated card faces. The layered faces keep the hit target and coordinates stable during lift and sway. Added graph-local motion settings and visibility handling.
+- Passed the confirmed progress event from ActionThreads.tsx so a selected outcome or retry can animate after persistence. Updated thread-browser-check.mjs with timed idle samples, frame captures, preference, branch, retry and mobile checks.
+- Workspace typecheck, frontend regression and security tests, both builds and offline PostgreSQL/API regressions passed. Updated RESULT.md and PROJECT_STATUS.md. No Gemini requests.
+- The complete authenticated Chromium suite passed on desktop and emulated mobile. Multiple idle captures showed about 14 px of card travel with one fitted camera position across 10.2 seconds.

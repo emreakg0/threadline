@@ -3,7 +3,7 @@ import { ApiError } from "../api";
 import { WorkspaceIcon } from "../WorkspaceIcon";
 import {
   getProgress, getThread, listThreads, submitProgress, threadsRoute, threadStatus,
-  type ThreadCommand, type ThreadDetail, type ThreadOperation, type ThreadProgress, type ThreadSummary,
+  type ThreadEvent, type ThreadCommand, type ThreadDetail, type ThreadOperation, type ThreadProgress, type ThreadSummary,
 } from "./data";
 import { layoutThread, projectRoute } from "./layout";
 import { ThreadGraph, ThreadList } from "./ThreadGraph";
@@ -80,6 +80,7 @@ function ThreadWorkspace({ id }: { id: string }) {
   const [snapshot, setSnapshot] = useState<ThreadProgress | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [confirmed, setConfirmed] = useState<ThreadEvent | null>(null);
   const [busy, setBusy] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [retryCommand, setRetryCommand] = useState<ThreadCommand | null>(null);
@@ -135,6 +136,9 @@ function ThreadWorkspace({ id }: { id: string }) {
       if (!mounted.current) return;
       focusInspector.current = true;
       setRetryCommand(null);
+      const event = progress.events[command.expected_version];
+      if (event?.operation === command.operation && ["complete", "decide", "retry"].includes(event.operation))
+        setConfirmed(event);
       setSelection(progress.progress.active_node_id ?? selected);
       setSnapshot(progress);
     } catch (cause) {
@@ -227,7 +231,7 @@ function ThreadWorkspace({ id }: { id: string }) {
       </div>
       <div className="tl-thread-columns">
         <div className="tl-thread-route">
-          {shown === "graph" ? <ThreadGraph {...graphProps} /> : <ThreadList {...graphProps} />}
+          {shown === "graph" ? <ThreadGraph {...graphProps} confirmed={confirmed} narrow={narrow} /> : <ThreadList {...graphProps} />}
         </div>
         {node && <div className="tl-thread-side"><ThreadInspector
           key={node.id + "/" + snapshot.progress.version} graph={graph} node={node}
