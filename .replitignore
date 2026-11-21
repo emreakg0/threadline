@@ -4,3 +4,10 @@
 # No need to store the pnpm store twice.
 .local
 /artifacts/api-server/.local/
+
+.git
+.env
+.env.*
+**/.env
+**/.env.*
+**/.local

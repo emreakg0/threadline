@@ -8,7 +8,7 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "THREADLINE_GEMINI_LIVE_AUTHORIZED=false pnpm run test:offline",
+    "test": "THREADLINE_PRODUCTION_AI_APPROVED=false THREADLINE_GEMINI_LIVE_AUTHORIZED=false pnpm run test:offline",
     "test:authorization": "tsx src/extraction/authorization.test.ts",
     "test:action-thread": "tsx --test src/action-thread/graph.test.ts",
     "test:action-thread:integration": "tsx src/action-thread/integration.test.ts",

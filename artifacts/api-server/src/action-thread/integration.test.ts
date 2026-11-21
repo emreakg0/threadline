@@ -23,7 +23,7 @@ const { recoverExpired } = await import("../extraction/lifecycle");
 const { extract } = await import("../extraction/service");
 const { ENDPOINT, MODEL, gemini, tokenReservation } = await import("../extraction/gemini");
 const { ExtractionError } = await import("../extraction/validation");
-const users = [randomUUID(), randomUUID()];
+const users = [0, 1].map(() => BigInt("0x" + randomBytes(12).toString("hex")).toString());
 const sessions = users.map(() => randomBytes(32).toString("hex"));
 const mockRoute = "/test-action-threads";
 const route = "/action-threads";
@@ -73,7 +73,7 @@ const submission = (document: Document) => ({
 type Job = { id: string; status: string; schema_version: number };
 const enqueue = (body: ReturnType<typeof submission>) =>
   request<Job>(mockRoute, 202, { method: "POST", body });
-const detail = (id: string) => request<{ graph: ActionThread; source_revision_id: string; provider: string }>(`${route}/${id}`, 200);
+const detail = (id: string, user = 0) => request<{ graph: ActionThread; source_revision_id: string; provider: string }>(`${route}/${id}`, 200, { user });
 type Progress = Awaited<ReturnType<typeof readProgress>>;
 const progress = (id: string, after = 0) => request<Progress>(`${route}/${id}/progress?after_version=${after}`, 200);
 const withVersion = (operation: ThreadOperation, version: number) => ({
@@ -91,16 +91,16 @@ const complete = (id: string, state: Progress["progress"], node_id: string) =>
   change(id, state, { operation: "complete", node_id });
 const decide = (id: string, state: Progress["progress"], node_id: string, to_node_id: string) =>
   change(id, state, { operation: "decide", node_id, to_node_id });
-const apiRun = (id: string) =>
-  request<{ run: Job & { error_code: string }; blocks: unknown[] }>(`/extractions/${id}`, 200);
+const apiRun = (id: string, user = 0) =>
+  request<{ run: Job & { error_code: string }; blocks: unknown[] }>(`/extractions/${id}`, 200, { user });
 const mock = (output: unknown) => ({ mode: "mock" as const, generate: async () => JSON.stringify(output) });
 
-async function failed(id: string, status: string, error?: string) {
-  const { run, blocks } = await apiRun(id);
+async function failed(id: string, status: string, error?: string, user = 0) {
+  const { run, blocks } = await apiRun(id, user);
   assert.equal(run.status, status);
   if (error) assert.equal(run.error_code, error);
   assert.deepEqual(blocks, []);
-  await request(`${route}/${id}`, 404);
+  await request(`${route}/${id}`, 404, { user });
   for (const table of ["threads", "thread_nodes", "thread_edges", "thread_progress", "thread_transitions"]) {
     const column = table === "threads" ? "id" : "thread_id";
     assert.equal((await pool.query(`SELECT 1 FROM threadline_action_${table} WHERE ${column}=$1`, [id])).rowCount, 0);
@@ -308,7 +308,7 @@ try {
   const live = await extract(users[0], latest, randomUUID(), "gemini", 3, grant.id);
   assert.equal(await processOne(gemini, live.id), false);
   await failed(live.id, "failed", "THREAD_LIVE_DISABLED");
-  await assert.rejects(gemini.generate(calcSource, undefined, 3, latest, { id: live.id, lease_token: randomUUID() }),
+  await assert.rejects(gemini.generate(calcSource, undefined, 3, latest, { id: live.id, lease_token: randomUUID(), user_id: users[0] }),
     { code: "THREAD_LIVE_DISABLED" });
   const wire = actionThreadRequest(calcSource);
   assert.equal(wire.generationConfig.maxOutputTokens, 4096);
@@ -401,6 +401,84 @@ try {
     process.chdir(originalDirectory);
     rmSync(privateDirectory, { recursive: true, force: true });
   }
+  process.env.NODE_ENV = "production";
+  delete process.env.THREADLINE_PRODUCTION_AI_APPROVED;
+  const prodInputs = await Promise.all([0, 0, 0, 1, 1, 1].map(async (user) => submission(await save(calcSource, user))));
+  const prodSubmit = (index: number, status = 202, user = index < 3 ? 0 : 1) =>
+    request<Job & { error?: string }>(route, status, { method: "POST", user, body: prodInputs[index] });
+  assert.equal((await prodSubmit(0, 503)).error, "THREAD_LIVE_DISABLED");
+  process.env.THREADLINE_PRODUCTION_AI_APPROVED = "true";
+  process.env.THREADLINE_PRODUCTION_GEMINI_API_KEY = "offline-production-fixture";
+  assert.equal((await prodSubmit(0, 503)).error, "PRODUCTION_AI_UNCONFIGURED");
+  process.env.THREADLINE_PRODUCTION_GEMINI_KEY_SHA256 = createHash("sha256").update("offline-production-fixture").digest("hex");
+  process.env.THREADLINE_PRODUCTION_AI_SUBJECTS = users[0];
+  process.env.THREADLINE_PRODUCTION_AI_DAILY = "4";
+  process.env.THREADLINE_PRODUCTION_AI_RPM = "2";
+  process.env.THREADLINE_PRODUCTION_AI_TPM = "60000";
+  assert.equal((await prodSubmit(3, 403)).error, "PRODUCTION_AI_COHORT");
+  await request(route, 401, { method: "POST", user: null, body: prodInputs[0] });
+  await request(route, 400, { method: "POST", body: { ...prodInputs[0], consent: false } });
+  await request(route, 404, { method: "POST", body: prodInputs[3] });
+  process.env.THREADLINE_PRODUCTION_AI_SUBJECTS = users.join(",");
+  // Ignore only fixture development reservations when testing production quotas.
+  await pool.query("UPDATE threadline_execution_steps SET started_at=now()-interval '2 days' WHERE reserved_tokens IS NOT NULL");
+  const [first, concurrentReplay, second] = await Promise.all([prodSubmit(0), prodSubmit(0), prodSubmit(3)]);
+  assert.equal(first.id, concurrentReplay.id);
+  assert.equal((await prodSubmit(1, 429)).error, "QUEUE_FULL");
+  const [primary, competing] = await Promise.all([claim("gemini", first.id), claim("gemini", second.id)]);
+  assert.equal(Number(!!primary) + Number(!!competing), 1);
+  const claimToRun = primary ?? competing!;
+  let productionCalls = 0;
+  providerFixture = (init) => {
+    assert.equal(new Headers(init?.headers).get("x-goog-api-key"), "offline-production-fixture");
+    productionCalls++;
+    return productionCalls === 1 ? new Response("", { status: 503 })
+      : Response.json({ candidates: [{ finishReason: "STOP", content: { parts: [{ text: JSON.stringify(calcPlan()) }] } }] });
+  };
+  await assert.rejects(gemini.generate(calcSource, undefined, 3, claimToRun.source_revision_id, {
+    ...claimToRun, user_id: users.find(user => user !== claimToRun.user_id)!,
+  }), { code: "PRODUCTION_AI_CONSENT" });
+  delete process.env.THREADLINE_PRODUCTION_AI_APPROVED;
+  await assert.rejects(gemini.generate(calcSource, undefined, 3, claimToRun.source_revision_id, claimToRun),
+    { code: "THREAD_LIVE_DISABLED" });
+  assert.equal(productionCalls, 0);
+  process.env.THREADLINE_PRODUCTION_AI_APPROVED = "true";
+  let firstError: unknown;
+  try {
+    await gemini.generate(calcSource, undefined, 3, claimToRun.source_revision_id, claimToRun);
+  } catch (error) { firstError = error; }
+  assert.ok(firstError instanceof ExtractionError && firstError.code === "PROVIDER_TRANSIENT");
+  await assert.rejects(gemini.generate(calcSource, undefined, 3, claimToRun.source_revision_id, claimToRun),
+    { code: "PRODUCTION_AI_CONSENT" });
+  const { fail } = await import("../extraction/worker");
+  await fail(claimToRun, firstError);
+  await failed(claimToRun.id, "failed", "PROVIDER_TRANSIENT", users.indexOf(claimToRun.user_id));
+  assert.equal(await processOne(gemini, claimToRun.id), false);
+  const pending = claimToRun.id === first.id ? second : first;
+  assert.equal(await processOne(gemini, pending.id), false, "enforce minimum dispatch spacing");
+  await pool.query("UPDATE threadline_execution_steps SET started_at=now()-interval '7 seconds' WHERE run_id=$1 AND step_key='extract'", [claimToRun.id]);
+  process.env.THREADLINE_PRODUCTION_AI_TPM = String(tokenReservation(calcSource, 3));
+  assert.equal(await processOne(gemini, pending.id), false, "enforce project TPM");
+  process.env.THREADLINE_PRODUCTION_AI_TPM = "60000";
+  assert.equal(await processOne(gemini, pending.id), true);
+  assert.equal((await detail(pending.id, pending.id === first.id ? 0 : 1)).provider, "gemini");
+  const third = await prodSubmit(1);
+  assert.equal(await processOne(gemini, third.id), false, "initially not spaced");
+  await pool.query("UPDATE threadline_execution_steps SET started_at=GREATEST(now()-interval '7 seconds', (date_trunc('day', now() AT TIME ZONE 'America/Los_Angeles') AT TIME ZONE 'America/Los_Angeles')) WHERE run_id=$1 AND step_key='extract'", [pending.id]);
+  assert.equal(await processOne(gemini, third.id), false, "enforce project RPM");
+  // Move the first two fixture reservations outside the RPM window while retaining daily accounting.
+  await pool.query("UPDATE threadline_execution_steps SET started_at=now()-interval '61 seconds' WHERE run_id=ANY($1::uuid[]) AND step_key='extract'", [[first.id, second.id]]);
+  assert.equal(await processOne(gemini, third.id), true);
+  assert.equal((await prodSubmit(2, 429)).error, "DAILY_QUOTA");
+  const fourth = await prodSubmit(4);
+  assert.equal((await prodSubmit(5, 429)).error, "DAILY_QUOTA");
+  await pool.query("UPDATE threadline_execution_steps SET started_at=now()-interval '7 seconds' WHERE run_id=$1 AND step_key='extract'", [third.id]);
+  assert.equal(await processOne(gemini, fourth.id), true);
+  assert.equal(productionCalls, 4);
+  assert.equal((await pool.query("SELECT count(*)::int n FROM threadline_runs WHERE production_dispatched_at IS NOT NULL")).rows[0].n, 4);
+  assert.equal((await pool.query("SELECT used FROM threadline_beta_grant")).rows[0].used, 3);
+  providerFixture = undefined;
+  console.log("PASS: production cohort, consent, private key binding, deduplication, queue and dispatch quotas, exclusive leases, validation, and no uncertain resend through offline transport");
   assert.equal((await pool.query("SELECT 1 FROM focus_tasks")).rowCount, 0);
   assert.equal((await pool.query("SELECT 1 FROM threadline_knowledge_blocks")).rowCount, 0);
   console.log("PASS: authenticated v3 persistence, Calc 2 branches, alternative-path convergence, cumulative retry, restart, concurrency, ownership, provenance, atomic rollback, trace, provider error, cancellation, timeout, recovery and closed live gate");

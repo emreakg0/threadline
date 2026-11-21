@@ -1,3 +1,4 @@
+import { productionMode } from "../extraction/production";
 import { Router } from "express";
 import { pool } from "@workspace/db";
 import { appendEvent, cancel, transaction } from "../extraction/lifecycle";
@@ -15,12 +16,14 @@ function publicRun({
   lease_token,
   consent_grant_id,
   beta_dispatched_at,
+  production_consented_at,
+  production_dispatched_at,
   ...run
 }: Record<string, unknown>) {
   return run;
 }
 export function planningAdmission(
-  providerCheck: (sourceId?: string) => void,
+  providerCheck: (sourceId?: string, version?: 2, user?: string) => void,
   mode: "gemini" | "mock",
 ) {
   const router = Router();
@@ -49,10 +52,11 @@ export function planningAdmission(
       return;
     }
     try {
-      providerCheck(b.source_revision_id);
+      const production = mode === "gemini" && productionMode();
+      providerCheck(b.source_revision_id, 2, res.locals.userId);
       if (b.consent !== true)
         throw new ExtractionError("CONSENT_REQUIRED", 400);
-      const grant = await activeBetaGrant(res.locals.userId);
+      const grant = production ? undefined : await activeBetaGrant(res.locals.userId);
       if (b.schema_version === 1)
         throw new ExtractionError("PLANNING_SCHEMA_REQUIRED", 400);
       const run = await extract(
@@ -62,6 +66,7 @@ export function planningAdmission(
         mode,
         2,
         grant,
+        production,
       );
       res.status(202).json(publicRun(run));
     } catch (e) {
@@ -81,8 +86,8 @@ export function planningAdmission(
       return;
     }
     try {
-      providerCheck(req.query.source_revision_id as string | undefined);
-      await activeBetaGrant(res.locals.userId);
+      providerCheck(req.query.source_revision_id as string | undefined, 2, res.locals.userId);
+      if (mode === "mock" || !productionMode()) await activeBetaGrant(res.locals.userId);
       res.json({ enabled: true });
     } catch (e) {
       if (!(e instanceof ExtractionError)) throw e;

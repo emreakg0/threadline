@@ -29,6 +29,7 @@ BASE_PATTERNS = {
     'npm token': rb'\bnpm_[A-Za-z0-9]{30,}',
     'credential assignment': rb'(?i)(?:client_secret|private_key|access_token|refresh_token|_authToken)\s*[\"\']?\s*[:=]\s*[\"\'][A-Za-z0-9_+/=-]{24,}[\"\']',
     'key fingerprint': rb'(?i)(?:key[_-]?sha256|key[_-]?fingerprint|(?:gemini|api[_-]?key)[_-]?(?:sha256|fingerprint))[^a-z0-9\r\n]{1,16}(?:sha256:)?[a-f0-9]{64}\b',
+    'production approval data assignment': rb'(?im)^\s*(?:export\s+)?["\']?THREADLINE_PRODUCTION_(?:GEMINI_API_KEY|GEMINI_KEY_SHA256|AI_SUBJECTS)["\']?\s*=[ \t]*[^\s#]+',
     'beta authorization assignment': rb'(?im)^\s*(?:export\s+)?[\"\']?THREADLINE_GEMINI_(?:FREE_TIER_APPROVAL|LIVE_AUTHORIZED)[\"\']?\s*=\s*\S+',
 }
 

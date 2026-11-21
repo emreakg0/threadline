@@ -21,6 +21,7 @@ node_modules
 .env
 .env.*
 !.env.example
+!.env.example
 *.log
 
 # Local credentials, OAuth downloads, tokens and machine configuration

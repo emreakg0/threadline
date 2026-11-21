@@ -608,3 +608,10 @@ Added migration 0008 and server-side checks tying consent, the authenticated own
 - Updated extraction claims, worker and lifecycle events to associate source failures and cancellations with the affected stage, distinguish terminal outcomes from retries, and record confirmed rollback, reconciliation and cooldown information.
 - Added an owner-scoped, idempotent manual-plan choice to the extraction routes and expanded event types through migration 0011. How It Works resolves the pinned source revision and displays recorded recovery separately from available actions.
 - Extended the authenticated Chromium harness with offline faults, exact source checks, graph rollback and choice replay. See RESULT.md for verification and remaining scope.
+
+### Stage 4B — Public release candidate
+
+- Added production-only AI policy, database consent/dispatch markers, and offline cohort, idempotency, quota and provider error checks. Preserved the development evaluation gates.
+- Added HTTPS production OAuth with PKCE, bounded OAuth state issuance, static release hosting and readiness. Exercised a pre-0011 trace across upgrade and rerun.
+- Added visitor replay using allowlisted synthetic trace exports, landing links and privacy/terms pages. Added launch, licensing and contributor documentation and removed an unused dependency.
+- Verified locally with the built server and offline tests. Recorded external and publication blockers in RESULT.md and RELEASE.md. No live provider requests.

@@ -546,3 +546,9 @@ Authenticated Chromium verified ambient motion over time, fixed camera and align
 ### Stage 4A — Observable execution failures
 
 How It Works now shows a cursor-gated failure branch, verified immutable revision, available recovery options and recorded manual-plan choices. The offline harness exercises success, provider failure, lease reconciliation, invalid output, partial graph rollback, source rejection and cancellation. Migration 0011 expands the trace event vocabulary. Hosted verification and the separate Stage 3 live evaluation remain pending.
+
+### Stage 4B — Public release candidate
+
+Production now has a closed-by-default, dedicated-key AI pilot with persisted consent and dispatch markers. Google OAuth uses PKCE and HTTPS in production. The same-origin build includes an anonymous, synthetic execution demo and privacy/terms pages.
+
+The next release gate is separate approval for one development v3 acceptance attempt, followed by hosted OAuth, worker, privacy and publication verification. Stage 4C public launch is a no-go until those checks are complete. See RELEASE.md and RESULT.md.

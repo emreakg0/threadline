@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { closeSync, constants, fstatSync, openSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { actionThreadRequest } from "../action-thread/prompt";
+import { productionMode, productionPolicy } from "./production";
 import { logger } from "../lib/logger";
 import { ExtractionError, planSchema, type SchemaVersion } from "./validation";
 
@@ -98,7 +99,8 @@ function freeTierApproval(approval: unknown): {
   }
 }
 
-export function liveAccess(sourceId?: string, version: SchemaVersion = 2) {
+export function liveAccess(sourceId?: string, version: SchemaVersion = 2, user?: string) {
+  if (productionMode() && process.env.THREADLINE_PRODUCTION_AI_APPROVED === "true" && (version === 2 || version === 3)) return productionPolicy(user).key;
   if (version === 3 && process.env.NODE_ENV !== "development")
     throw new ExtractionError("THREAD_LIVE_DISABLED", 503);
   if (process.env.NODE_ENV === "production")
@@ -135,7 +137,7 @@ export interface Adapter {
     signal?: AbortSignal,
     version?: SchemaVersion,
     sourceId?: string,
-    claim?: { id: string; lease_token: string },
+    claim?: { id: string; lease_token: string; user_id: string },
   ): Promise<string>;
 }
 
@@ -274,6 +276,30 @@ async function requestDiagnostic(response: Response): Promise<Diagnostic> {
   return diagnostic;
 }
 
+// Bound the complete provider envelope, including metadata and unused candidates.
+async function readResponseJson(response: Response): Promise<unknown> {
+  const reader = response.body?.getReader();
+  if (!reader) throw new ExtractionError("INVALID_JSON");
+  const limit = 256 * 1024;
+  const bytes = new Uint8Array(limit);
+  let length = 0;
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, length)));
+      if (length + value.length > limit) throw new ExtractionError("PROVIDER_OUTPUT_LIMIT");
+      bytes.set(value, length);
+      length += value.length;
+    }
+  } catch (error) {
+    if (error instanceof ExtractionError) throw error;
+    throw new ExtractionError("INVALID_JSON");
+  } finally {
+    void reader.cancel().catch(() => {});
+    reader.releaseLock();
+  }
+}
+
 export async function readPlanningResponse(
   response: Response,
   now = Date.now(),
@@ -286,6 +312,7 @@ export async function readPlanningResponse(
       "Gemini HTTP failure",
     );
   if (response.status === 429) {
+    void response.body?.cancel().catch(() => {});
     const header = response.headers.get("retry-after")?.trim() ?? "";
     const seconds = /^\d+$/.test(header)
       ? Number(header)
@@ -298,7 +325,8 @@ export async function readPlanningResponse(
   }
   if (response.status === 400)
     throw new ProviderRequestError(await requestDiagnostic(response));
-  if (!response.ok)
+  if (!response.ok) {
+    void response.body?.cancel().catch(() => {});
     throw new ExtractionError(
       response.status === 401 || response.status === 403
         ? "PROVIDER_AUTH"
@@ -309,10 +337,9 @@ export async function readPlanningResponse(
             : "PROVIDER_REJECTED",
       502,
     );
+  }
   // Provider responses are untrusted and may echo the source. Never surface their content in errors.
-  const r = (await response.json().catch(() => {
-    throw new ExtractionError("INVALID_JSON");
-  })) as {
+  const r = (await readResponseJson(response)) as {
     candidates?: {
       finishReason?: string;
       content?: { parts?: { text?: string; thought?: boolean }[] };
@@ -348,17 +375,17 @@ export async function readPlanningResponse(
 export const gemini: Adapter = {
   mode: "gemini",
   async generate(source, signal, version, sourceId, claim) {
-    let key = liveAccess(sourceId, version);
+    let key = liveAccess(sourceId, version, claim?.user_id);
     if (version !== 2 && version !== 3) throw new ExtractionError("MODEL_CONFIG_CHANGED");
     if (!claim || !sourceId) throw new ExtractionError("BETA_UNAVAILABLE", 403);
     const request = requestForVersion(source, version);
-    const { consumeBetaDispatch } = await import("./beta");
-    if (version === 3) liveAccess(sourceId, version);
+    const { consumeBetaDispatch, consumeProductionDispatch } = await import("./beta");
     signal?.throwIfAborted();
-    await consumeBetaDispatch(claim.id, claim.lease_token, sourceId);
+    if (productionMode()) await consumeProductionDispatch(claim.id, claim.lease_token, sourceId, claim.user_id);
+    else await consumeBetaDispatch(claim.id, claim.lease_token, sourceId);
     signal?.throwIfAborted();
     // Re-read the private switch after the database wait, immediately before transport.
-    if (version === 3) key = liveAccess(sourceId, version);
+    key = liveAccess(sourceId, version, claim.user_id);
     let response: Response;
     try {
       response = await fetch(ENDPOINT, {

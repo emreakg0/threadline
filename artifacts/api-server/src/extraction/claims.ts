@@ -3,6 +3,7 @@ import { pool } from "@workspace/db";
 import { liveAccess, MODEL, tokenReservation, type Adapter } from "./gemini";
 import { validateSource as validateThreadSource } from "../action-thread/contract";
 import { transaction, appendEvent, reconcile, type Client } from "./lifecycle";
+import { productionMode, productionPolicy } from "./production";
 import { ExtractionError, formats, type SchemaVersion } from "./validation";
 import {
   geminiUsage,
@@ -35,7 +36,7 @@ export async function owned(c: Client, r: Claim) {
 export async function claim(
   mode: Adapter["mode"],
   id?: string,
-  authorize?: (sourceId: string, version: SchemaVersion) => void,
+  authorize?: (sourceId: string, version: SchemaVersion, user?: string) => void,
 ): Promise<Claim | null> {
   return transaction(async (c) => {
     await c.query("SELECT pg_advisory_xact_lock(72810382)");
@@ -50,8 +51,8 @@ export async function claim(
       return null;
     const r = (
       await c.query(
-        `SELECT * FROM threadline_runs WHERE status='queued' AND provider=$1 AND ($2::uuid IS NULL OR id=$2) AND (lease_expires_at IS NULL OR lease_expires_at<=now()) ORDER BY created_at,id FOR UPDATE SKIP LOCKED LIMIT 1`,
-        [mode, id ?? null],
+        `SELECT * FROM threadline_runs WHERE status='queued' AND provider=$1 AND ($1<>'gemini' OR (production_consented_at IS NOT NULL)=$3) AND ($2::uuid IS NULL OR id=$2) AND (lease_expires_at IS NULL OR lease_expires_at<=now()) ORDER BY created_at,id FOR UPDATE SKIP LOCKED LIMIT 1`,
+        [mode, id ?? null, productionMode()],
       )
     ).rows[0];
     if (!r) return null;
@@ -123,7 +124,8 @@ export async function claim(
     ).rows[0];
     const checkAccess = mode === "gemini" && r.schema_version === 3 ? liveAccess : authorize;
     try {
-      checkAccess?.(r.source_revision_id, r.schema_version);
+      checkAccess?.(r.source_revision_id, r.schema_version, r.user_id);
+      if (mode === "gemini" && productionMode()) productionPolicy(r.user_id);
     } catch (error) {
       if (error instanceof ExtractionError) return stop(error.code);
       throw error;
@@ -136,16 +138,18 @@ export async function claim(
     }
     let reservation: number | null = null;
     if (mode === "gemini") {
+      const policy = productionMode() ? productionPolicy(r.user_id)
+        : { projectDaily, userDaily, requestsPerMinute, tokensPerMinute };
       reservation = tokenReservation(source.source_text, r.schema_version);
-      if (reservation > tokensPerMinute) return stop("SOURCE_TOO_LARGE", sourceStarted);
+      if (reservation > policy.tokensPerMinute) return stop("SOURCE_TOO_LARGE", sourceStarted);
       const usage = await geminiUsage(c, r.user_id);
       if (usage.blocked) return stop("QUOTA_EXHAUSTED");
-      if (usage.daily >= projectDaily || usage.user_daily >= userDaily)
+      if (usage.daily >= policy.projectDaily || usage.user_daily >= policy.userDaily)
         return stop("DAILY_QUOTA");
       if (
         !usage.spaced ||
-        usage.rpm >= requestsPerMinute ||
-        usage.tpm + reservation > tokensPerMinute
+        usage.rpm >= policy.requestsPerMinute ||
+        usage.tpm + reservation > policy.tokensPerMinute
       )
         return null;
     }

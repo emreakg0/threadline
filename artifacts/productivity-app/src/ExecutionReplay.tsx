@@ -12,7 +12,7 @@ import {
 } from "./replay";
 import { api } from "./api";
 import { TraceInspector } from "./TraceInspector";
-export function ExecutionReplay({ trace }: { trace: Trace }) {
+export function ExecutionReplay({ trace, demo = false }: { trace: Trace; demo?: boolean }) {
   const times = useMemo(() => schedule(trace.events), [trace.events]);
   const end = times.at(-1) ?? 0;
   const [position, setPosition] = useState(end),
@@ -220,7 +220,9 @@ export function ExecutionReplay({ trace }: { trace: Trace }) {
             <time dateTime={branch.terminal.payload.retry_at}>{new Date(branch.terminal.payload.retry_at).toLocaleString()}</time>.
             Eligibility also depends on current quota and access.</p>}
           {trace.run.source_revision !== undefined &&
-            <p><strong>Input preserved</strong><br />Revision {trace.run.source_revision} is still in the saved brain dump’s history.</p>}
+            <p><strong>Input preserved</strong><br />{demo
+              ? `The test retrieved the exact original text of synthetic revision ${trace.run.source_revision} after processing failed.`
+              : `Revision ${trace.run.source_revision} is still in the saved brain dump’s history.`}</p>}
           {branch.selected && <p><strong>Alternative selected</strong><br />{branch.selected.payload.action}</p>}
           {branch.terminal && document && (
             <div className="execution-recovery-options">
@@ -333,6 +335,7 @@ export function ExecutionReplay({ trace }: { trace: Trace }) {
           event={activeEvent}
           stage={nodeSelected ? node : undefined}
           step={step}
+          demo={demo}
           finalStep={!!metadataStep || (!!step && trace.events.slice(0, index + 1).some((e) =>
             e.step_id === step.id && ["step_completed", "step_failed", "interrupted", "cancelled"].includes(e.event_type)))}
         />

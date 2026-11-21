@@ -1,4 +1,35 @@
-# Threadline — Stage 4A observable failure handling and recovery
+# Threadline — Stage 4B public release readiness
+
+**No-go for Stage 4C public launch.** The release candidate passes local production and offline verification. Actual Gemini v3 acceptance, hosted OAuth and worker uptime, privacy operations, and open-source sign-off remain launch gates.
+
+## Implemented
+
+- Production Gemini requires a dedicated key bound to its approved fingerprint, explicit opt-in and eligible Google subjects. It enforces consent per saved revision, idempotency, atomic reservations and dispatch, daily and per-minute caps, bounded queues and one active worker lease. Development keeps the owner grant and three-dispatch evaluation cap. Manual planning is available while AI is off.
+- Google OAuth requires HTTPS in production and uses one-time state and PKCE. Sessions use hashed tokens and secure cookies. Expiration is surfaced in the workspace without discarding the open draft.
+- The production server serves a same-origin frontend and API, checks database readiness and drains the worker on shutdown. Migration 0012 adds production consent and dispatch markers.
+- The landing page links to sign-in, privacy, terms and a visitor demo using recorded offline test runs. The demo strips source text and database identifiers, and includes recorded success, graph rollback, manual-plan selection, and exact source preservation verified by the test. Private API access still requires a session.
+- Updated local and contributor setup, private security reporting, example environment, and the proposed MIT release. Removed an unused dependency with no detected license metadata.
+
+## Environment names
+
+Workspace names are `NODE_ENV`, `PORT`, `DATABASE_URL`, `APP_ORIGIN`, `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+
+Separately approved AI configuration uses `THREADLINE_PRODUCTION_AI_APPROVED`, `THREADLINE_PRODUCTION_GEMINI_API_KEY`, `THREADLINE_PRODUCTION_GEMINI_KEY_SHA256`, `THREADLINE_PRODUCTION_AI_SUBJECTS`, `THREADLINE_PRODUCTION_AI_DAILY`, `THREADLINE_PRODUCTION_AI_RPM` and `THREADLINE_PRODUCTION_AI_TPM`.
+
+## Launch gates
+
+- Configure the production Google Auth Platform branding, owned domain, support contacts, policy URLs, External audience and test users. Keep identity-only scopes, create a Web application client, and register the exact HTTPS `/api/auth/google/callback`. Complete Google verification as required and run the hosted authentication checks. [OAuth setup and operator checklist](RELEASE.md#google-auth-platform-setup)
+- Keep production AI disabled while verifying the project's active Free Tier terms and quotas, cohort eligibility and worker uptime. The model lists structured output support and the offline wire and response tests passed. Actual v3 generation remains unverified. The next live test requires separate approval and a valid development grant, and uses one synthetic revision before reviewing results. [Gemini terms and bounded acceptance procedure](RELEASE.md#gemini-approval-and-bounded-live-acceptance)
+- Verify the approved hosting plan, idle worker execution, production database backups and restore, deployment artifact contents and edge rate limiting. Finalize privacy contacts, retention and account data access/export/deletion operations. [Hosting and privacy sign-off](RELEASE.md#hosting-and-privacy-sign-off)
+- The current-tree credential audit passed. The local refs/reflogs audit still finds previously documented authorization metadata in a backup blob outside `main` and a non-noreply author address. Review publication refs and identities, keep backup refs private, approve the MIT text and notices, and authorize any necessary cleanup or credential rotation separately. The inventory of installed production dependencies reported MIT, Apache-2.0, ISC and BSD-3-Clause metadata after removal of the unused package. [Open-source publication checklist](RELEASE.md#open-source-publication-checklist)
+
+## Verification
+
+Workspace typecheck, production builds, offline API/authentication and frontend regressions, dependency and frontend security checks, and authenticated/mobile Chromium checks passed. The built release smoke test upgraded a pre-0011 database, re-ran the migrator and preserved its old trace. It verified same-origin assets, readiness, OAuth redirect and cookie attributes, and anonymous access denial on private APIs. Browser tests covered public read-only replay, reduced motion and the existing private workspace.
+
+Zero Gemini calls were made. Hosted login and paid-service eligibility remain unverified. The candidate has not been deployed or published.
+
+## Earlier milestone — Stage 4A observable failure handling and recovery
 
 How It Works identifies the failed stage and its responsibilities across the browser, API server, PostgreSQL and provider. Recorded stop, cancellation, reconciliation, rollback and manual-plan choices appear at their own positions on the replay timeline. The inspector retains exact sequence, timestamps, attempt, status, error code and duration. The replay clock compresses pauses and displays the separate observed span.
 

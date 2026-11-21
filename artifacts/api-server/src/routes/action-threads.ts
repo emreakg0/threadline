@@ -1,3 +1,4 @@
+import { productionMode } from "../extraction/production";
 import { Router, type ErrorRequestHandler } from "express";
 import { pool } from "@workspace/db";
 import { validThreadNodeId } from "../action-thread/contract";
@@ -72,10 +73,11 @@ export function actionThreadRouter(mode: "gemini" | "mock" = "gemini") {
     if (consent !== true) throw new ExtractionError("CONSENT_REQUIRED", 400);
     const user = res.locals.userId;
     await requireOwnedRevision(user, source_revision_id);
-    if (mode === "gemini") liveAccess(source_revision_id, 3);
+    const production = mode === "gemini" && productionMode();
+    if (mode === "gemini") liveAccess(source_revision_id, 3, user);
     // A replay of an admitted key can return its existing run at quota.
-    const grant = await activeBetaGrant(user, { allowExhausted: mode === "gemini" });
-    const run = await extract(user, source_revision_id, idempotency_key, mode, 3, grant);
+    const grant = production ? undefined : await activeBetaGrant(user, { allowExhausted: mode === "gemini" });
+    const run = await extract(user, source_revision_id, idempotency_key, mode, 3, grant, production);
     res.status(202).json({
       id: run.id,
       status: run.status,
@@ -89,9 +91,11 @@ export function actionThreadRouter(mode: "gemini" | "mock" = "gemini") {
     const user = res.locals.userId;
     await requireOwnedRevision(user, sourceId);
     try {
-      if (mode === "gemini") liveAccess(sourceId, 3);
-      await activeBetaGrant(user);
-      if (mode === "gemini") await requireThreadEvaluationCapacity();
+      if (mode === "gemini") liveAccess(sourceId, 3, user);
+      if (mode === "mock" || !productionMode()) {
+        await activeBetaGrant(user);
+        if (mode === "gemini") await requireThreadEvaluationCapacity();
+      }
       res.json({ enabled: true });
     } catch (error) {
       if (!(error instanceof ExtractionError)) throw error;

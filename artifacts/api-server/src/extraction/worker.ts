@@ -199,7 +199,7 @@ export async function processOne(adapter: Adapter = gemini, id?: string) {
   let abortListener: () => void = () => {};
   let rolledBack = false;
   try {
-    if (adapter.mode === "gemini") liveAccess(r.source_revision_id, r.schema_version);
+    if (adapter.mode === "gemini") liveAccess(r.source_revision_id, r.schema_version, r.user_id);
     await transaction(async (c) => {
       if (!(await owned(c, r))) throw new ExtractionError("STALE_LEASE");
       await requireActivePlanSource(c, r);

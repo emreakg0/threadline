@@ -1,0 +1,420 @@
+[
+  {
+    "run": {
+      "id": "success",
+      "status": "succeeded",
+      "provider": "mock",
+      "model": "Offline mock adapter",
+      "source_revision_id": "Synthetic fixture",
+      "schema_version": 1,
+      "source_revision": 1,
+      "created_at": "2026-11-21T06:29:41.751Z",
+      "started_at": "2026-11-21T06:29:41.759Z",
+      "completed_at": "2026-11-21T06:29:41.800Z",
+      "error_code": null
+    },
+    "steps": [
+      {
+        "id": "step-1",
+        "run_id": "success",
+        "step_key": "validate_source",
+        "attempt": 1,
+        "status": "succeeded",
+        "started_at": "2026-11-21T06:29:41.762Z",
+        "completed_at": "2026-11-21T06:29:41.765Z",
+        "duration_ms": 3,
+        "input_summary": null,
+        "output_summary": null,
+        "error_code": null,
+        "recovery_action": null
+      },
+      {
+        "id": "step-2",
+        "run_id": "success",
+        "step_key": "extract",
+        "attempt": 1,
+        "status": "succeeded",
+        "started_at": "2026-11-21T06:29:41.767Z",
+        "completed_at": "2026-11-21T06:29:41.778Z",
+        "duration_ms": 11,
+        "input_summary": null,
+        "output_summary": null,
+        "error_code": null,
+        "recovery_action": null
+      },
+      {
+        "id": "step-3",
+        "run_id": "success",
+        "step_key": "validate_output",
+        "attempt": 1,
+        "status": "succeeded",
+        "started_at": "2026-11-21T06:29:41.783Z",
+        "completed_at": "2026-11-21T06:29:41.790Z",
+        "duration_ms": 7,
+        "input_summary": null,
+        "output_summary": null,
+        "error_code": null,
+        "recovery_action": null
+      },
+      {
+        "id": "step-4",
+        "run_id": "success",
+        "step_key": "persist",
+        "attempt": 1,
+        "status": "succeeded",
+        "started_at": "2026-11-21T06:29:41.795Z",
+        "completed_at": "2026-11-21T06:29:41.803Z",
+        "duration_ms": 8,
+        "input_summary": null,
+        "output_summary": null,
+        "error_code": null,
+        "recovery_action": null
+      }
+    ],
+    "events": [
+      {
+        "id": "event-1",
+        "run_id": "success",
+        "step_id": null,
+        "sequence": 1,
+        "event_type": "queued",
+        "observed_at": "2026-11-21T06:29:41.755Z",
+        "payload": {}
+      },
+      {
+        "id": "event-2",
+        "run_id": "success",
+        "step_id": null,
+        "sequence": 2,
+        "event_type": "started",
+        "observed_at": "2026-11-21T06:29:41.764Z",
+        "payload": {
+          "attempt": 1
+        }
+      },
+      {
+        "id": "event-3",
+        "run_id": "success",
+        "step_id": "step-1",
+        "sequence": 3,
+        "event_type": "step_started",
+        "observed_at": "2026-11-21T06:29:41.766Z",
+        "payload": {
+          "key": "validate_source"
+        }
+      },
+      {
+        "id": "event-4",
+        "run_id": "success",
+        "step_id": "step-1",
+        "sequence": 4,
+        "event_type": "step_completed",
+        "observed_at": "2026-11-21T06:29:41.767Z",
+        "payload": {
+          "key": "validate_source"
+        }
+      },
+      {
+        "id": "event-5",
+        "run_id": "success",
+        "step_id": "step-2",
+        "sequence": 5,
+        "event_type": "step_started",
+        "observed_at": "2026-11-21T06:29:41.769Z",
+        "payload": {
+          "key": "extract",
+          "attempt": 1
+        }
+      },
+      {
+        "id": "event-6",
+        "run_id": "success",
+        "step_id": "step-2",
+        "sequence": 6,
+        "event_type": "step_completed",
+        "observed_at": "2026-11-21T06:29:41.779Z",
+        "payload": {
+          "key": "extract"
+        }
+      },
+      {
+        "id": "event-7",
+        "run_id": "success",
+        "step_id": "step-3",
+        "sequence": 7,
+        "event_type": "step_started",
+        "observed_at": "2026-11-21T06:29:41.785Z",
+        "payload": {
+          "key": "validate_output"
+        }
+      },
+      {
+        "id": "event-8",
+        "run_id": "success",
+        "step_id": "step-3",
+        "sequence": 8,
+        "event_type": "step_completed",
+        "observed_at": "2026-11-21T06:29:41.791Z",
+        "payload": {
+          "key": "validate_output"
+        }
+      },
+      {
+        "id": "event-9",
+        "run_id": "success",
+        "step_id": "step-4",
+        "sequence": 9,
+        "event_type": "step_started",
+        "observed_at": "2026-11-21T06:29:41.796Z",
+        "payload": {
+          "key": "persist"
+        }
+      },
+      {
+        "id": "event-10",
+        "run_id": "success",
+        "step_id": "step-4",
+        "sequence": 10,
+        "event_type": "step_completed",
+        "observed_at": "2026-11-21T06:29:41.804Z",
+        "payload": {
+          "key": "persist"
+        }
+      },
+      {
+        "id": "event-11",
+        "run_id": "success",
+        "step_id": null,
+        "sequence": 11,
+        "event_type": "completed",
+        "observed_at": "2026-11-21T06:29:41.805Z",
+        "payload": {}
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "run": {
+      "id": "rollback",
+      "status": "failed",
+      "provider": "mock",
+      "model": "Offline mock adapter",
+      "source_revision_id": "Synthetic fixture",
+      "schema_version": 3,
+      "source_revision": 3,
+      "created_at": "2026-11-21T06:29:47.702Z",
+      "started_at": "2026-11-21T06:29:47.713Z",
+      "completed_at": "2026-11-21T06:29:47.765Z",
+      "error_code": "STORAGE_OR_PROCESSING_FAILURE"
+    },
+    "steps": [
+      {
+        "id": "step-1",
+        "run_id": "rollback",
+        "step_key": "validate_source",
+        "attempt": 1,
+        "status": "succeeded",
+        "started_at": "2026-11-21T06:29:47.715Z",
+        "completed_at": "2026-11-21T06:29:47.716Z",
+        "duration_ms": 2,
+        "input_summary": null,
+        "output_summary": null,
+        "error_code": null,
+        "recovery_action": null
+      },
+      {
+        "id": "step-2",
+        "run_id": "rollback",
+        "step_key": "extract",
+        "attempt": 1,
+        "status": "succeeded",
+        "started_at": "2026-11-21T06:29:47.718Z",
+        "completed_at": "2026-11-21T06:29:47.729Z",
+        "duration_ms": 11,
+        "input_summary": null,
+        "output_summary": null,
+        "error_code": null,
+        "recovery_action": null
+      },
+      {
+        "id": "step-3",
+        "run_id": "rollback",
+        "step_key": "validate_output",
+        "attempt": 1,
+        "status": "succeeded",
+        "started_at": "2026-11-21T06:29:47.733Z",
+        "completed_at": "2026-11-21T06:29:47.745Z",
+        "duration_ms": 12,
+        "input_summary": null,
+        "output_summary": null,
+        "error_code": null,
+        "recovery_action": null
+      },
+      {
+        "id": "step-4",
+        "run_id": "rollback",
+        "step_key": "persist",
+        "attempt": 1,
+        "status": "failed",
+        "started_at": "2026-11-21T06:29:47.750Z",
+        "completed_at": "2026-11-21T06:29:47.766Z",
+        "duration_ms": 16,
+        "input_summary": null,
+        "output_summary": null,
+        "error_code": "STORAGE_OR_PROCESSING_FAILURE",
+        "recovery_action": null
+      }
+    ],
+    "events": [
+      {
+        "id": "event-1",
+        "run_id": "rollback",
+        "step_id": null,
+        "sequence": 1,
+        "event_type": "queued",
+        "observed_at": "2026-11-21T06:29:47.705Z",
+        "payload": {}
+      },
+      {
+        "id": "event-2",
+        "run_id": "rollback",
+        "step_id": null,
+        "sequence": 2,
+        "event_type": "started",
+        "observed_at": "2026-11-21T06:29:47.716Z",
+        "payload": {
+          "attempt": 1
+        }
+      },
+      {
+        "id": "event-3",
+        "run_id": "rollback",
+        "step_id": "step-1",
+        "sequence": 3,
+        "event_type": "step_started",
+        "observed_at": "2026-11-21T06:29:47.717Z",
+        "payload": {
+          "key": "validate_source"
+        }
+      },
+      {
+        "id": "event-4",
+        "run_id": "rollback",
+        "step_id": "step-1",
+        "sequence": 4,
+        "event_type": "step_completed",
+        "observed_at": "2026-11-21T06:29:47.718Z",
+        "payload": {
+          "key": "validate_source"
+        }
+      },
+      {
+        "id": "event-5",
+        "run_id": "rollback",
+        "step_id": "step-2",
+        "sequence": 5,
+        "event_type": "step_started",
+        "observed_at": "2026-11-21T06:29:47.718Z",
+        "payload": {
+          "key": "extract",
+          "attempt": 1
+        }
+      },
+      {
+        "id": "event-6",
+        "run_id": "rollback",
+        "step_id": "step-2",
+        "sequence": 6,
+        "event_type": "step_completed",
+        "observed_at": "2026-11-21T06:29:47.729Z",
+        "payload": {
+          "key": "extract"
+        }
+      },
+      {
+        "id": "event-7",
+        "run_id": "rollback",
+        "step_id": "step-3",
+        "sequence": 7,
+        "event_type": "step_started",
+        "observed_at": "2026-11-21T06:29:47.734Z",
+        "payload": {
+          "key": "validate_output"
+        }
+      },
+      {
+        "id": "event-8",
+        "run_id": "rollback",
+        "step_id": "step-3",
+        "sequence": 8,
+        "event_type": "step_completed",
+        "observed_at": "2026-11-21T06:29:47.746Z",
+        "payload": {
+          "key": "validate_output"
+        }
+      },
+      {
+        "id": "event-9",
+        "run_id": "rollback",
+        "step_id": "step-4",
+        "sequence": 9,
+        "event_type": "step_started",
+        "observed_at": "2026-11-21T06:29:47.751Z",
+        "payload": {
+          "key": "persist"
+        }
+      },
+      {
+        "id": "event-10",
+        "run_id": "rollback",
+        "step_id": "step-4",
+        "sequence": 10,
+        "event_type": "step_failed",
+        "observed_at": "2026-11-21T06:29:47.767Z",
+        "payload": {
+          "key": "persist",
+          "code": "STORAGE_OR_PROCESSING_FAILURE"
+        }
+      },
+      {
+        "id": "event-11",
+        "run_id": "rollback",
+        "step_id": "step-4",
+        "sequence": 11,
+        "event_type": "failed",
+        "observed_at": "2026-11-21T06:29:47.768Z",
+        "payload": {
+          "attempt": 1,
+          "code": "STORAGE_OR_PROCESSING_FAILURE",
+          "action": "Stopped this run.",
+          "outcome": "stopped"
+        }
+      },
+      {
+        "id": "event-12",
+        "run_id": "rollback",
+        "step_id": "step-4",
+        "sequence": 12,
+        "event_type": "recovered",
+        "observed_at": "2026-11-21T06:29:47.769Z",
+        "payload": {
+          "action": "PostgreSQL rolled back the output transaction.",
+          "outcome": "rolled_back"
+        }
+      },
+      {
+        "id": "event-13",
+        "run_id": "rollback",
+        "step_id": null,
+        "sequence": 13,
+        "event_type": "alternative_selected",
+        "observed_at": "2026-11-21T06:29:49.242Z",
+        "payload": {
+          "action": "The owner selected manual planning.",
+          "outcome": "manual_selected"
+        }
+      }
+    ],
+    "warnings": []
+  }
+]

@@ -8,12 +8,14 @@ export function TraceInspector({
   step,
   stage,
   finalStep,
+  demo,
 }: {
   trace: Trace;
   event?: TraceEvent;
   step?: Step;
   stage?: string;
   finalStep: boolean;
+  demo?: boolean;
 }) {
   return (
     <aside className="execution-inspector" aria-label="Execution inspector">
@@ -26,13 +28,15 @@ export function TraceInspector({
       </h3>
       <p>Stored metadata · read only</p>
       <dl>
-        <dt>Source revision</dt>
-        <dd>{trace.run.source_revision_id}</dd>
+        {!demo && <>
+          <dt>Source revision</dt>
+          <dd>{trace.run.source_revision_id}</dd>
+        </>}
         {event && (
           <>
-            <dt>Event ID / sequence</dt>
+            <dt>{demo ? "Event sequence" : "Event ID / sequence"}</dt>
             <dd>
-              {event.id} / {event.sequence}
+              {!demo && event.id + " / "}{event.sequence}
             </dd>
             <dt>Observed time</dt>
             <dd>

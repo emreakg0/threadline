@@ -30,6 +30,14 @@ class SecretAuditTests(unittest.TestCase):
             with self.subTest():
                 self.assertTrue(audit.matches(data.encode(), audit.BASE_PATTERNS))
 
+    def test_production_approval_values_and_blank_example(self):
+        prefix = 'THREADLINE_' + 'PRODUCTION_'
+        for name, value in [('GEMINI_API_KEY', 'synthetic'), ('GEMINI_KEY_SHA256', 'a' * 64),
+                            ('AI_SUBJECTS', '12345,67890')]:
+            self.assertIn('production approval data assignment',
+                          audit.matches(f'{prefix}{name}={value}'.encode(), audit.BASE_PATTERNS))
+            self.assertEqual(audit.matches(f'{prefix}{name}=\n'.encode(), audit.BASE_PATTERNS), [])
+
     def test_references_and_computed_test_fixtures_are_allowed(self):
         for data in [
             b'process.env.THREADLINE_GEMINI_FREE_TIER_APPROVAL',

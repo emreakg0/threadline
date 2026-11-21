@@ -5,6 +5,10 @@ import { WorkspaceIcon } from "./WorkspaceIcon";
 export const processingRoute = "#capture/processing/";
 
 const messages: Record<string, string> = {
+  PRODUCTION_AI_DISABLED: "AI planning is off. You can build a plan manually.",
+  PRODUCTION_AI_UNCONFIGURED: "AI planning is temporarily unavailable. You can build a plan manually.",
+  PRODUCTION_AI_COHORT: "This account is outside the AI pilot. You can build a plan manually.",
+  PRODUCTION_AI_CONSENT: "This request did not have valid consent. Open the saved revision to review its status.",
   BETA_UNAVAILABLE:
     "Personal beta access is unavailable. You can plan manually.",
   BETA_LIMIT:
@@ -242,6 +246,7 @@ export function ExtractionPanel({
           {thread
             ? "I agree to send this saved revision to Google to generate an Action Thread."
             : "I agree to send this saved revision to Google for action planning."}
+          <small>Keep sensitive, confidential, and personal information out of AI submissions. <a href="/privacy" target="_blank" rel="noopener noreferrer">How Gemini handles data</a></small>
         </label>
       )}
       {runId ? (

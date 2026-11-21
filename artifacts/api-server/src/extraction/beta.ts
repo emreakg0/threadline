@@ -1,5 +1,6 @@
 import { pool } from "@workspace/db";
 import { transaction, type Client } from "./lifecycle";
+import { productionPolicy } from "./production";
 import { ExtractionError } from "./validation";
 
 const threadEvaluationLimit = 3;
@@ -63,5 +64,23 @@ export async function consumeBetaDispatch(
     // The singleton grant update serializes dispatch accounting. A limit
     // failure rolls back both the debit and this run's dispatch stamp.
     if (schema_version === 3) await requireThreadEvaluationCapacity(c, true);
+  });
+}
+
+// The claim has already atomically reserved project and user capacity. Stamp
+// this consented lease exactly once before transport, including failed calls.
+export async function consumeProductionDispatch(runId: string, lease: string, sourceId: string, user: string) {
+  await transaction(async (c) => {
+    productionPolicy(user);
+    const result = await c.query(
+      `UPDATE threadline_runs SET production_dispatched_at=clock_timestamp()
+       WHERE id=$1 AND lease_token=$2 AND source_revision_id=$3 AND user_id=$4
+         AND status='running' AND lease_expires_at>clock_timestamp() AND provider='gemini'
+         AND production_consented_at IS NOT NULL AND production_dispatched_at IS NULL
+         AND EXISTS (SELECT 1 FROM threadline_execution_steps
+           WHERE run_id=$1 AND step_key='extract' AND status='running' AND reserved_tokens>0)`,
+      [runId, lease, sourceId, user],
+    );
+    if (!result.rowCount) throw new ExtractionError("PRODUCTION_AI_CONSENT", 403);
   });
 }

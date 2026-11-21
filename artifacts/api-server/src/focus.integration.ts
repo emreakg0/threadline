@@ -1,6 +1,9 @@
+import { spawnSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 import { randomUUID, randomBytes, createHash } from 'node:crypto';
 // Isolated configuration for this test process only; no external OAuth requests.
+const schema='focus_test_'+randomUUID().replaceAll('-','');
+process.env.PGOPTIONS='-c search_path='+schema;
 process.env.APP_ORIGIN='http://localhost:5173';
 process.env.GOOGLE_CLIENT_ID='integration-test-client';
 process.env.GOOGLE_CLIENT_SECRET='integration-test-secret';
@@ -18,7 +21,12 @@ const hash=(s:string)=>createHash('sha256').update(s).digest('hex');
 const headers=(i=0)=>({cookie:`focus_session=${tokens[i]}`,origin:process.env.APP_ORIGIN!,'Content-Type':'application/json'});
 const realFetch=globalThis.fetch;
 let oauthState:string|undefined;
+const oauthUser = "oauth-test-" + randomUUID();
 try {
+ await pool.query(`CREATE SCHEMA ${schema}`);
+ const migration=spawnSync(process.execPath,[new URL('../../../lib/db/scripts/migrate.mjs',import.meta.url).pathname],
+  {env:process.env,encoding:'utf8',timeout:30000});
+ assert.equal(migration.status,0,migration.stderr);
  let response=await fetch(base+'/auth/me');assert.equal(response.status,200);assert.match(response.headers.get('content-type')! ,/application\/json/);assert.deepEqual(await response.json(),{user:null,configured:true});
  assert.equal(response.headers.get('cache-control'),'no-store');
  assert.equal(response.headers.get('x-content-type-options'),'nosniff');
@@ -27,6 +35,33 @@ try {
  assert.equal(response.headers.get('x-powered-by'),null);
  assert.equal((await fetch(base+'/tasks')).status,401);
  response=await fetch(base+'/auth/google',{redirect:'manual'});assert.equal(response.status,302);const url=new URL(response.headers.get('location')!);assert.equal(url.searchParams.get('redirect_uri'),'http://localhost:5173/api/auth/google/callback');oauthState=url.searchParams.get('state')!;
+ const oauthCookies=response.headers.getSetCookie().map(cookie=>cookie.split(';')[0]).join('; ');
+ const verifier=oauthCookies.match(/focus_oauth_verifier=([^; ]+)/)?.[1];
+ assert.equal(url.searchParams.get('code_challenge_method'),'S256');
+ assert.equal(url.searchParams.get('code_challenge'),createHash('sha256').update(verifier!).digest('base64url'));
+ let oauthCalls=0;
+ globalThis.fetch=async (target, init) => {
+  if(String(target)==='https://oauth2.googleapis.com/token'){
+   oauthCalls++; assert.equal((init?.body as URLSearchParams).get('code_verifier'),verifier);
+   return Response.json({access_token:'offline'});
+  }
+  if(String(target)==='https://openidconnect.googleapis.com/v1/userinfo'){
+   oauthCalls++; return Response.json({sub:oauthUser,email:'synthetic@example.invalid',name:'Offline OAuth',email_verified:true});
+  }
+  assert.ok(String(target).startsWith(base)); return realFetch(target,init);
+ };
+ const exchange=base+'/auth/google/callback?code=offline&state='+oauthState;
+ let completed=await fetch(exchange,{headers:{cookie:oauthCookies},redirect:'manual'});
+ assert.equal(completed.status,302);
+ assert.equal(completed.headers.get('location'),'/');
+ const session=completed.headers.getSetCookie().find(cookie=>cookie.startsWith('focus_session='))!.split(';')[0];
+ assert.equal((await (await fetch(base+'/auth/me',{headers:{cookie:session}})).json() as {user:{id:string}}).user.id,oauthUser);
+ completed=await fetch(exchange,{headers:{cookie:oauthCookies},redirect:'manual'});
+ assert.equal(completed.status,400);
+ assert.equal(oauthCalls,2);
+ await pool.query("UPDATE focus_sessions SET expires_at=now()-interval '1 second' WHERE user_id=$1",[oauthUser]);
+ assert.equal((await fetch(base+'/tasks',{headers:{cookie:session}})).status,401);
+ globalThis.fetch=realFetch;
  response=await fetch(base+'/auth/google/callback?state=invalid');assert.equal(response.status,400);assert.ok((await response.json() as {error:string}).error);
  for(let i=0;i<2;i++){
  await pool.query('INSERT INTO focus_users VALUES($1,$2,$3)',[ids[i],'Integration test','test@example.invalid']);
@@ -63,11 +98,7 @@ try {
  console.log('PASS: refresh persistence, stable building slots, monotonic allocation, auth initialization, Google redirect/state, persistent task CRUD, isolation, version conflicts, logout, malformed bodies, empty/non-JSON response handling');
 } finally {
  globalThis.fetch=realFetch;
- if(oauthState)await pool.query('DELETE FROM focus_oauth_states WHERE state_hash=$1',[hash(oauthState)]);
- await pool.query('DELETE FROM focus_tasks WHERE user_id=ANY($1::text[])',[ids]);
- await pool.query('DELETE FROM focus_projects WHERE user_id=ANY($1::text[])',[ids]);
- await pool.query('DELETE FROM focus_sessions WHERE user_id=ANY($1::text[])',[ids]);
- await pool.query('DELETE FROM focus_users WHERE id=ANY($1::text[])',[ids]);
- await pool.query('DELETE FROM focus_city_counters WHERE scope=ANY($1::text[])',[[...ids.map(id=>'user:'+id),...projects.map(id=>'project:'+id)]]);
- await new Promise<void>((resolve,reject)=>server.close(e=>e?reject(e):resolve()));await pool.end();
+ await new Promise<void>((resolve,reject)=>server.close(e=>e?reject(e):resolve()));
+ await pool.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
+ await pool.end();
 }

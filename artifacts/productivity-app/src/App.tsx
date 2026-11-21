@@ -3,11 +3,14 @@ import { api } from "./api";
 import { useEffect, useState, useMemo, type FormEvent } from "react";
 import type { Project, Task } from "./types";
 import { WorkspaceIcon } from "./WorkspaceIcon";
+import { PublicLinks, PublicPage, publicPages } from "./PublicPages";
 import { TaskSheet } from "./TaskSheet";
 const tasksRoute = "#capture/tasks";
 
 function currentRoute() {
   // Keep task links shared before the standalone transition working.
+  const publicRoute = "#" + location.pathname.replace(/^\/|\/$/g, "");
+  if (publicPages.includes(publicRoute)) return publicRoute;
   return location.hash.replace(/^#city(?=\/|$)/, tasksRoute);
 }
 
@@ -17,6 +20,7 @@ export default function App() {
   const [composerOpen, setComposerOpen] = useState(false),
     [notice, setNotice] = useState("");
   const [initializing, setInitializing] = useState(true);
+  const [sessionExpired, setSessionExpired] = useState(false);
   const [tasksLoading, setTasksLoading] = useState(false);
   const [auth, setAuth] = useState<{
       user: { name: string } | null;
@@ -61,6 +65,9 @@ export default function App() {
   }
   useEffect(() => {
     void initialize();
+    const expired = () => setSessionExpired(true);
+    window.addEventListener("threadline:session-expired", expired);
+    return () => window.removeEventListener("threadline:session-expired", expired);
   }, []);
   async function act(fn: () => Promise<unknown>) {
     setBusy(true);
@@ -465,14 +472,17 @@ export default function App() {
     </section>
   );
 
+  if (publicPages.includes(route)) return <PublicPage key={route} route={route} />;
+
   if (auth?.user) {
     return (
-      <CaptureWorkspace
-        name={auth.user.name}
-        projects={projects}
-        route={route}
-        tasks={taskWorkspace}
-      />
+      <>
+        {sessionExpired && <div className="tl-session-expired" role="alert">
+          Your session expired. Copy any unsaved edits before signing in again.{" "}
+          <a href="/api/auth/google">Sign in with Google</a>
+        </div>}
+        <CaptureWorkspace name={auth.user.name} projects={projects} route={route} tasks={taskWorkspace} />
+      </>
     );
   }
 
@@ -489,12 +499,15 @@ export default function App() {
           <h1>From brain dump to action plan</h1>
           <p>
             Capture what’s on your mind, organize your notes, and track what
-            comes next.
+            comes next. Build a plan by hand or review suggested steps when AI is available.
           </p>
           {error && (
             <div role="alert" className="error">
               {error}
             </div>
+          )}
+          {new URLSearchParams(location.search).get("signin") === "retry" && (
+            <p role="status">Google sign-in did not finish. You can start again.</p>
           )}
           {auth?.configured ? (
             <a className="tl-primary" href="/api/auth/google">
@@ -520,6 +533,7 @@ export default function App() {
             </div>
           )}
         </section>
+        <PublicLinks />
       </main>
     </div>
   );

@@ -231,6 +231,8 @@ const providerResult = Response.json({
     },
   ],
 });
+await assert.rejects(readPlanningResponse(new Response(" ".repeat(256 * 1024 + 1))),
+  { code: "PROVIDER_OUTPUT_LIMIT" });
 assert.equal(
   validate(await readPlanningResponse(providerResult), source, 2)[0].content,
   "Contact Sam",
@@ -271,12 +273,19 @@ try {
     [500, "PROVIDER_TRANSIENT"],
     [503, "PROVIDER_TRANSIENT"],
   ] as const) {
-    const response = new Response(secretEcho, {
-      status,
-      headers: { "x-provider-message": secretEcho },
-    });
+    let pulled = false, cancelled = false;
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulled = true;
+        controller.enqueue(new TextEncoder().encode(secretEcho));
+        controller.close();
+      },
+      cancel() { cancelled = true; },
+    }, { highWaterMark: 0 });
+    const response = new Response(body, { status, headers: { "x-provider-message": secretEcho } });
     await assert.rejects(readPlanningResponse(response, Date.now(), run), { code });
-    assert.equal(response.bodyUsed, false);
+    assert.equal(pulled, false);
+    assert.equal(cancelled, true);
   }
   assert.deepEqual(
     warning.mock.calls.map(({ arguments: args }) => args),
