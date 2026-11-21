@@ -104,10 +104,6 @@
 .tl-thread-view { display: flex; flex-wrap: wrap; width: fit-content; gap: 3px; padding: 3px; margin-bottom: 10px; background: var(--tl-paper); border: 1px solid var(--tl-line); border-radius: 9px; }
 .threadline .tl-thread-view button { display: flex; align-items: center; gap: 7px; color: var(--tl-muted); }
 .threadline .tl-thread-view button[aria-pressed="true"] { color: var(--tl-text); background: var(--tl-surface); border-color: var(--tl-line); }
-.threadline .tl-thread-view .tl-thread-depth-toggle[aria-pressed="true"] {
-  color: var(--tl-accent);
-  border-color: color-mix(in srgb, var(--tl-accent) 38%, var(--tl-line));
-}
 
 .tl-thread-columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 326px); gap: 15px; align-items: start; }
 .tl-thread-route, .tl-thread-side { min-width: 0; }
@@ -187,50 +183,50 @@
 .tl-thread-graph-node[data-state="complete"] small { color: var(--tl-mint); }
 .tl-thread-graph-node strong { font-weight: 650; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 
-.tl-thread-viewport[data-depth="true"] {
+.tl-thread-viewport {
   background-image:
     radial-gradient(ellipse at 50% 28%, #25233880, transparent 72%),
     radial-gradient(circle, #3a465b 0.7px, transparent 0.9px);
   background-size: 100% 100%, 18px 18px;
 }
-.threadline .tl-thread-viewport[data-depth="true"] .tl-thread-graph-node {
+.threadline .tl-thread-viewport .tl-thread-graph-node {
   --thread-step-glow: 0 0 0 0 transparent;
   --thread-selection-ring: 0 0 0 0 transparent;
   background-image: linear-gradient(170deg, #ffffff08, transparent 74%);
   box-shadow: var(--thread-selection-ring), var(--thread-step-glow), 0 9px 16px -9px #02040dbf, inset 0 1px #ffffff0b;
   transition: box-shadow 160ms ease-out, border-color 160ms ease-out, opacity 140ms ease-out;
 }
-.threadline .tl-thread-viewport[data-depth="true"] .tl-thread-graph-node[data-state="active"] {
+.threadline .tl-thread-viewport .tl-thread-graph-node[data-state="active"] {
   --thread-step-glow: 0 0 20px -5px #ab92ff78;
 }
-.threadline .tl-thread-viewport[data-depth="true"] .tl-thread-graph-node[aria-pressed="true"] {
+.threadline .tl-thread-viewport .tl-thread-graph-node[aria-pressed="true"] {
   --thread-selection-ring: 0 0 0 3px #aaa1ff52;
 }
-.threadline .tl-thread-viewport[data-depth="true"] .tl-thread-graph-node[data-emphasis="connected"]:not([data-state="unavailable"]) {
+.threadline .tl-thread-viewport .tl-thread-graph-node[data-emphasis="connected"]:not([data-state="unavailable"]) {
   border-color: color-mix(in srgb, var(--tl-accent) 57%, var(--tl-line));
 }
-.tl-thread-viewport[data-depth="true"] .tl-thread-connections > path {
+.tl-thread-viewport .tl-thread-connections > path {
   transition: opacity 140ms ease-out, stroke-width 140ms ease-out;
 }
-.tl-thread-viewport[data-depth="true"] .tl-thread-connections > path[data-emphasis="connected"] {
+.tl-thread-viewport .tl-thread-connections > path[data-emphasis="connected"] {
   stroke-width: 2.8;
   opacity: 1;
 }
-.tl-thread-viewport[data-depth="true"] .tl-thread-connections > path[data-emphasis="distant"]:not([data-dim="true"]) { opacity: .65; }
-.tl-thread-viewport[data-depth="true"] .tl-thread-edge-label[data-emphasis="connected"] {
+.tl-thread-viewport .tl-thread-connections > path[data-emphasis="distant"]:not([data-dim="true"]) { opacity: .65; }
+.tl-thread-viewport .tl-thread-edge-label[data-emphasis="connected"] {
   border-color: #766ba9;
   color: var(--tl-text);
 }
-.tl-thread-viewport[data-depth="true"] :is(.tl-thread-graph-node, .tl-thread-edge-label)[data-emphasis="distant"] { opacity: .88; }
+.tl-thread-viewport :is(.tl-thread-graph-node, .tl-thread-edge-label)[data-emphasis="distant"] { opacity: .88; }
 
 @media (min-width: 761px) and (prefers-reduced-motion: no-preference) {
-  .tl-thread-viewport[data-depth="true"][data-dragging="false"] .tl-thread-plane {
+  .tl-thread-viewport[data-dragging="false"] .tl-thread-plane {
     transform: perspective(1400px) rotateX(var(--thread-tilt-x, 0deg)) rotateY(var(--thread-tilt-y, 0deg));
     transition: transform 145ms ease-out;
   }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .tl-thread-viewport[data-depth="true"] .tl-thread-graph-node[data-state="complete"] .tl-thread-step-mark {
+  .tl-thread-viewport .tl-thread-graph-node[data-state="complete"] .tl-thread-step-mark {
     animation: tl-thread-complete-mark 190ms ease-out;
   }
 }
@@ -305,5 +301,5 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .threadline :is(.tl-thread-graph-node, .tl-thread-view button, .tl-thread-tools button, .tl-thread-outcome) { transition: none; }
-  .threadline .tl-thread-viewport[data-depth="true"] :is(.tl-thread-graph-node, .tl-thread-connections > path) { transition: none; }
+  .threadline .tl-thread-viewport :is(.tl-thread-graph-node, .tl-thread-connections > path) { transition: none; }
 }

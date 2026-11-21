@@ -1,10 +1,9 @@
 # Threadline — Action Thread Depth Mode
 
-Choose **Depth Mode** beside **Graph** and **List** to add subtle perspective
-and card elevation. Press it again to return to the flat graph. Desktop opens
-in the flat graph by default. Narrow screens open in List, and their optional
-Depth Mode uses static styling. Reduced-motion settings suppress perspective
-motion and completion animation.
+**Graph** now includes subtle perspective and card elevation by default.
+The view controls are **Graph** and **List**. Narrow screens open in List,
+and Graph uses static depth styling on narrow screens. Reduced-motion settings
+suppress perspective motion and completion animation.
 
 - SVG edges, branch labels, and HTML cards share one perspective plane. The
   saved workflow uses the same node positions and dependencies. Arrowheads
@@ -14,8 +13,9 @@ motion and completion animation.
   feedback stay within the cards. Mouse parallax is frame-batched. Pan writes
   to the camera transform during a gesture and saves the view on release.
 - Verified authenticated Chromium at desktop and emulated mobile sizes.
-  Checked the toggle, keyboard and mouse highlighting, touch pan, zoom, fit,
-  projected SVG-to-card alignment, branches, retries, and reduced motion.
+  Checked Graph styling and Graph/List switching, keyboard and mouse
+  highlighting, touch pan, zoom, fit, projected SVG-to-card alignment,
+  branches, retries, and reduced motion.
   Inspected desktop and mobile captures. Workspace typecheck, frontend and API
   builds, frontend regression tests, and offline API/PostgreSQL tests passed.
 - Changed the three existing Action Thread frontend files and the authenticated

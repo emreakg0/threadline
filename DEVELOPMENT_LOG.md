@@ -577,3 +577,12 @@ Added migration 0008 and server-side checks tying consent, the authenticated own
 - Passed authenticated Chromium, frontend/API regressions, workspace
   typecheck and both builds. Inspected desktop and mobile captures. Zero
   Gemini requests and no runtime authorization changes.
+
+### Default graph depth
+
+- Removed the depth toggle, component state, and conditional CSS hooks.
+  Graph now always has depth styling. List remains the narrow-screen default,
+  and the existing motion preferences govern parallax and completion feedback.
+- Updated the authenticated Chromium checks to assert the two view controls,
+  perspective on desktop by default, and static depth on emulated mobile
+  with reduced motion. No backend changes or Gemini requests.

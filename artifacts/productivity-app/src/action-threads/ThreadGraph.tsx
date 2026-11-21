@@ -29,7 +29,7 @@ export function StepMark({ kind, state, terminal }: {
 type View = { x: number; y: number; scale: number };
 const cameraTransform = ({ x, y, scale }: View) => `translate(${x}px, ${y}px) scale(${scale})`;
 
-export function ThreadGraph({ graph, layout, route, selected, select, depth }: Props & { depth: boolean }) {
+export function ThreadGraph({ graph, layout, route, selected, select }: Props) {
   const viewport = useRef<HTMLDivElement>(null);
   const plane = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLDivElement>(null);
@@ -43,7 +43,7 @@ export function ThreadGraph({ graph, layout, route, selected, select, depth }: P
   const [hovered, setHovered] = useState<string | null>(null);
   const [focused, setFocused] = useState<string | null>(null);
   const drag = useRef<{ id: number; x: number; y: number; origin: View; view: View } | null>(null);
-  const attention = depth && !dragging ? focused ?? hovered : null;
+  const attention = !dragging ? focused ?? hovered : null;
   const neighbors = new Set(attention ? [attention] : []);
   for (const { from, to } of graph.edges) {
     if (from === attention) neighbors.add(to);
@@ -72,7 +72,7 @@ export function ThreadGraph({ graph, layout, route, selected, select, depth }: P
       element?.style.removeProperty("--thread-tilt-x");
       element?.style.removeProperty("--thread-tilt-y");
     };
-  }, [depth]);
+  }, []);
 
   const fittedScale = Math.min(1, Math.max(0.15, Math.min(
     (size.width - 22) / layout.width, (size.height - 24) / layout.height,
@@ -124,7 +124,7 @@ export function ThreadGraph({ graph, layout, route, selected, select, depth }: P
       if (canvas.current) canvas.current.style.transform = cameraTransform(start.view);
       return;
     }
-    if (!depth || !tiltAllowed.current?.matches || focused || event.pointerType !== "mouse") return;
+    if (!tiltAllowed.current?.matches || focused || event.pointerType !== "mouse") return;
     tiltTarget.current = { x: event.clientX, y: event.clientY };
     if (tiltFrame.current) return;
     tiltFrame.current = requestAnimationFrame(() => {
@@ -200,7 +200,7 @@ export function ThreadGraph({ graph, layout, route, selected, select, depth }: P
     </div>
     <div
       ref={viewport} tabIndex={0} role="region" aria-label="Graph canvas. Use arrow keys to pan."
-      className="tl-thread-viewport" data-dragging={dragging} data-depth={depth}
+      className="tl-thread-viewport" data-dragging={dragging}
       onPointerDown={startPan} onPointerMove={movePointer}
       onPointerLeave={resetTilt}
       onPointerUp={stopPan} onPointerCancel={stopPan} onLostPointerCapture={stopPan}
@@ -243,7 +243,7 @@ export function ThreadGraph({ graph, layout, route, selected, select, depth }: P
               data-state={state} data-kind={node.kind} data-terminal={terminal}
               data-emphasis={attention ? (neighbors.has(id) ? "connected" : "distant") : undefined}
               style={{ left: layout.positions.get(id)!.x, top: layout.positions.get(id)!.y, width: cardWidth, height: cardHeight }}
-              onPointerEnter={(event) => { if (depth && !drag.current && event.pointerType === "mouse") setHovered(id); }}
+              onPointerEnter={(event) => { if (!drag.current && event.pointerType === "mouse") setHovered(id); }}
               onPointerLeave={() => setHovered(null)}
               onFocus={(event) => {
                 if (!event.currentTarget.matches(":focus-visible")) return;

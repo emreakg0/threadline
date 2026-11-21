@@ -85,7 +85,6 @@ function ThreadWorkspace({ id }: { id: string }) {
   const [retryCommand, setRetryCommand] = useState<ThreadCommand | null>(null);
   const [selection, setSelection] = useState<string | null>(null);
   const [view, setView] = useState<"graph" | "list" | null>(null);
-  const [depth, setDepth] = useState(false);
   const [narrow, setNarrow] = useState(() => matchMedia("(max-width: 760px)").matches);
   const inFlight = useRef(false);
   const mounted = useRef(true);
@@ -225,12 +224,10 @@ function ThreadWorkspace({ id }: { id: string }) {
       <div className="tl-thread-view" aria-label="Thread view">
         <button type="button" aria-pressed={shown === "graph"} onClick={() => setView("graph")}><WorkspaceIcon name="branch" /> Graph</button>
         <button type="button" aria-pressed={shown === "list"} onClick={() => setView("list")}><WorkspaceIcon name="tasks" /> List</button>
-        <button type="button" className="tl-thread-depth-toggle" aria-pressed={shown === "graph" && depth}
-          onClick={() => { setDepth(shown === "list" || !depth); setView("graph"); }}>Depth Mode</button>
       </div>
       <div className="tl-thread-columns">
         <div className="tl-thread-route">
-          {shown === "graph" ? <ThreadGraph {...graphProps} depth={depth} /> : <ThreadList {...graphProps} />}
+          {shown === "graph" ? <ThreadGraph {...graphProps} /> : <ThreadList {...graphProps} />}
         </div>
         {node && <div className="tl-thread-side"><ThreadInspector
           key={node.id + "/" + snapshot.progress.version} graph={graph} node={node}

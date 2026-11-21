@@ -520,3 +520,10 @@ authorization changes and zero Gemini requests.
 
 No Depth Mode work remains. The earlier bounded Stage 3 live evaluation is
 still pending and was outside this milestone.
+
+### Depth styling default
+
+Graph now uses the depth treatment by default, with Graph and List as the
+only view controls. Narrow screens still open in List, and Graph omits
+parallax on narrow screens and with reduced motion. No further work is
+pending for this visual change.
