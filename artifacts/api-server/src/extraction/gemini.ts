@@ -277,8 +277,14 @@ async function requestDiagnostic(response: Response): Promise<Diagnostic> {
 export async function readPlanningResponse(
   response: Response,
   now = Date.now(),
-  threadRun?: { id: string; maxOutputTokens: number },
+  run?: { id: string; threadOutputCeiling?: number },
 ) {
+  // The worker already logs the sanitized HTTP 400 diagnostic.
+  if (run && !response.ok && response.status !== 400)
+    logger.warn(
+      { runId: run.id, httpStatus: response.status },
+      "Gemini HTTP failure",
+    );
   if (response.status === 429) {
     const header = response.headers.get("retry-after")?.trim() ?? "";
     const seconds = /^\d+$/.test(header)
@@ -314,12 +320,12 @@ export async function readPlanningResponse(
     usageMetadata?: { candidatesTokenCount?: unknown; thoughtsTokenCount?: unknown };
   } | null;
   const candidate = Array.isArray(r?.candidates) ? r.candidates[0] : undefined;
-  if (threadRun) {
+  if (run?.threadOutputCeiling !== undefined) {
     const count = (value: unknown) =>
       typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : undefined;
     logger.info({
-      runId: threadRun.id,
-      maxOutputTokens: threadRun.maxOutputTokens,
+      runId: run.id,
+      maxOutputTokens: run.threadOutputCeiling,
       candidateTokens: count(r?.usageMetadata?.candidatesTokenCount),
       thoughtTokens: count(r?.usageMetadata?.thoughtsTokenCount),
     }, "Gemini Action Thread output usage");
@@ -368,8 +374,10 @@ export const gemini: Adapter = {
         504,
       );
     }
-    return readPlanningResponse(response, Date.now(), version === 3
-      ? { id: claim.id, maxOutputTokens: request.generationConfig.maxOutputTokens }
-      : undefined);
+    return readPlanningResponse(response, Date.now(), {
+      id: claim.id,
+      threadOutputCeiling:
+        version === 3 ? request.generationConfig.maxOutputTokens : undefined,
+    });
   },
 };

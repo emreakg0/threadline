@@ -1,8 +1,35 @@
 # Threadline Stage 3 — Gemini Action Thread evaluation
 
-**Implemented and awaiting renewed owner authorization.** The development-only
-workflow is ready for the bounded evaluation. This session made **0 actual
-Gemini requests**. No live v3 graph was generated or scored.
+**The first live request received an HTTP 5xx response.** It used one of the
+three Stage 3 slots. This investigation made zero Gemini requests. Live schema
+acceptance and planning quality remain unverified.
+
+## First live attempt and offline follow-up
+
+- The owner renewed the existing development grant and confirmed the project's
+  Free Tier. Local gate verification still passes. The run debited the same
+  owner grant, which now shows 4 of 100 used. Two Stage 3 slots remain.
+- Source validation passed. Extraction failed after 4,234 ms with
+  `PROVIDER_TRANSIENT`. The adapter used this code for a 5xx HTTP response.
+  The sanitized logs and execution records did not retain the specific status.
+  Output validation and graph persistence did not run.
+- The run was the only local token reservation in its minute. The adapter did
+  not record a 429, and no provider cooldown was active at inspection. Google
+  documents structured outputs for this model. The failed run leaves acceptance
+  of this particular schema unverified. No service-wide incident was confirmed.
+  [Gemini 3.5 Flash-Lite model reference](https://aistudio.google.com/docs/models/gemini-3.5-flash-lite)
+- `extraction/gemini.ts` now records the run ID and numeric status for
+  non-success HTTP responses. The existing sanitized 400 diagnostic remains
+  in place. The regression in `extraction/extraction.test.ts` checks 429, 500,
+  and 503 offline and verifies that the new log contains only those two
+  fields. Dispatch rules and the request schema are unchanged.
+- Full offline API and frontend tests, workspace typecheck, both builds,
+  frontend security, secret-audit regression tests and package audit passed.
+- The next unfinished task is to evaluate the remaining approved synthetic
+  scenarios one at a time within the existing window and two-slot budget.
+  A future failure can be correlated with its numeric HTTP status.
+
+## Initial implementation
 
 ## Authorization and release boundary
 
@@ -83,7 +110,7 @@ The three scores remain pending because there are no live responses.
 
 **C.** I have classes, a part-time job, and several assignments due next week. My schedule feels disorganized. I need a repeatable way to prioritize coursework without missing deadlines, but I haven't listed the exact times yet.
 
-## Next unfinished task
+## Original authorization and evaluation procedure
 
 The owner must explicitly approve a new time window for these three synthetic
 requests and reconfirm in Google AI Studio that the same key's project is on

@@ -39,9 +39,9 @@ Known debt: health-only generated contracts; dense procedural code; large lazy 3
 
 ## Active phase and next task
 
-2026-11-21 Stage 3 is implemented and awaits a renewed owner grant and
-provider authorization before any live evaluation. See the latest
-Stage 3 entry and RESULT.md for the exact next task.
+2026-11-21 Stage 3 authorization is active. The first live attempt received
+an HTTP 5xx response and used one evaluation slot. Two slots remain. See
+the latest Stage 3 entry and RESULT.md for the exact next task.
 
 2026-11-10 Semgrep supply-chain milestone: all four named public configuration rules reproduced (4 baseline findings) and now pass (0 findings). Installed pnpm 10.26.1 is pinned; supported seven-day cooldown, blocked exotic subdependencies and no-downgrade trust are active, with blanket exclusions removed. npm 11.19.1 has a verified seven-day fallback but is not the project installer. Frozen CI-style install, typechecks, city/security/API tests and all production builds pass; dependency audit remains clean and lockfile/dependency versions are unchanged. Local registry fixtures verify actual rejection and exact-version urgent exceptions. SECURITY_AUDIT.md records rule revision, applicability/false-positive analysis, exception process and frozen-lockfile limitations. Next product task remains project rename API/UI and ownership tests.
 
@@ -487,3 +487,20 @@ Next unfinished task is fresh owner approval of a bounded development
 window and Free Tier reconfirmation. Renew the same grant and matching
 private approval without resetting usage, then perform the three-scenario
 live evaluation under the cap. See RESULT.md for the renewal details.
+
+## 2026-11-21 — Stage 3 first live failure
+
+The owner renewed authorization and submitted one live v3 request. It failed
+during extraction after 4,234 ms with HTTP 5xx as classified by the adapter.
+Sanitized logs and execution records did not retain the exact status. There
+was one reservation in the run's local rate-limit window, no recorded 429,
+and no active cooldown at inspection. No Action Thread was generated.
+
+The owner grant now shows 4 of 100 used. Local authorization remains active
+and two Stage 3 slots are available. The adapter records a numeric HTTP
+status and run ID for future failures. No new Gemini calls were made during
+the investigation.
+
+Next unfinished task is the remaining bounded live evaluation on approved
+synthetic inputs. Schema acceptance and live planning quality remain
+unverified.

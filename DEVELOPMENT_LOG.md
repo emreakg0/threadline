@@ -550,3 +550,16 @@ Added migration 0008 and server-side checks tying consent, the authenticated own
   decisions, validation failure, quota denial and the earlier regressions.
   Zero actual Gemini requests. Live schema acceptance and quality depend
   on a newly authorized owner evaluation.
+
+## 2026-11-21 — Stage 3 HTTP failure diagnostics
+
+- Verified the first owner-submitted v3 run from sanitized logs and read-only
+  PostgreSQL records. HTTP 5xx caused the extraction failure. The precise
+  status was unavailable. The run debited one Stage 3 slot and one beta
+  request. Verified active local authorization and two remaining slots.
+- Updated `extraction/gemini.ts` to log the numeric failure status with the
+  run ID. Kept the existing 400 diagnostic, quota handling and request shape.
+- Extended `extraction/extraction.test.ts` with synthetic 429, 500 and 503
+  responses to verify the exact log fields and unchanged error categories.
+  Offline API and frontend tests, typecheck, both builds, security and audit
+  checks passed. No new provider requests were issued.

@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
+import { mock as testMock } from "node:test";
+import { logger } from "../lib/logger";
 import { validate, ExtractionError } from "./validation";
 import {
   ENDPOINT,
@@ -261,6 +263,31 @@ await assert.rejects(
   (error) =>
     error instanceof ProviderQuotaError && error.retryAfterSeconds === 120,
 );
+const warning = testMock.method(logger, "warn", () => {});
+try {
+  const run = { id: randomUUID(), threadOutputCeiling: 4096 };
+  for (const [status, code] of [
+    [429, "QUOTA_EXHAUSTED"],
+    [500, "PROVIDER_TRANSIENT"],
+    [503, "PROVIDER_TRANSIENT"],
+  ] as const) {
+    const response = new Response(secretEcho, {
+      status,
+      headers: { "x-provider-message": secretEcho },
+    });
+    await assert.rejects(readPlanningResponse(response, Date.now(), run), { code });
+    assert.equal(response.bodyUsed, false);
+  }
+  assert.deepEqual(
+    warning.mock.calls.map(({ arguments: args }) => args),
+    [429, 500, 503].map((httpStatus) => [
+      { runId: run.id, httpStatus },
+      "Gemini HTTP failure",
+    ]),
+  );
+} finally {
+  warning.mock.restore();
+}
 await assert.rejects(
   gemini.generate(source),
   (e: ExtractionError) => e.code === "LIVE_DISABLED",
