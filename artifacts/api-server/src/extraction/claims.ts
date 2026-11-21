@@ -139,7 +139,7 @@ export async function claim(
     let reservation: number | null = null;
     if (mode === "gemini") {
       const policy = productionMode() ? productionPolicy(r.user_id)
-        : { projectDaily, userDaily, requestsPerMinute, tokensPerMinute };
+        : { projectDaily, userDaily, requestsPerMinute, tokensPerMinute, enforceSpacing: true };
       reservation = tokenReservation(source.source_text, r.schema_version);
       if (reservation > policy.tokensPerMinute) return stop("SOURCE_TOO_LARGE", sourceStarted);
       const usage = await geminiUsage(c, r.user_id);
@@ -147,7 +147,7 @@ export async function claim(
       if (usage.daily >= policy.projectDaily || usage.user_daily >= policy.userDaily)
         return stop("DAILY_QUOTA");
       if (
-        !usage.spaced ||
+        (policy.enforceSpacing && !usage.spaced) ||
         usage.rpm >= policy.requestsPerMinute ||
         usage.tpm + reservation > policy.tokensPerMinute
       )

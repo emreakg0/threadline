@@ -562,3 +562,7 @@ The next unfinished task is owner approval and configuration of the restricted R
 ### 2026-11-21 — Development preview Gemini access
 
 The API development command defaults to `NODE_ENV=development` when no mode is set. The restarted preview is healthy and an account-scoped, read-only availability check passed for an owned revision. The existing Google account grant has one v3 dispatch remaining before the private approval expires at 05:26:46 UTC on 2026-11-22. The check spent zero requests. The next unfinished test is an owner-initiated Action Thread generation from an approved synthetic Brain Dump in the preview. Published Gemini access needs dedicated production configuration. See [RESULT.md](RESULT.md).
+
+### 2026-11-21 — Production Gemini testing for one account
+
+The release supports an opt-in using the existing Gemini key and one verified Google subject. Owner testing bypasses application usage caps and spacing. Offline integration verified key binding, consent, account isolation, successive dispatches, queue capacity and provider cooldown. The deployment is pending. The next unfinished task is to confirm that billing is disabled for the key's Google project, apply the settings in Replit Publishing and verify the requested account's availability in the published app. See [RELEASE.md](RELEASE.md#gemini-gate) and [RESULT.md](RESULT.md).

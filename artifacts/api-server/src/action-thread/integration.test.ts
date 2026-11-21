@@ -403,6 +403,7 @@ try {
   }
   process.env.NODE_ENV = "production";
   delete process.env.THREADLINE_PRODUCTION_AI_APPROVED;
+  delete process.env.THREADLINE_PRODUCTION_AI_OWNER_TESTING;
   const prodInputs = await Promise.all([0, 0, 0, 1, 1, 1].map(async (user) => submission(await save(calcSource, user))));
   const prodSubmit = (index: number, status = 202, user = index < 3 ? 0 : 1) =>
     request<Job & { error?: string }>(route, status, { method: "POST", user, body: prodInputs[index] });
@@ -479,6 +480,41 @@ try {
   assert.equal((await pool.query("SELECT used FROM threadline_beta_grant")).rows[0].used, 3);
   providerFixture = undefined;
   console.log("PASS: production cohort, consent, private key binding, deduplication, queue and dispatch quotas, exclusive leases, validation, and no uncertain resend through offline transport");
+
+  process.env.THREADLINE_PRODUCTION_AI_OWNER_TESTING = "true";
+  assert.equal((await prodSubmit(2, 503)).error, "PRODUCTION_AI_UNCONFIGURED");
+  const existingKey = process.env.GEMINI_API_KEY!;
+  process.env.THREADLINE_PRODUCTION_GEMINI_KEY_SHA256 = createHash("sha256").update(existingKey).digest("hex");
+  assert.equal((await prodSubmit(2, 503)).error, "PRODUCTION_AI_UNCONFIGURED", "owner testing rejects a multi-account cohort");
+  process.env.THREADLINE_PRODUCTION_AI_SUBJECTS = users[0];
+  delete process.env.THREADLINE_PRODUCTION_GEMINI_API_KEY;
+  delete process.env.THREADLINE_PRODUCTION_AI_DAILY;
+  delete process.env.THREADLINE_PRODUCTION_AI_RPM;
+  delete process.env.THREADLINE_PRODUCTION_AI_TPM;
+  assert.equal((await prodSubmit(5, 403)).error, "PRODUCTION_AI_COHORT");
+  await request(route, 400, { method: "POST", body: { ...prodInputs[2], consent: false } });
+  const nextOwnerInput = submission(await save(calcSource));
+  const submitOwner = (status = 202) => request<Job & { error?: string }>(route, status, { method: "POST", body: nextOwnerInput });
+  const ownerJob = await prodSubmit(2);
+  assert.equal((await submitOwner(429)).error, "QUEUE_FULL");
+  let ownerCalls = 0;
+  providerFixture = (init) => {
+    assert.equal(new Headers(init?.headers).get("x-goog-api-key"), existingKey);
+    ownerCalls++;
+    if (ownerCalls === 2) return new Response("", { status: 429 });
+    return Response.json({ candidates: [{ finishReason: "STOP", content: { parts: [{ text: JSON.stringify(calcPlan()) }] } }] });
+  };
+  assert.equal(await processOne(gemini, ownerJob.id), true);
+  assert.equal((await detail(ownerJob.id)).provider, "gemini");
+  const throttledJob = await submitOwner();
+  assert.equal(await processOne(gemini, throttledJob.id), true, "owner testing can dispatch without local spacing");
+  assert.equal((await prodSubmit(2)).id, ownerJob.id);
+  const afterThrottle = submission(await save(calcSource));
+  const blocked = await request(route, 429, { method: "POST", body: afterThrottle });
+  assert.equal(blocked.error, "QUOTA_EXHAUSTED");
+  assert.equal(ownerCalls, 2);
+  providerFixture = undefined;
+  console.log("PASS: owner-only production testing reuses the approved key, bypasses app usage caps, and honors provider backoff");
   assert.equal((await pool.query("SELECT 1 FROM focus_tasks")).rowCount, 0);
   assert.equal((await pool.query("SELECT 1 FROM threadline_knowledge_blocks")).rowCount, 0);
   console.log("PASS: authenticated v3 persistence, Calc 2 branches, alternative-path convergence, cumulative retry, restart, concurrency, ownership, provenance, atomic rollback, trace, provider error, cancellation, timeout, recovery and closed live gate");

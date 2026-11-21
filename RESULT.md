@@ -1,4 +1,12 @@
-# Threadline — Gemini access in the development preview
+# Threadline — Production Gemini testing for one account
+
+The production API now supports explicit owner testing with the existing server-side Gemini key. The configuration binds that key to its approved fingerprint and accepts exactly one verified Google subject. Threadline skips its daily and per-minute request and token caps and minimum dispatch spacing in this mode. Each run requires consent for its saved revision. The worker records dispatches, allows one active run and backs off after a Gemini 429. Google applies its project quotas.
+
+The isolated PostgreSQL test verified the server used the existing key, rejected other accounts and multi-account configuration, admitted successive requests past the usual caps, and blocked new work after a simulated 429. The offline API and frontend suites, security tests, typecheck, release builds and package audit passed. Verification used intercepted provider transport and incurred no provider requests.
+
+The next step is to confirm the project's billing status in AI Studio and apply the single-account configuration in Replit Publishing for an authorized deployment. This workspace can access the current workspace key but has no control for editing published deployment secrets or republishing. See [RELEASE.md](RELEASE.md#gemini-gate).
+
+## Earlier milestone — Gemini access in the development preview
 
 Gemini Action Threads are available to the existing authorized Google account in the Replit preview. The API development command now supplies `NODE_ENV=development` when the environment has no explicit mode. After restarting the preview API, a read-only probe of the Action Thread availability route returned `enabled: true` for the account and an owned saved revision. The preview served the app, health and OAuth configuration responses and denied anonymous access to the availability route.
 
