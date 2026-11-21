@@ -622,3 +622,9 @@ Added migration 0008 and server-side checks tying consent, the authenticated own
 - Mounted the existing 3D City as an optional Tasks view in `App.tsx` using real tasks and existing filters/editor. Updated the browser harnesses to cover the current entry point and TaskSheet selectors. The 0/1/5/20 city cases and desktop/mobile visual review passed.
 - Added an operator account-data script because the release had no tested account export/erasure process. Added disposable API integration checks for scoped export, session revocation and graph erasure. Extended the offline OAuth fixture with denial, expired state and failed exchange.
 - Recorded the Replit and Google setup, hosted journey, privacy decisions, prior v3 database evidence, and sanitized publication recommendation in `RELEASE.md` and `RESULT.md`. Prepared proposed MIT terms and attribution for approval. No live Gemini request, deployment, OAuth credential change, billing change or publication occurred.
+
+### 2026-11-21 — Development preview Gemini access
+
+- Matched the requested Google account to the existing development grant without recording account identifiers. The live gate reproducibly rejected v3 with an unset application mode even though the private approval and remaining capacity were valid.
+- Updated `artifacts/api-server/package.json` to supply a development default while honoring an explicit mode. Restarted the preview API and verified health, OAuth configuration, anonymous denial and enabled availability for the owner's revision using a loopback, read-only probe. No Gemini request or grant change occurred.
+- Focused authorization and startup-mode checks, offline PostgreSQL/API tests, workspace typecheck, frontend and security tests, release builds and dependency audit passed. Published Gemini still requires the dedicated production credentials and project limits described in `RELEASE.md`.

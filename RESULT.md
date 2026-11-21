@@ -1,4 +1,14 @@
-# Threadline — Stage 4C1 hosted launch acceptance
+# Threadline — Gemini access in the development preview
+
+Gemini Action Threads are available to the existing authorized Google account in the Replit preview. The API development command now supplies `NODE_ENV=development` when the environment has no explicit mode. After restarting the preview API, a read-only probe of the Action Thread availability route returned `enabled: true` for the account and an owned saved revision. The preview served the app, health and OAuth configuration responses and denied anonymous access to the availability route.
+
+One live v3 dispatch remained at verification. The private provider approval expires on 2026-11-22 at 05:26:46 UTC. The existing grant and dispatch counts were preserved. This check exercised account admission without a browser sign-in or a Gemini request. The published app uses the separate production AI gate. Enabling it requires dedicated deployment credentials and verified project limits. See [RELEASE.md](RELEASE.md#gemini-gate).
+
+The focused gate checks, offline PostgreSQL/API suite, workspace typecheck, frontend tests, frontend security tests, release builds and dependency audit passed. The next test is an owner-initiated Action Thread generation from an approved synthetic Brain Dump in the preview before the current window expires.
+
+The secret audit found no matches in the index or working tree. The full scan still flags the previously documented authorization metadata in a retained local blob outside `main` and the private GitHub branch.
+
+## Earlier milestone — Stage 4C1 hosted launch acceptance
 
 **Go for an owner-approved, restricted hosted acceptance with production AI off. No-go for public launch, production AI or GitHub publication.** Stage 4C1 started from private `main` at `789d52f`. [RELEASE.md](RELEASE.md) contains the Replit and Google setup, browser acceptance steps, data operations and decision gates.
 

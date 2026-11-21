@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node ../../lib/db/scripts/migrate.mjs && tsx watch src/index.ts",
+    "dev": "node ../../lib/db/scripts/migrate.mjs && NODE_ENV=\"${NODE_ENV:-development}\" tsx watch src/index.ts",
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
