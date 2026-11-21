@@ -352,3 +352,23 @@
 .execution-workspace h1:focus-visible {
   outline: none;
 }
+
+.execution-recovery {
+  margin: 12px 0 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--tl-line);
+  border-inline-start: 3px solid var(--tl-amber);
+  border-radius: 8px;
+  background: var(--tl-paper);
+}
+.execution-recovery h3 { color: var(--tl-amber); margin: 0; }
+.execution-recovery p { margin: 8px 0; }
+.execution-recovery-options {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  border-top: 1px solid var(--tl-line);
+  padding-top: 10px;
+}
+.execution-recovery-options p { flex-basis: 100%; }

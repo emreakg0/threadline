@@ -64,12 +64,23 @@ export async function claim(
           )
         ).rows[0].n,
       ) + 1;
-    const stop = async (code: string) => {
+    const stop = async (code: string, sourceStarted?: Date) => {
+      let step: string | undefined;
+      if (sourceStarted) {
+        step = randomUUID();
+        await c.query(
+          `INSERT INTO threadline_execution_steps(id,user_id,run_id,step_key,attempt,status,started_at,completed_at,duration_ms,error_code)
+           VALUES($1,$2,$3,'validate_source',$4,'failed',$5,clock_timestamp(),
+           GREATEST(0,extract(epoch FROM(clock_timestamp()-$5::timestamptz))*1000)::bigint,$6)`,
+          [step, r.user_id, r.id, attempt, sourceStarted, code],
+        );
+        await appendEvent(c, r.id, "step_failed", { key: "validate_source", code, attempt }, step);
+      }
       await c.query(
         "UPDATE threadline_runs SET status='failed',completed_at=clock_timestamp(),error_code=$2 WHERE id=$1",
         [r.id, code],
       );
-      await appendEvent(c, r.id, "failed", { code });
+      await appendEvent(c, r.id, "failed", { code, outcome: "stopped", action: "Stopped before sending a provider request." }, step);
       return null;
     };
     const format = formats[r.schema_version as SchemaVersion];
@@ -93,6 +104,8 @@ export async function claim(
     )
       return stop("QUOTA_EXHAUSTED");
 
+    const sourceStarted = (await c.query("SELECT clock_timestamp() AS started"))
+      .rows[0].started;
     if (r.schema_version >= 2) {
       const document = (
         await c.query(
@@ -100,28 +113,31 @@ export async function claim(
           [r.document_id, r.user_id],
         )
       ).rows[0];
-      if (!document || document.archived_at) return stop("DOCUMENT_ARCHIVED");
+      if (!document || document.archived_at) return stop("DOCUMENT_ARCHIVED", sourceStarted);
     }
-    const sourceStarted = (await c.query("SELECT clock_timestamp() AS started"))
-      .rows[0].started;
     const source = (
       await c.query(
         "SELECT source_text FROM threadline_source_revisions WHERE id=$1 AND user_id=$2",
         [r.source_revision_id, r.user_id],
       )
     ).rows[0];
+    const checkAccess = mode === "gemini" && r.schema_version === 3 ? liveAccess : authorize;
     try {
-      const checkAccess = mode === "gemini" && r.schema_version === 3 ? liveAccess : authorize;
       checkAccess?.(r.source_revision_id, r.schema_version);
-      if (r.schema_version === 3) validateThreadSource(source.source_text);
     } catch (error) {
       if (error instanceof ExtractionError) return stop(error.code);
+      throw error;
+    }
+    try {
+      if (r.schema_version === 3) validateThreadSource(source.source_text);
+    } catch (error) {
+      if (error instanceof ExtractionError) return stop(error.code, sourceStarted);
       throw error;
     }
     let reservation: number | null = null;
     if (mode === "gemini") {
       reservation = tokenReservation(source.source_text, r.schema_version);
-      if (reservation > tokensPerMinute) return stop("SOURCE_TOO_LARGE");
+      if (reservation > tokensPerMinute) return stop("SOURCE_TOO_LARGE", sourceStarted);
       const usage = await geminiUsage(c, r.user_id);
       if (usage.blocked) return stop("QUOTA_EXHAUSTED");
       if (usage.daily >= projectDaily || usage.user_daily >= userDaily)

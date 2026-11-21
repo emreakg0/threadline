@@ -1,4 +1,16 @@
-# Threadline — Kinetic Action Thread graph
+# Threadline — Stage 4A observable failure handling and recovery
+
+How It Works identifies the failed stage and its responsibilities across the browser, API server, PostgreSQL and provider. Recorded stop, cancellation, reconciliation, rollback and manual-plan choices appear at their own positions on the replay timeline. The inspector retains exact sequence, timestamps, attempt, status, error code and duration. The replay clock compresses pauses and displays the separate observed span.
+
+The failure branch links to the saved brain dump, names the original immutable revision and offers manual planning. The choice endpoint records the owner's selection once per run. A manual choice does not create a task or send a provider request. Editing saves a new source revision. A later AI submission is subject to revision eligibility, consent and quotas. An expired worker lease closes the run without a resend. A confirmed provider cooldown displays its recorded timestamp. Older runs use their original events and the currently retrievable source revision.
+
+The authenticated offline harness generates its traces in a disposable PostgreSQL schema. It exercises successful processing, an exhausted mock service retry, worker interruption and reconciliation, invalid JSON, an injected PostgreSQL failure during graph insertion, source rejection after archival, and cancellation. Fixtures check exact original source reads, zero partial output, owner isolation, replay across refresh, and the distinction between an offered manual plan and a recorded choice. Failure injection is accessible only from the local test harness. Zero Gemini requests were made.
+
+Stage 4A covers the requested challenge behavior for the execution diagram, error handling, demonstrated recovery and preservation of original input. This milestone does not certify the overall challenge entry. Hosted verification and the separate live Gemini evaluation remain unfinished. Migration 0011 adds one event kind and was exercised in disposable databases.
+
+Verification passed in authenticated desktop and emulated mobile Chromium, including keyboard replay, reduced motion, and editing a corrected revision while the original remained retrievable. Workspace typecheck, frontend regression and security suites, both builds, and offline API/PostgreSQL suites passed. The dependency audit found no known vulnerabilities. The current-tree secret audit passed. The full local history scan still reports previously documented authorization metadata in a backup blob outside main's history.
+
+## Earlier milestone — Kinetic Action Thread graph
 
 Graph opens with a staggered entrance. Each card floats and sways on its own cycle above a fixed connection point. The fitted camera stays centered. Glowing particles follow the workflow curves, with a distinct double pulse on retry loops. Hover or keyboard focus lifts a card and lights its neighbors. A breathing halo and orbit mark the active step.
 

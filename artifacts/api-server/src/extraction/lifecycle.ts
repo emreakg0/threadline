@@ -4,18 +4,23 @@ import type { PoolClient } from "@workspace/db";
 export type Client = PoolClient;
 export async function transaction<T>(
   work: (c: Client) => Promise<T>,
+  onWorkRollback?: () => void,
 ): Promise<T> {
   const c = await pool.connect();
+  let working = false;
   try {
     await c.query("BEGIN");
     await c.query(
       "SET LOCAL lock_timeout='2s'; SET LOCAL statement_timeout='5s'",
     );
+    working = true;
     const result = await work(c);
+    working = false;
     await c.query("COMMIT");
     return result;
   } catch (e) {
     await c.query("ROLLBACK");
+    if (working) onWorkRollback?.();
     throw e;
   } finally {
     c.release();
@@ -49,18 +54,19 @@ export async function reconcile(c: Client) {
     )
   ).rows;
   for (const r of expired) {
-    await c.query(
-      `UPDATE threadline_execution_steps SET status='interrupted',completed_at=clock_timestamp(),duration_ms=GREATEST(0,extract(epoch FROM(clock_timestamp()-started_at))*1000)::bigint,error_code='LEASE_EXPIRED',recovery_action='Stop; provider outcome uncertain, no automatic resend' WHERE run_id=$1 AND status='running'`,
+    const stopped = await c.query(
+      `UPDATE threadline_execution_steps SET status='interrupted',completed_at=clock_timestamp(),duration_ms=GREATEST(0,extract(epoch FROM(clock_timestamp()-started_at))*1000)::bigint,error_code='LEASE_EXPIRED',recovery_action='Stop; provider outcome uncertain, no automatic resend' WHERE run_id=$1 AND status='running' RETURNING id`,
       [r.id],
     );
     await c.query(
       `UPDATE threadline_runs SET status='interrupted',completed_at=clock_timestamp(),lease_token=NULL,lease_expires_at=NULL,error_code='OUTCOME_UNCERTAIN' WHERE id=$1`,
       [r.id],
     );
-    await appendEvent(c, r.id, "interrupted", { code: "LEASE_EXPIRED" });
+    await appendEvent(c, r.id, "interrupted", { code: "LEASE_EXPIRED" }, stopped.rows[0]?.id);
     await appendEvent(c, r.id, "recovered", {
-      action: "Stopped without resending uncertain provider request",
-    });
+      outcome: "reconciled",
+      action: "Closed the expired worker lease without dispatching another request.",
+    }, stopped.rows[0]?.id);
   }
   return expired.length;
 }
@@ -80,8 +86,8 @@ export async function cancel(user: string, id: string) {
     ).rows[0];
     if (!run) return null;
     if (["queued", "running"].includes(run.status)) {
-      await c.query(
-        `UPDATE threadline_execution_steps SET status='cancelled',completed_at=clock_timestamp(),duration_ms=GREATEST(0,extract(epoch FROM(clock_timestamp()-started_at))*1000)::bigint WHERE run_id=$1 AND status='running'`,
+      const stopped = await c.query(
+        `UPDATE threadline_execution_steps SET status='cancelled',completed_at=clock_timestamp(),duration_ms=GREATEST(0,extract(epoch FROM(clock_timestamp()-started_at))*1000)::bigint WHERE run_id=$1 AND status='running' RETURNING id`,
         [id],
       );
       await c.query(
@@ -89,8 +95,9 @@ export async function cancel(user: string, id: string) {
         [id],
       );
       await appendEvent(c, id, "cancelled", {
-        action: "Discard late output; cancellation cannot undo provider work",
-      });
+        outcome: "cancelled",
+        action: "Closed the run and blocked any later result from being saved. An in-flight request may still finish externally.",
+      }, stopped.rows[0]?.id);
     }
     return (await c.query("SELECT * FROM threadline_runs WHERE id=$1", [id]))
       .rows[0];

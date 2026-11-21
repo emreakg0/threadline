@@ -7,6 +7,9 @@ export type Run = {
   model: string;
   schema_version?: number;
   source_revision_id: string;
+  document_id?: string;
+  source_revision?: number;
+  source_archived?: boolean;
   created_at: string;
   started_at: string | null;
   completed_at: string | null;
@@ -33,7 +36,7 @@ export type TraceEvent = {
   sequence: number;
   event_type: string;
   observed_at: string;
-  payload: { key?: string; code?: string; action?: string; attempt?: number };
+  payload: { key?: string; code?: string; action?: string; outcome?: string; retry_at?: string; attempt?: number };
 };
 export type Trace = {
   run: Run;
@@ -78,6 +81,10 @@ export function run(v: unknown): Run {
       ? { schema_version: v.schema_version }
       : {}),
     source_revision_id: str(v.source_revision_id),
+    document_id: typeof v.document_id === "string" && /^[0-9a-f-]{36}$/i.test(v.document_id) ? v.document_id : undefined,
+    source_archived: v.source_archived === true,
+    source_revision: typeof v.source_revision === "number" && Number.isSafeInteger(v.source_revision)
+      ? v.source_revision : undefined,
     created_at: time(v.created_at),
     started_at: nt(v.started_at),
     completed_at: nt(v.completed_at),
@@ -106,8 +113,10 @@ function event(v: unknown): TraceEvent {
   const sequence = num(v.sequence, 1);
   if (!Number.isSafeInteger(sequence)) throw Error("Invalid event sequence");
   const payload: TraceEvent["payload"] = {};
-  for (const k of ["key", "code", "action"] as const)
+  for (const k of ["key", "code", "action", "outcome"] as const)
     if (typeof v.payload[k] === "string") payload[k] = v.payload[k];
+  if (typeof v.payload.retry_at === "string" && Number.isFinite(Date.parse(v.payload.retry_at)))
+    payload.retry_at = v.payload.retry_at;
   if (v.payload.attempt !== undefined) {
     const n = num(v.payload.attempt, 1);
     if (!Number.isSafeInteger(n)) throw Error("Invalid attempt");
@@ -214,6 +223,7 @@ export async function loadTrace(
     "retry_scheduled",
     "interrupted",
     "recovered",
+    "alternative_selected",
     "completed",
     "failed",
     "cancelled",

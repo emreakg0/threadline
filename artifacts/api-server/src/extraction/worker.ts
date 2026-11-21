@@ -37,14 +37,16 @@ async function endStep(c: Client, r: Claim, status: string, code?: string) {
     `UPDATE threadline_execution_steps SET status=$2,completed_at=clock_timestamp(),duration_ms=GREATEST(0,extract(epoch FROM(clock_timestamp()-started_at))*1000)::bigint,error_code=$3 WHERE id=$1 AND status='running' RETURNING step_key`,
     [r.step, status, code ?? null],
   );
-  if (updated.rowCount)
+  const key = updated.rows[0]?.step_key as string | undefined;
+  if (key)
     await appendEvent(
       c,
       r.id,
       status === "succeeded" ? "step_completed" : "step_failed",
-      { key: updated.rows[0].step_key, code: code ?? null },
+      { key, code: code ?? null },
       r.step,
     );
+  return key;
 }
 async function startStep(r: Claim, key: string) {
   await transaction(async (c) => {
@@ -57,7 +59,7 @@ async function startStep(r: Claim, key: string) {
     await appendEvent(c, r.id, "step_started", { key }, r.step);
   });
 }
-export async function finish(r: Claim, result: Block[] | ActionThread) {
+export async function finish(r: Claim, result: Block[] | ActionThread, onRollback?: () => void) {
   return transaction(async (c) => {
     if (!(await owned(c, r))) return false;
     await requireActivePlanSource(c, r);
@@ -129,26 +131,28 @@ export async function finish(r: Claim, result: Block[] | ActionThread) {
     );
     await appendEvent(c, r.id, "completed");
     return true;
-  });
+  }, onRollback);
 }
-export async function fail(r: Claim, error: unknown) {
+export async function fail(r: Claim, error: unknown, rolledBack = false) {
   return transaction(async (c) => {
+    let blockedUntil: Date | undefined;
     if (r.provider === "gemini" && error instanceof ProviderQuotaError) {
       // A provider refusal applies to the project even if this run was cancelled.
       await c.query("SELECT pg_advisory_xact_lock(72810382)");
-      await c.query(
+      const cooldown = await c.query(
         `UPDATE threadline_runs SET provider_blocked_until=GREATEST(
           provider_blocked_until, ${nextPacificMidnight},
-          clock_timestamp()+$2::int * interval '1 second') WHERE id=$1`,
+          clock_timestamp()+$2::int * interval '1 second') WHERE id=$1 RETURNING provider_blocked_until`,
         [r.id, error.retryAfterSeconds],
       );
+      blockedUntil = cooldown.rows[0]?.provider_blocked_until;
     }
     if (!(await owned(c, r))) return false;
     const code =
       error instanceof ExtractionError
         ? error.code
         : "STORAGE_OR_PROCESSING_FAILURE";
-    await endStep(c, r, "failed", code);
+    const stage = await endStep(c, r, "failed", code);
     const retry =
       r.provider === "mock" && code === "PROVIDER_TRANSIENT" && r.attempt < 2;
     await c.query(
@@ -158,8 +162,21 @@ export async function fail(r: Claim, error: unknown) {
     await appendEvent(c, r.id, retry ? "retry_scheduled" : "failed", {
       code,
       attempt: r.attempt,
-      action: retry ? "One bounded retry after 1 second" : "Stop",
-    });
+      action: retry ? "One bounded mock retry scheduled after 1 second."
+        : stage === "validate_output" ? "Rejected the output and stopped before saving it."
+        : "Stopped this run.",
+      outcome: retry ? "scheduled" : "stopped",
+      ...(blockedUntil ? { retry_at: blockedUntil.toISOString() } : {}),
+    }, r.step);
+    if (rolledBack) await appendEvent(c, r.id, "recovered", {
+      outcome: "rolled_back",
+      action: "PostgreSQL rolled back the output transaction.",
+    }, r.step);
+    else if (!retry && ["PROVIDER_TIMEOUT", "PROVIDER_NETWORK"].includes(code))
+      await appendEvent(c, r.id, "recovered", {
+        outcome: "uncertain",
+        action: "Stopped without automatically resending. The external outcome is uncertain.",
+      }, r.step);
     return true;
   });
 }
@@ -180,6 +197,7 @@ export async function processOne(adapter: Adapter = gemini, id?: string) {
   }, 5000);
   let timeout: ReturnType<typeof setTimeout> | undefined;
   let abortListener: () => void = () => {};
+  let rolledBack = false;
   try {
     if (adapter.mode === "gemini") liveAccess(r.source_revision_id, r.schema_version);
     await transaction(async (c) => {
@@ -220,14 +238,14 @@ export async function processOne(adapter: Adapter = gemini, id?: string) {
       await endStep(c, r, "succeeded");
     });
     await startStep(r, "persist");
-    await finish(r, result);
+    await finish(r, result, () => { rolledBack = true; });
   } catch (e) {
     if (e instanceof ProviderRequestError)
       logger.warn(
         { runId: r.id, diagnostic: e.diagnostic },
         "Gemini request rejected",
       );
-    await fail(r, e);
+    await fail(r, e, rolledBack);
   } finally {
     clearInterval(timer);
     clearTimeout(timeout);

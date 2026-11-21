@@ -7,7 +7,10 @@ import {
   stageState,
   observedStep,
   rate,
+  recoveryAt,
+  failureReason,
 } from "./replay";
+import { api } from "./api";
 import { TraceInspector } from "./TraceInspector";
 export function ExecutionReplay({ trace }: { trace: Trace }) {
   const times = useMemo(() => schedule(trace.events), [trace.events]);
@@ -15,7 +18,7 @@ export function ExecutionReplay({ trace }: { trace: Trace }) {
   const [position, setPosition] = useState(end),
     [playing, setPlaying] = useState(false),
     [speed, setSpeed] = useState(1),
-    [node, setNode] = useState("extract");
+    [node, setNode] = useState(() => recoveryAt(trace, trace.events.length - 1)?.key ?? "extract");
   const [reduced, setReduced] = useState(
     () => matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
@@ -56,6 +59,23 @@ export function ExecutionReplay({ trace }: { trace: Trace }) {
         : e.payload.key === node ||
           trace.steps.find((s) => s.id === e.step_id)?.step_key === node,
     );
+  const branch = recoveryAt(trace, index);
+  const [choosing, setChoosing] = useState(false);
+  const [choiceError, setChoiceError] = useState(false);
+  const document = trace.run.document_id;
+  async function chooseManual() {
+    const originalRoute = location.hash;
+    setChoosing(true);
+    setChoiceError(false);
+    try {
+      await api("/extractions/" + trace.run.id + "/recovery/manual", "POST");
+      if (location.hash === originalRoute) location.hash = "#capture/plan/" + document;
+    } catch {
+      setChoiceError(true);
+    } finally {
+      setChoosing(false);
+    }
+  }
   const activeEvent = inspected ?? (nodeSelected ? nodeEvent : current);
   const step =
     metadataStep ??
@@ -166,6 +186,9 @@ export function ExecutionReplay({ trace }: { trace: Trace }) {
                 <span className="execution-node-index">0{i + 1}</span>
                 <strong>{label}</strong>
                 <span>{status}</span>
+                <small>{key === "source" ? "Browser → API → PostgreSQL"
+                  : key === "extract" ? (trace.run.provider === "mock" ? "API → mock provider" : "API → Gemini")
+                  : key === "persist" ? "API → PostgreSQL" : "API server"}</small>
                 <small>
                   {key === "source"
                     ? "Pinned immutable revision"
@@ -178,6 +201,41 @@ export function ExecutionReplay({ trace }: { trace: Trace }) {
           );
         })}
       </div>
+      {branch && (
+        <section className="execution-recovery" aria-label="Failure and recovery">
+          <h3>↳ {stages.find(([key]) => key === branch.key)?.[1] ?? "Run"} · {
+            branch.terminal?.event_type === "cancelled" ? "Cancelled" :
+              branch.terminal?.event_type === "interrupted" ? "Interrupted" : "Failed"
+          }</h3>
+          <p>{branch.terminal?.event_type === "cancelled" ? "The run was cancelled."
+            : failureReason(branch.event.payload.code, branch.key)}</p>
+          {branch.terminal && <p><strong>Recorded outcome</strong><br />{
+            (branch.terminal.payload.action === "Stop" ? "The run stopped." : branch.terminal.payload.action) ?? (branch.terminal.event_type === "failed"
+              ? "The run ended in failure. No further recovery was recorded at this point."
+              : "The run ended before processing finished.")
+          }</p>}
+          {branch.recovery && <p><strong>{branch.recovery.event_type === "retry_scheduled"
+            ? "Retry scheduled" : "Recovery performed"}</strong><br />{branch.recovery.payload.action}</p>}
+          {branch.terminal?.payload.retry_at && <p>Provider cooldown until{" "}
+            <time dateTime={branch.terminal.payload.retry_at}>{new Date(branch.terminal.payload.retry_at).toLocaleString()}</time>.
+            Eligibility also depends on current quota and access.</p>}
+          {trace.run.source_revision !== undefined &&
+            <p><strong>Input preserved</strong><br />Revision {trace.run.source_revision} is still in the saved brain dump’s history.</p>}
+          {branch.selected && <p><strong>Alternative selected</strong><br />{branch.selected.payload.action}</p>}
+          {branch.terminal && document && (
+            <div className="execution-recovery-options">
+              <strong>Available now</strong>
+              <a href={"#capture/document/" + document}>Open saved brain dump</a>
+              {trace.run.source_archived
+                ? <p>Manual planning is unavailable while this brain dump is archived. Restore it to continue.</p>
+                : <button type="button" disabled={choosing} onClick={() => void chooseManual()}>Open manual plan</button>}
+              {choiceError && <p role="alert">Could not confirm the choice. Try again or{" "}
+                <a href={"#capture/plan/" + document}>open the manual plan directly</a>.</p>}
+              <p>Save corrections as a new revision to keep the original. Repeating the same AI operation after a provider attempt requires a new eligible revision, consent, and a separate provider request.</p>
+            </div>
+          )}
+        </section>
+      )}
       <div
         className="execution-controls"
         role="group"
@@ -275,6 +333,8 @@ export function ExecutionReplay({ trace }: { trace: Trace }) {
           event={activeEvent}
           stage={nodeSelected ? node : undefined}
           step={step}
+          finalStep={!!metadataStep || (!!step && trace.events.slice(0, index + 1).some((e) =>
+            e.step_id === step.id && ["step_completed", "step_failed", "interrupted", "cancelled"].includes(e.event_type)))}
         />
       </div>
       <details>

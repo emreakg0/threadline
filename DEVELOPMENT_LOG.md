@@ -602,3 +602,9 @@ Added migration 0008 and server-side checks tying consent, the authenticated own
 - Passed the confirmed progress event from ActionThreads.tsx so a selected outcome or retry can animate after persistence. Updated thread-browser-check.mjs with timed idle samples, frame captures, preference, branch, retry and mobile checks.
 - Workspace typecheck, frontend regression and security tests, both builds and offline PostgreSQL/API regressions passed. Updated RESULT.md and PROJECT_STATUS.md. No Gemini requests.
 - The complete authenticated Chromium suite passed on desktop and emulated mobile. Multiple idle captures showed about 14 px of card travel with one fitted camera position across 10.2 seconds.
+
+### Stage 4A — Observable execution failures
+
+- Updated extraction claims, worker and lifecycle events to associate source failures and cancellations with the affected stage, distinguish terminal outcomes from retries, and record confirmed rollback, reconciliation and cooldown information.
+- Added an owner-scoped, idempotent manual-plan choice to the extraction routes and expanded event types through migration 0011. How It Works resolves the pinned source revision and displays recorded recovery separately from available actions.
+- Extended the authenticated Chromium harness with offline faults, exact source checks, graph rollback and choice replay. See RESULT.md for verification and remaining scope.

@@ -67,3 +67,57 @@ export function observedStep(
 export function rate(v: number) {
   return Math.min(2, Math.max(0.5, Number.isFinite(v) ? v : 1));
 }
+
+
+// Read the active failure branch at the cursor. A later attempt starts its own branch.
+export function recoveryAt(trace: Trace, index: number) {
+  let failure: TraceEvent | undefined;
+  let terminal: TraceEvent | undefined;
+  let recovery: TraceEvent | undefined;
+  let selected: TraceEvent | undefined;
+  for (const event of trace.events.slice(0, index + 1)) {
+    switch (event.event_type) {
+      case "started": failure = terminal = recovery = selected = undefined; break;
+      case "step_failed": failure = event; break;
+      case "failed":
+      case "interrupted":
+      case "cancelled": terminal = event; break;
+      case "retry_scheduled":
+      case "recovered": recovery = event; break;
+      case "alternative_selected": selected = event; break;
+    }
+  }
+  const event = failure ?? terminal;
+  if (!event) return;
+  // Older interruption and cancellation events may omit the active step ID.
+  const openStage = ["interrupted", "cancelled"].includes(event.event_type)
+    ? stages.find(([key]) => stageState(trace, key, index) === event.event_type)?.[0]
+    : undefined;
+  const step = trace.steps.find((step) => step.id === event.step_id);
+  return { event, key: step?.step_key ?? event.payload.key ?? openStage, terminal, recovery, selected };
+}
+
+export function failureReason(code?: string, stage?: string) {
+  switch (code) {
+    case "PROVIDER_TRANSIENT": return "The external service was temporarily unavailable.";
+    case "PROVIDER_TIMEOUT": return "The provider did not respond before the deadline. Its outcome is uncertain.";
+    case "PROVIDER_NETWORK": return "The provider connection failed. Its outcome is uncertain.";
+    case "LEASE_EXPIRED": return "The worker stopped reporting progress and its lease expired.";
+    case "INVALID_JSON": return "The response could not be read as valid JSON.";
+    case "INVALID_THREAD_SOURCE":
+    case "SOURCE_TOO_LARGE": return "The saved input exceeds the planning format’s limits or contains unsupported text.";
+    case "DOCUMENT_ARCHIVED": return "The brain dump was archived before this operation could finish.";
+    case "QUOTA_EXHAUSTED":
+    case "DAILY_QUOTA": return "The daily provider limit was reached. The daily window resets at midnight Pacific time.";
+    case "PROVIDER_AUTH": return "The provider declined access to the model.";
+    case "MODEL_UNAVAILABLE": return "The configured model was unavailable.";
+    case "PROVIDER_REJECTED": return "The provider rejected the request.";
+    case "PROVIDER_SAFETY_OR_TRUNCATION": return "The provider returned a blocked or incomplete response.";
+    case "PROVIDER_OUTPUT_LIMIT": return "The provider reached the output limit before finishing.";
+    case "STORAGE_OR_PROCESSING_FAILURE":
+      return stage === "persist" ? "The application could not confirm that the output was saved." : "The application could not finish processing.";
+    default:
+      return stage === "validate_output" ? "The output failed Threadline’s structure or evidence checks."
+        : "Threadline could not continue this run.";
+  }
+}

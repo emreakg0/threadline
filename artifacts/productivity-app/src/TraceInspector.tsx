@@ -7,11 +7,13 @@ export function TraceInspector({
   event,
   step,
   stage,
+  finalStep,
 }: {
   trace: Trace;
   event?: TraceEvent;
   step?: Step;
   stage?: string;
+  finalStep: boolean;
 }) {
   return (
     <aside className="execution-inspector" aria-label="Execution inspector">
@@ -24,8 +26,6 @@ export function TraceInspector({
       </h3>
       <p>Stored metadata · read only</p>
       <dl>
-        <dt>Run status now</dt>
-        <dd>{trace.run.status}</dd>
         <dt>Source revision</dt>
         <dd>{trace.run.source_revision_id}</dd>
         {event && (
@@ -40,6 +40,8 @@ export function TraceInspector({
             </dd>
             <dt>Recorded action</dt>
             <dd>{safe(event.payload.action)}</dd>
+            <dt>Recovery outcome</dt>
+            <dd>{safe(event.payload.outcome)}</dd>
             <dt>Recorded event attempt</dt>
             <dd>{event.payload.attempt ?? "Not recorded"}</dd>
             <dt>Event error</dt>
@@ -52,10 +54,11 @@ export function TraceInspector({
             <dd>
               {step.step_key} / {step.attempt}
             </dd>
-            <dt>Final stored step status</dt>
-            <dd>{step.status} (may be later than the replay cursor)</dd>
             <dt>Actual start</dt>
             <dd>{step.started_at}</dd>
+            {finalStep && <>
+            <dt>Final stored step status</dt>
+            <dd>{step.status}</dd>
             <dt>Actual completion</dt>
             <dd>{step.completed_at ?? "Not recorded"}</dd>
             <dt>Wall-clock duration</dt>
@@ -72,6 +75,7 @@ export function TraceInspector({
             <dd>
               {safe(step.error_code)} · {safe(step.recovery_action)}
             </dd>
+            </>}
           </>
         )}
       </dl>

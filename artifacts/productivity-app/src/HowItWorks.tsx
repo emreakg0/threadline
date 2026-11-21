@@ -78,8 +78,8 @@ export function HowItWorks({ runId }: { runId: string | null }) {
         How It Works
       </h1>
       <p>
-        Actual recorded execution. Inspect every observation, then replay it at
-        your pace.
+        Follow a saved run from the browser through the API and database.
+        Replay recorded steps and see what happened if processing stopped.
       </p>
       <a href="#capture">← Back to capture</a>
       <div className="execution-layout">

@@ -542,3 +542,7 @@ The graph now has independent floating faces, anchored connection ports, flowing
 Workspace typecheck, frontend tests, Vite security checks, both builds and the offline API suite passed. Physical-device GPU and battery performance remain unmeasured. No further implementation is pending for this visual change. The paused Stage 3 live evaluation remains separate.
 
 Authenticated Chromium verified ambient motion over time, fixed camera and aligned ports, confirmed branch and retry surges, mobile touch pan, and both motion settings. See RESULT.md for the measured frame interval.
+
+### Stage 4A — Observable execution failures
+
+How It Works now shows a cursor-gated failure branch, verified immutable revision, available recovery options and recorded manual-plan choices. The offline harness exercises success, provider failure, lease reconciliation, invalid output, partial graph rollback, source rejection and cancellation. Migration 0011 expands the trace event vocabulary. Hosted verification and the separate Stage 3 live evaluation remain pending.

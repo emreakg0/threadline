@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { pool } from "@workspace/db";
-import { cancel } from "../extraction/lifecycle";
+import { appendEvent, cancel, transaction } from "../extraction/lifecycle";
 import { activeBetaGrant } from "../extraction/beta";
 import { liveAccess } from "../extraction/gemini";
 import { extract } from "../extraction/service";
@@ -157,6 +157,34 @@ router.post("/:id/cancel", async (req, res) => {
   }
   res.json(publicRun(run));
 });
+// This records the navigation choice only. Manual actions are saved separately.
+router.post("/:id/recovery/manual", async (req, res) => {
+  const id = req.params.id;
+  if (!validId(id)) {
+    res.status(400).json({ error: "Invalid run ID" });
+    return;
+  }
+  const status = await transaction(async (c) => {
+    const run = (await c.query(
+      `SELECT r.status, d.archived_at FROM threadline_runs r
+       JOIN threadline_documents d ON d.id=r.document_id AND d.user_id=r.user_id
+       WHERE r.id=$1 AND r.user_id=$2 FOR UPDATE OF r`,
+      [id, res.locals.userId],
+    )).rows[0];
+    if (!run) return 404;
+    if (run.archived_at || !["failed", "interrupted", "cancelled"].includes(run.status)) return 409;
+    const selected = await c.query(
+      "SELECT 1 FROM threadline_execution_events WHERE run_id=$1 AND event_type='alternative_selected'",
+      [id],
+    );
+    if (!selected.rowCount) await appendEvent(c, id, "alternative_selected", {
+      outcome: "manual_selected",
+      action: "The owner selected manual planning.",
+    });
+    return 204;
+  });
+  res.sendStatus(status);
+});
 router.get("/:id/events", async (req, res) => {
   const since = cursor(req.query.since_sequence);
   if (!validId(req.params.id) || since === null) {
@@ -228,7 +256,11 @@ router.get("/:id", async (req, res) => {
   }
   const run = (
     await pool.query(
-      "SELECT * FROM threadline_runs WHERE id::text=$1 AND user_id=$2",
+      `SELECT r.*, s.revision AS source_revision, d.archived_at IS NOT NULL AS source_archived
+        FROM threadline_runs r JOIN threadline_source_revisions s
+          ON s.id=r.source_revision_id AND s.user_id=r.user_id
+        JOIN threadline_documents d ON d.id=r.document_id AND d.user_id=r.user_id
+        WHERE r.id=$1 AND r.user_id=$2`,
       [req.params.id, res.locals.userId],
     )
   ).rows[0];
