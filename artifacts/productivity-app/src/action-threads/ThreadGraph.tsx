@@ -27,14 +27,28 @@ export function StepMark({ kind, state, terminal }: {
 }
 
 type View = { x: number; y: number; scale: number };
+const cameraTransform = ({ x, y, scale }: View) => `translate(${x}px, ${y}px) scale(${scale})`;
 
-export function ThreadGraph({ graph, layout, route, selected, select }: Props) {
+export function ThreadGraph({ graph, layout, route, selected, select, depth }: Props & { depth: boolean }) {
   const viewport = useRef<HTMLDivElement>(null);
+  const plane = useRef<HTMLDivElement>(null);
+  const canvas = useRef<HTMLDivElement>(null);
+  const tiltAllowed = useRef<MediaQueryList>(null);
+  const tiltFrame = useRef(0);
+  const tiltTarget = useRef({ x: 0, y: 0 });
   const marker = useId();
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [manual, setManual] = useState<View | null>(null);
   const [dragging, setDragging] = useState(false);
-  const drag = useRef<{ id: number; x: number; y: number; origin: View } | null>(null);
+  const [hovered, setHovered] = useState<string | null>(null);
+  const [focused, setFocused] = useState<string | null>(null);
+  const drag = useRef<{ id: number; x: number; y: number; origin: View; view: View } | null>(null);
+  const attention = depth && !dragging ? focused ?? hovered : null;
+  const neighbors = new Set(attention ? [attention] : []);
+  for (const { from, to } of graph.edges) {
+    if (from === attention) neighbors.add(to);
+    if (to === attention) neighbors.add(from);
+  }
   useLayoutEffect(() => {
     const element = viewport.current!;
     function measure() {
@@ -45,6 +59,20 @@ export function ThreadGraph({ graph, layout, route, selected, select }: Props) {
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
+
+  useEffect(() => {
+    tiltAllowed.current = matchMedia("(min-width: 761px) and (prefers-reduced-motion: no-preference)");
+  }, []);
+
+  useEffect(() => {
+    const element = plane.current;
+    return () => {
+      cancelAnimationFrame(tiltFrame.current);
+      tiltFrame.current = 0;
+      element?.style.removeProperty("--thread-tilt-x");
+      element?.style.removeProperty("--thread-tilt-y");
+    };
+  }, [depth]);
 
   const fittedScale = Math.min(1, Math.max(0.15, Math.min(
     (size.width - 22) / layout.width, (size.height - 24) / layout.height,
@@ -73,20 +101,47 @@ export function ThreadGraph({ graph, layout, route, selected, select }: Props) {
     return () => element.removeEventListener("wheel", wheel);
   });
 
+  function resetTilt() {
+    cancelAnimationFrame(tiltFrame.current);
+    tiltFrame.current = 0;
+    plane.current?.style.removeProperty("--thread-tilt-x");
+    plane.current?.style.removeProperty("--thread-tilt-y");
+  }
+
   function startPan(event: PointerEvent<HTMLDivElement>) {
     if (drag.current || event.button !== 0 || (event.target as Element).closest("button")) return;
     event.currentTarget.setPointerCapture(event.pointerId);
-    drag.current = { id: event.pointerId, x: event.clientX, y: event.clientY, origin: view };
+    resetTilt();
+    setHovered(null);
+    drag.current = { id: event.pointerId, x: event.clientX, y: event.clientY, origin: view, view };
     setDragging(true);
   }
-  function movePan(event: PointerEvent<HTMLDivElement>) {
+  function movePointer(event: PointerEvent<HTMLDivElement>) {
     const start = drag.current;
-    if (!start || start.id !== event.pointerId) return;
-    setManual({ ...start.origin, x: start.origin.x + event.clientX - start.x, y: start.origin.y + event.clientY - start.y });
+    if (start) {
+      if (start.id !== event.pointerId) return;
+      start.view = { ...start.origin, x: start.origin.x + event.clientX - start.x, y: start.origin.y + event.clientY - start.y };
+      if (canvas.current) canvas.current.style.transform = cameraTransform(start.view);
+      return;
+    }
+    if (!depth || !tiltAllowed.current?.matches || focused || event.pointerType !== "mouse") return;
+    tiltTarget.current = { x: event.clientX, y: event.clientY };
+    if (tiltFrame.current) return;
+    tiltFrame.current = requestAnimationFrame(() => {
+      tiltFrame.current = 0;
+      const rect = viewport.current?.getBoundingClientRect();
+      if (!rect || !rect.width || !rect.height) return;
+      const offsetX = Math.max(-1, Math.min(1, 2 * (tiltTarget.current.x - rect.left) / rect.width - 1));
+      const offsetY = Math.max(-1, Math.min(1, 2 * (tiltTarget.current.y - rect.top) / rect.height - 1));
+      plane.current?.style.setProperty("--thread-tilt-x", `${offsetY * -1.6}deg`);
+      plane.current?.style.setProperty("--thread-tilt-y", `${offsetX * 2.2}deg`);
+    });
   }
   function stopPan(event: PointerEvent<HTMLDivElement>) {
-    if (drag.current?.id !== event.pointerId) return;
+    const start = drag.current;
+    if (start?.id !== event.pointerId) return;
     drag.current = null;
+    if (start.view !== start.origin) setManual(start.view);
     setDragging(false);
   }
   function showOnKeyboardFocus(id: string) {
@@ -114,15 +169,21 @@ export function ThreadGraph({ graph, layout, route, selected, select }: Props) {
     const lane = retry ? 20 + (index % 2) * 15 : layout.width - 24 - (index % 3) * 13;
     const viaRail = retry || long;
     const middle = (y1 + y2) / 2;
+    const direction = Math.sign(y2 - y1);
+    const railFrom = x1 - Math.sign(x1 - lane) * 10;
+    const railTo = x2 - Math.sign(x2 - lane) * 10;
     const d = viaRail
-      ? `M ${x1} ${y1} v 13 Q ${x1} ${y1 + 22} ${x1 - Math.sign(x1 - lane) * 10} ${y1 + 22}
-         H ${lane} V ${y2 - 22} H ${x2 - Math.sign(x2 - lane) * 10}
+      ? `M ${x1} ${y1} v 13 Q ${x1} ${y1 + 22} ${railFrom} ${y1 + 22}
+         H ${lane + Math.sign(x1 - lane) * 10} Q ${lane} ${y1 + 22} ${lane} ${y1 + 22 + direction * 10}
+         V ${y2 - 22 - direction * 10} Q ${lane} ${y2 - 22} ${lane + Math.sign(x2 - lane) * 10} ${y2 - 22}
+         H ${railTo}
          Q ${x2} ${y2 - 22} ${x2} ${y2 - 12} V ${y2 - 4}`
       : `M ${x1} ${y1} C ${x1} ${middle}, ${x2} ${middle}, ${x2} ${y2 - 4}`;
     const followed = route.followed(edge.from, edge.to);
     const unavailable = route.nodeState(edge.to) === "unavailable" || route.nodeState(edge.from) === "unavailable" ||
       (edge.kind === "outcome" && route.nodeState(edge.from) === "complete" && !followed);
-    return [{ edge, d, retry, mode: retry ? "retry" : followed ? "followed" : "default", unavailable,
+    const emphasis = !attention ? undefined : edge.from === attention || edge.to === attention ? "connected" : "distant";
+    return [{ edge, d, retry, mode: retry ? "retry" : followed ? "followed" : "default", unavailable, emphasis,
       label: retry ? `Retry · up to ${edge.max_traversals}` : edge.outcome,
       x: viaRail ? lane : (x1 + x2) / 2, y: middle }];
   });
@@ -139,50 +200,65 @@ export function ThreadGraph({ graph, layout, route, selected, select }: Props) {
     </div>
     <div
       ref={viewport} tabIndex={0} role="region" aria-label="Graph canvas. Use arrow keys to pan."
-      className="tl-thread-viewport" data-dragging={dragging}
-      onPointerDown={startPan} onPointerMove={movePan}
+      className="tl-thread-viewport" data-dragging={dragging} data-depth={depth}
+      onPointerDown={startPan} onPointerMove={movePointer}
+      onPointerLeave={resetTilt}
       onPointerUp={stopPan} onPointerCancel={stopPan} onLostPointerCapture={stopPan}
       onKeyDown={(event) => {
         if (event.target !== event.currentTarget) return;
         const direction = { ArrowLeft: [44, 0], ArrowRight: [-44, 0], ArrowUp: [0, 44], ArrowDown: [0, -44] }[event.key];
         if (!direction) return;
         event.preventDefault();
+        resetTilt();
         setManual({ ...view, x: view.x + direction[0], y: view.y + direction[1] });
       }}
     >
-      <div className="tl-thread-canvas" style={{
-        width: layout.width, height: layout.height,
-        transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})`,
-      }}>
-        <svg className="tl-thread-connections" viewBox={`0 0 ${layout.width} ${layout.height}`} aria-hidden="true">
-          <defs>
-            {["default", "retry", "followed"].map((mode) => <marker
-              key={mode} id={marker + mode} viewBox="0 0 10 10" refX="8" refY="5"
-              markerWidth="6" markerHeight="6" orient="auto"
-            ><path data-mode={mode} d="M 1 1 L 8 5 L 1 9" /></marker>)}
-          </defs>
-          {edges.map(({ edge, d, mode, unavailable }) => <path key={edge.from + "/" + edge.to}
-            d={d} data-mode={mode} data-dim={unavailable} markerEnd={`url(#${marker + mode})`} />)}
-        </svg>
-        {edges.map(({ edge, label, x, y, retry, unavailable }) => label && <span aria-hidden="true"
-          key={edge.from + "/" + edge.to} className="tl-thread-edge-label" data-retry={retry}
-          data-dim={unavailable} style={{ left: x, top: y }}>{label}</span>)}
-        {layout.ordered.map((id) => {
-          const node = graph.nodes.find((item) => item.id === id)!;
-          const state = route.nodeState(id);
-          const terminal = !graph.edges.some((edge) => edge.from === id);
-          const status = nodeStatus(node, state, terminal);
-          return <button
-            key={id} type="button" className="tl-thread-graph-node" aria-pressed={selected === id}
-            data-state={state} data-kind={node.kind} data-terminal={terminal}
-            style={{ left: layout.positions.get(id)!.x, top: layout.positions.get(id)!.y, width: cardWidth, height: cardHeight }}
-            onFocus={(event) => { if (event.currentTarget.matches(":focus-visible")) showOnKeyboardFocus(id); }}
-            onClick={() => select(id)}
-          >
-            <StepMark kind={node.kind} state={state} terminal={terminal} />
-            <span><small>{status}</small><strong>{node.title}</strong></span>
-          </button>;
-        })}
+      {/* The same plane projects the SVG ports, labels, and HTML cards. */}
+      <div className="tl-thread-plane" ref={plane}>
+        <div className="tl-thread-canvas" ref={canvas} style={{
+          width: layout.width, height: layout.height,
+          transform: cameraTransform(view),
+        }}>
+          <svg className="tl-thread-connections" viewBox={`0 0 ${layout.width} ${layout.height}`} aria-hidden="true">
+            <defs>
+              {["default", "retry", "followed"].map((mode) => <marker
+                key={mode} id={marker + mode} viewBox="0 0 10 10" refX="8" refY="5"
+                markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto"
+              ><path data-mode={mode} d="M 1 1 L 8 5 L 1 9" /></marker>)}
+            </defs>
+            {edges.map(({ edge, d, mode, unavailable, emphasis }) => <path key={edge.from + "/" + edge.to}
+              d={d} data-mode={mode} data-dim={unavailable} data-emphasis={emphasis}
+              markerEnd={`url(#${marker + mode})`} />)}
+          </svg>
+          {edges.map(({ edge, label, x, y, retry, unavailable, emphasis }) => label && <span aria-hidden="true"
+            key={edge.from + "/" + edge.to} className="tl-thread-edge-label" data-retry={retry}
+            data-dim={unavailable} data-emphasis={emphasis} style={{ left: x, top: y }}>{label}</span>)}
+          {layout.ordered.map((id) => {
+            const node = graph.nodes.find((item) => item.id === id)!;
+            const state = route.nodeState(id);
+            const terminal = !graph.edges.some((edge) => edge.from === id);
+            const status = nodeStatus(node, state, terminal);
+            return <button
+              key={id} type="button" className="tl-thread-graph-node" aria-pressed={selected === id}
+              data-state={state} data-kind={node.kind} data-terminal={terminal}
+              data-emphasis={attention ? (neighbors.has(id) ? "connected" : "distant") : undefined}
+              style={{ left: layout.positions.get(id)!.x, top: layout.positions.get(id)!.y, width: cardWidth, height: cardHeight }}
+              onPointerEnter={(event) => { if (depth && !drag.current && event.pointerType === "mouse") setHovered(id); }}
+              onPointerLeave={() => setHovered(null)}
+              onFocus={(event) => {
+                if (!event.currentTarget.matches(":focus-visible")) return;
+                resetTilt();
+                setFocused(id);
+                showOnKeyboardFocus(id);
+              }}
+              onBlur={() => setFocused(null)}
+              onClick={() => select(id)}
+            >
+              <StepMark kind={node.kind} state={state} terminal={terminal} />
+              <span><small>{status}</small><strong>{node.title}</strong></span>
+            </button>;
+          })}
+        </div>
       </div>
     </div>
   </section>;

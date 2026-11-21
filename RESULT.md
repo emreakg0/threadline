@@ -1,4 +1,31 @@
-# Threadline Stage 3 — Gemini Action Thread evaluation
+# Threadline — Action Thread Depth Mode
+
+Choose **Depth Mode** beside **Graph** and **List** to add subtle perspective
+and card elevation. Press it again to return to the flat graph. Desktop opens
+in the flat graph by default. Narrow screens open in List, and their optional
+Depth Mode uses static styling. Reduced-motion settings suppress perspective
+motion and completion animation.
+
+- SVG edges, branch labels, and HTML cards share one perspective plane. The
+  saved workflow uses the same node positions and dependencies. Arrowheads
+  keep their size during highlighting, and retry paths retain dashed lines.
+- Hovering or focusing a step emphasizes its directly connected steps and
+  edges. Active steps have a restrained purple glow. Selection and completion
+  feedback stay within the cards. Mouse parallax is frame-batched. Pan writes
+  to the camera transform during a gesture and saves the view on release.
+- Verified authenticated Chromium at desktop and emulated mobile sizes.
+  Checked the toggle, keyboard and mouse highlighting, touch pan, zoom, fit,
+  projected SVG-to-card alignment, branches, retries, and reduced motion.
+  Inspected desktop and mobile captures. Workspace typecheck, frontend and API
+  builds, frontend regression tests, and offline API/PostgreSQL tests passed.
+- Changed the three existing Action Thread frontend files and the authenticated
+  graph browser check. No API, migration, dependency, or authorization changes.
+  Zero Gemini requests were made.
+
+Depth Mode is complete. The remaining live Stage 3 evaluation is a separate
+task and was left paused.
+
+## Earlier milestone — Stage 3 Gemini evaluation
 
 **The first live request received an HTTP 5xx response.** It used one of the
 three Stage 3 slots. This investigation made zero Gemini requests. Live schema

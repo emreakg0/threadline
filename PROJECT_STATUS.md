@@ -504,3 +504,19 @@ the investigation.
 Next unfinished task is the remaining bounded live evaluation on approved
 synthetic inputs. Schema acceptance and live planning quality remain
 unverified.
+
+## 2026-11-21 — Action Thread Depth Mode
+
+Completed the optional Depth Mode in the existing Action Thread viewer. The
+HTML cards, SVG arrows and labels move on one CSS perspective plane. The
+workflow layout stays deterministic. Direct neighbors are emphasized on hover
+or focus, and mobile starts in List with a static Depth Mode option.
+
+Authenticated Chromium verified desktop and mobile, edge alignment, zoom,
+fit, mouse and touch pan, branching, retries, keyboard focus and reduced
+motion. Inspected desktop and mobile captures. Workspace typecheck, both
+builds, frontend and offline API/PostgreSQL regressions passed. No backend or
+authorization changes and zero Gemini requests.
+
+No Depth Mode work remains. The earlier bounded Stage 3 live evaluation is
+still pending and was outside this milestone.

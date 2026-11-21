@@ -563,3 +563,17 @@ Added migration 0008 and server-side checks tying consent, the authenticated own
   responses to verify the exact log fields and unchanged error categories.
   Offline API and frontend tests, typecheck, both builds, security and audit
   checks passed. No new provider requests were issued.
+
+## 2026-11-21 — Action Thread Depth Mode
+
+- Added the opt-in Depth Mode toggle and shared perspective plane in
+  `ActionThreads.tsx` and `ThreadGraph.tsx`. Preserved deterministic node
+  positions and used frame-batched CSS updates for pointer tilt.
+- Added active, connected, selected, and completed styling in
+  `action-threads.css`, with static mobile and reduced-motion behavior.
+  Rounded side-rail turns while retaining arrowheads and retry labels.
+- Extended `thread-browser-check.mjs` to verify projected edge alignment,
+  hover/focus, camera gestures, toggle behavior and touch at mobile width.
+- Passed authenticated Chromium, frontend/API regressions, workspace
+  typecheck and both builds. Inspected desktop and mobile captures. Zero
+  Gemini requests and no runtime authorization changes.
