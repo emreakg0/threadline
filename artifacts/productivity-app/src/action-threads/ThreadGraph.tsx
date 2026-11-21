@@ -28,6 +28,8 @@ export function StepMark({ kind, state, terminal }: {
 
 type View = { x: number; y: number; scale: number };
 const cameraTransform = ({ x, y, scale }: View) => `translate(${x}px, ${y}px) scale(${scale})`;
+const constrainAxis = (offset: number, space: number) =>
+  space >= 0 ? space / 2 : Math.max(space, Math.min(0, offset));
 
 export function ThreadGraph({ graph, layout, route, selected, select }: Props) {
   const viewport = useRef<HTMLDivElement>(null);
@@ -77,16 +79,21 @@ export function ThreadGraph({ graph, layout, route, selected, select }: Props) {
   const fittedScale = Math.min(1, Math.max(0.15, Math.min(
     (size.width - 22) / layout.width, (size.height - 24) / layout.height,
   )));
-  const view = manual ?? {
-    scale: fittedScale,
-    x: (size.width - layout.width * fittedScale) / 2,
-    y: (size.height - layout.height * fittedScale) / 2,
-  };
+  function constrainView({ x, y, scale }: View): View {
+    return {
+      scale,
+      x: constrainAxis(x, size.width - layout.width * scale),
+      y: constrainAxis(y, size.height - layout.height * scale),
+    };
+  }
+  const view = constrainView(manual ?? { scale: fittedScale, x: 0, y: 0 });
+  const canPan = layout.width * view.scale > size.width || layout.height * view.scale > size.height;
 
   function zoom(factor: number, x = size.width / 2, y = size.height / 2) {
     const scale = Math.max(0.15, Math.min(2.2, view.scale * factor));
     const ratio = scale / view.scale;
-    setManual({ scale, x: x - (x - view.x) * ratio, y: y - (y - view.y) * ratio });
+    resetTilt();
+    setManual(constrainView({ scale, x: x - (x - view.x) * ratio, y: y - (y - view.y) * ratio }));
   }
 
   useEffect(() => {
@@ -109,7 +116,7 @@ export function ThreadGraph({ graph, layout, route, selected, select }: Props) {
   }
 
   function startPan(event: PointerEvent<HTMLDivElement>) {
-    if (drag.current || event.button !== 0 || (event.target as Element).closest("button")) return;
+    if (!canPan || drag.current || event.button !== 0 || (event.target as Element).closest("button")) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     resetTilt();
     setHovered(null);
@@ -120,11 +127,11 @@ export function ThreadGraph({ graph, layout, route, selected, select }: Props) {
     const start = drag.current;
     if (start) {
       if (start.id !== event.pointerId) return;
-      start.view = { ...start.origin, x: start.origin.x + event.clientX - start.x, y: start.origin.y + event.clientY - start.y };
+      start.view = constrainView({ ...start.origin, x: start.origin.x + event.clientX - start.x, y: start.origin.y + event.clientY - start.y });
       if (canvas.current) canvas.current.style.transform = cameraTransform(start.view);
       return;
     }
-    if (!tiltAllowed.current?.matches || focused || event.pointerType !== "mouse") return;
+    if (!canPan || !tiltAllowed.current?.matches || focused || event.pointerType !== "mouse") return;
     tiltTarget.current = { x: event.clientX, y: event.clientY };
     if (tiltFrame.current) return;
     tiltFrame.current = requestAnimationFrame(() => {
@@ -150,11 +157,11 @@ export function ThreadGraph({ graph, layout, route, selected, select }: Props) {
     const top = position.y * view.scale + view.y;
     if (left < 0 || top < 0 || left + cardWidth * view.scale > size.width ||
         top + cardHeight * view.scale > size.height) {
-      setManual({
+      setManual(constrainView({
         scale: view.scale,
         x: size.width / 2 - (position.x + cardWidth / 2) * view.scale,
         y: size.height / 2 - (position.y + cardHeight / 2) * view.scale,
-      });
+      }));
     }
   }
 
@@ -190,27 +197,27 @@ export function ThreadGraph({ graph, layout, route, selected, select }: Props) {
 
   return <section aria-label="Graph" className="tl-thread-map">
     <div className="tl-thread-map-bar">
-      <p>Drag to pan</p>
+      {canPan && <p>Drag to pan</p>}
       <div className="tl-thread-tools" aria-label="Graph zoom">
         <button type="button" aria-label="Zoom out" onClick={() => zoom(1 / 1.2)}>−</button>
         <span aria-label="Zoom level">{Math.round(view.scale * 100)}%</span>
         <button type="button" aria-label="Zoom in" onClick={() => zoom(1.2)}>+</button>
-        <button type="button" onClick={() => setManual(null)}>Fit graph</button>
+        <button type="button" onClick={() => { resetTilt(); setManual(null); }}>Fit graph</button>
       </div>
     </div>
     <div
-      ref={viewport} tabIndex={0} role="region" aria-label="Graph canvas. Use arrow keys to pan."
-      className="tl-thread-viewport" data-dragging={dragging}
+      ref={viewport} tabIndex={0} role="region" aria-label={canPan ? "Graph canvas. Use arrow keys to pan." : "Graph canvas"}
+      className="tl-thread-viewport" data-can-pan={canPan} data-dragging={dragging}
       onPointerDown={startPan} onPointerMove={movePointer}
       onPointerLeave={resetTilt}
       onPointerUp={stopPan} onPointerCancel={stopPan} onLostPointerCapture={stopPan}
       onKeyDown={(event) => {
-        if (event.target !== event.currentTarget) return;
+        if (!canPan || event.target !== event.currentTarget) return;
         const direction = { ArrowLeft: [44, 0], ArrowRight: [-44, 0], ArrowUp: [0, 44], ArrowDown: [0, -44] }[event.key];
         if (!direction) return;
         event.preventDefault();
         resetTilt();
-        setManual({ ...view, x: view.x + direction[0], y: view.y + direction[1] });
+        setManual(constrainView({ ...view, x: view.x + direction[0], y: view.y + direction[1] }));
       }}
     >
       {/* The same plane projects the SVG ports, labels, and HTML cards. */}

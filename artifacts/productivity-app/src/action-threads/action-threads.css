@@ -115,7 +115,7 @@
 .tl-thread-map { overflow: hidden; }
 .tl-thread-map-bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; min-height: 46px; gap: 6px; padding: 4px 10px 4px 14px; border-bottom: 1px solid var(--tl-line); }
 .tl-thread-map-bar p, .tl-thread-tools span { color: var(--tl-muted); font-size: .75rem; }
-.tl-thread-tools { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+.tl-thread-tools { display: flex; align-items: center; gap: 4px; margin-inline-start: auto; white-space: nowrap; }
 .tl-thread-tools span { min-width: 36px; text-align: center; font-variant-numeric: tabular-nums; }
 .threadline .tl-thread-tools button { padding-inline: 8px; }
 .tl-thread-viewport {
@@ -125,9 +125,8 @@
   background-color: #10151e;
   background-image: radial-gradient(circle, #323c4f 0.7px, transparent 0.9px);
   background-size: 18px 18px;
-  touch-action: none;
-  cursor: grab;
 }
+.tl-thread-viewport[data-can-pan="true"] { touch-action: none; cursor: grab; }
 .tl-thread-viewport[data-dragging="true"] { cursor: grabbing; }
 .tl-thread-viewport:focus-visible { outline-offset: -3px; }
 .tl-thread-plane { position: absolute; inset: 0; }
@@ -220,7 +219,7 @@
 .tl-thread-viewport :is(.tl-thread-graph-node, .tl-thread-edge-label)[data-emphasis="distant"] { opacity: .88; }
 
 @media (min-width: 761px) and (prefers-reduced-motion: no-preference) {
-  .tl-thread-viewport[data-dragging="false"] .tl-thread-plane {
+  .tl-thread-viewport[data-can-pan="true"][data-dragging="false"] .tl-thread-plane {
     transform: perspective(1400px) rotateX(var(--thread-tilt-x, 0deg)) rotateY(var(--thread-tilt-y, 0deg));
     transition: transform 145ms ease-out;
   }

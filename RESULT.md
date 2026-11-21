@@ -5,6 +5,10 @@ The view controls are **Graph** and **List**. Narrow screens open in List,
 and Graph uses static depth styling on narrow screens. Reduced-motion settings
 suppress perspective motion and completion animation.
 
+The graph stays centered and still while it fits. Zooming in enables pan
+only along axes that overflow the viewport. Pan stops at the canvas edges,
+and zooming back out or choosing **Fit graph** recenters the graph.
+
 - SVG edges, branch labels, and HTML cards share one perspective plane. The
   saved workflow uses the same node positions and dependencies. Arrowheads
   keep their size during highlighting, and retry paths retain dashed lines.

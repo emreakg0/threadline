@@ -586,3 +586,12 @@ Added migration 0008 and server-side checks tying consent, the authenticated own
 - Updated the authenticated Chromium checks to assert the two view controls,
   perspective on desktop by default, and static depth on emulated mobile
   with reduced motion. No backend changes or Gemini requests.
+
+### Bounded graph panning
+
+- Updated `ThreadGraph.tsx` and `action-threads.css` to center axes that fit,
+  constrain overflow, and expose pan controls and parallax only while the
+  graph can move. Zoom and keyboard focus use the same camera bounds.
+- Updated the browser checks for the stationary fitted graph, axis-specific
+  pan, zoom-out, and zoomed touch gestures. No backend changes or Gemini
+  requests.

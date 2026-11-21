@@ -527,3 +527,10 @@ Graph now uses the depth treatment by default, with Graph and List as the
 only view controls. Narrow screens still open in List, and Graph omits
 parallax on narrow screens and with reduced motion. No further work is
 pending for this visual change.
+
+### Bounded graph panning
+
+The fitted graph stays centered. Zoom enables panning only on an axis where
+the canvas overflows its viewport. Mouse, touch, and keyboard panning share
+the same bounds. Zooming out recenters any axis that fits. No further work
+is pending for this visual change.
